@@ -30,6 +30,10 @@ namespace LLMUnitySamples
         void Update()
         {
             if (!isPlayerInRange) return;
+            
+            // Chat paneli açıksa E tuşu kontrolünü yapma (yazı girmesi için)
+            if (chatUI != null && chatUI.IsChatOpen())
+                return;
 
             // Oyuncu NPCye bakıp E tuşuna basarsa
             if (Input.GetKeyDown(interactionKey))

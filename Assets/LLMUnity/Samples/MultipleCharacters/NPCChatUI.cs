@@ -4,6 +4,7 @@ using TMPro;
 using LLMUnity;
 using System.Collections.Generic;
 using StarterAssets;
+using System.Threading.Tasks;
 
 namespace LLMUnitySamples
 {
@@ -17,6 +18,7 @@ namespace LLMUnitySamples
         public Button sendButton;
         public Button closeButton;
         public ScrollRect chatScrollRect;
+        public TextMeshProUGUI loadingText;
 
         [Header("Settings")]
         public int maxDisplayMessages = 10;
@@ -25,6 +27,8 @@ namespace LLMUnitySamples
         private LLMAgent currentAgent;
         private string currentNPCName;
         private bool isWaitingForResponse = false;
+        private bool isModelWarming = false;
+        private bool allModelsWarmed = false;
         private List<string> chatHistory = new List<string>();
         private string currentNPCResponse = ""; // Son NPC yanıtını izlemek için
 
@@ -43,6 +47,58 @@ namespace LLMUnitySamples
             // Chat panelini başlangıçta kapat
             if (chatPanel != null)
                 chatPanel.SetActive(false);
+            
+            // Loading text'i başlangıçta göster
+            if (loadingText != null)
+            {
+                loadingText.gameObject.SetActive(true);
+                loadingText.text = "Loading AI models...";
+            }
+            
+            // Sahnedeki tüm modelleri arka planda yükle
+            _ = WarmupAllModels();
+        }
+        
+        private async Task WarmupAllModels()
+        {
+            if (isModelWarming) return;
+            
+            isModelWarming = true;
+            
+            try
+            {
+                // Sahnedeki tüm LLMAgent'ları bul
+                LLMAgent[] allAgents = FindObjectsByType<LLMAgent>(FindObjectsSortMode.None);
+                
+                if (allAgents.Length > 0)
+                {
+                    Debug.Log($"Warming up {allAgents.Length} AI model(s)...");
+                    
+                    // Tüm modelleri parallel olarak warmup et
+                    var warmupTasks = new List<Task>();
+                    foreach (var agent in allAgents)
+                    {
+                        warmupTasks.Add(agent.Warmup());
+                    }
+                    
+                    await Task.WhenAll(warmupTasks);
+                    
+                    Debug.Log("All AI models are ready!");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"Model warmup error: {ex.Message}");
+            }
+            finally
+            {
+                isModelWarming = false;
+                allModelsWarmed = true;
+                
+                // Loading göstergesini gizle
+                if (loadingText != null)
+                    loadingText.gameObject.SetActive(false);
+            }
         }
 
         public void OpenChat(LLMAgent agent, string npcName)
@@ -80,7 +136,6 @@ namespace LLMUnitySamples
             // Third Person Controller'ı deaktif et
             DisablePlayerController();
         }
-
         public void CloseChat()
         {
             if (chatPanel != null)
@@ -205,13 +260,13 @@ namespace LLMUnitySamples
         private void DisablePlayerController()
         {
             // StarterAssetsInputs ve ThirdPersonController'ı deaktif et
-            var inputScript = FindObjectOfType<StarterAssetsInputs>(true);
+            var inputScript = FindFirstObjectByType<StarterAssetsInputs>();
             if (inputScript != null)
             {
                 inputScript.enabled = false;
             }
             
-            var controllerScript = FindObjectOfType<ThirdPersonController>(true);
+            var controllerScript = FindFirstObjectByType<ThirdPersonController>();
             if (controllerScript != null)
             {
                 controllerScript.enabled = false;
@@ -221,13 +276,13 @@ namespace LLMUnitySamples
         private void EnablePlayerController()
         {
             // StarterAssetsInputs ve ThirdPersonController'ı aktif et
-            var inputScript = FindObjectOfType<StarterAssetsInputs>(true);
+            var inputScript = FindFirstObjectByType<StarterAssetsInputs>();
             if (inputScript != null)
             {
                 inputScript.enabled = true;
             }
             
-            var controllerScript = FindObjectOfType<ThirdPersonController>(true);
+            var controllerScript = FindFirstObjectByType<ThirdPersonController>();
             if (controllerScript != null)
             {
                 controllerScript.enabled = true;
@@ -241,6 +296,11 @@ namespace LLMUnitySamples
             {
                 CloseChat();
             }
+        }
+
+        public bool IsChatOpen()
+        {
+            return chatPanel.activeSelf;
         }
     }
 }
