@@ -5,6 +5,8 @@ using LLMUnity;
 using System.Collections.Generic;
 using StarterAssets;
 using System.Threading.Tasks;
+using Whisper;
+using Whisper.Utils;
 
 namespace LLMUnitySamples
 {
@@ -20,9 +22,22 @@ namespace LLMUnitySamples
         public ScrollRect chatScrollRect;
         public TextMeshProUGUI loadingText;
 
+        [Header("Voice Input - Ses Girişi")]
+        public Button toggleMicButton;
+        public Image micStatusIndicator;
+        public Dropdown microphoneDropdown;
+
+        [Header("Speech Recognition - Konuşma Tanıma")]
+        public WhisperManager whisperManager;
+        public MicrophoneRecord microphoneRecord;
+
         [Header("Settings")]
         public int maxDisplayMessages = 10;
         public float autoScrollDelay = 0.1f;
+        public bool enableVoiceInput = true;
+        public bool autoStartRecording = true;
+        public bool showTranscriptionInRealtime = true;
+        public string microphoneDefaultLabel = "Default Microphone";
 
         private LLMAgent currentAgent;
         private string currentNPCName;
@@ -30,7 +45,10 @@ namespace LLMUnitySamples
         private bool isModelWarming = false;
         private bool allModelsWarmed = false;
         private List<string> chatHistory = new List<string>();
-        private string currentNPCResponse = ""; // Son NPC yanıtını izlemek için
+        private string currentNPCResponse = "";
+        private bool isMicRecording = false;
+        private bool isTranscribing = false;
+        private string currentTranscription = "";
 
         void Start()
         {
@@ -40,6 +58,9 @@ namespace LLMUnitySamples
             
             if (closeButton != null)
                 closeButton.onClick.AddListener(CloseChat);
+
+            if (toggleMicButton != null)
+                toggleMicButton.onClick.AddListener(OnToggleMicrophone);
 
             if (playerInputField != null)
                 playerInputField.onSubmit.AddListener((message) => OnSendMessage());
@@ -55,8 +76,32 @@ namespace LLMUnitySamples
                 loadingText.text = "Loading AI models...";
             }
             
+            InitializeMicrophone();
+            
             // Sahnedeki tüm modelleri arka planda yükle
             _ = WarmupAllModels();
+        }
+
+        private void InitializeMicrophone()
+        {
+            if (!enableVoiceInput || microphoneRecord == null)
+                return;
+
+            // Setup microphone dropdown
+            if (microphoneDropdown != null)
+            {
+                var micDevices = new List<string> { microphoneDefaultLabel };
+                micDevices.AddRange(Microphone.devices);
+                
+                microphoneDropdown.ClearOptions();
+                microphoneDropdown.AddOptions(micDevices);
+                microphoneDropdown.value = 0;
+                microphoneDropdown.onValueChanged.AddListener(OnMicrophoneChanged);
+            }
+
+            // Setup microphone callbacks
+            microphoneRecord.OnRecordStop += OnMicrophoneRecordStop;
+            microphoneRecord.OnVadChanged += OnVadChanged;
         }
         
         private async Task WarmupAllModels()
@@ -84,6 +129,14 @@ namespace LLMUnitySamples
                     await Task.WhenAll(warmupTasks);
                     
                     Debug.Log("All AI models are ready!");
+                }
+
+                // Whisper modelini de yükle
+                if (enableVoiceInput && whisperManager != null && !whisperManager.IsLoaded)
+                {
+                    Debug.Log("Loading Whisper model...");
+                    await whisperManager.InitModel();
+                    Debug.Log("Whisper model is ready!");
                 }
             }
             catch (System.Exception ex)
@@ -135,9 +188,17 @@ namespace LLMUnitySamples
             
             // Third Person Controller'ı deaktif et
             DisablePlayerController();
+
+            // Mikrofon kaydını başlat
+            if (enableVoiceInput && autoStartRecording && microphoneRecord != null)
+            {
+                StartMicrophoneRecording();
+            }
         }
         public void CloseChat()
         {
+            StopMicrophoneRecording();
+
             if (chatPanel != null)
                 chatPanel.SetActive(false);
 
@@ -164,20 +225,7 @@ namespace LLMUnitySamples
             if (string.IsNullOrEmpty(userMessage))
                 return;
 
-            // Oyuncunun mesajını görüntüle
-            AddToChatDisplay($"Siz: {userMessage}");
-
-            // Input'u temizle
-            playerInputField.text = "";
-
-            // NPC'den yanıt al
-            isWaitingForResponse = true;
-            sendButton.interactable = false;
-            currentNPCResponse = ""; // Yeni yanıtı başlat
-
-            _ = currentAgent.Chat(userMessage, 
-                (reply) => UpdateNPCResponse(reply),
-                OnResponseComplete);
+            SendChatMessage(userMessage);
         }
 
         private void UpdateNPCResponse(string fullResponse)
@@ -243,6 +291,12 @@ namespace LLMUnitySamples
                 RefreshChatDisplay();
             }
             
+            // Mikrofonu yeniden başlat
+            if (enableVoiceInput && microphoneRecord != null && !microphoneRecord.IsRecording)
+            {
+                StartMicrophoneRecording();
+            }
+            
             if (playerInputField != null)
             {
                 playerInputField.Select();
@@ -252,14 +306,187 @@ namespace LLMUnitySamples
 
         private System.Collections.IEnumerator ScrollToBottom()
         {
-            yield return new WaitForSeconds(autoScrollDelay);
+            yield return new WaitForSecondsRealtime(autoScrollDelay);
             if (chatScrollRect != null)
-                chatScrollRect.verticalNormalizedPosition = 0f;
+                chatScrollRect.verticalNormalizedPosition = 1f;
+        }
+
+        private void OnToggleMicrophone()
+        {
+            if (isMicRecording)
+            {
+                StopMicrophoneRecording();
+            }
+            else
+            {
+                StartMicrophoneRecording();
+            }
+        }
+
+        private void StartMicrophoneRecording()
+        {
+            if (!enableVoiceInput || microphoneRecord == null || isWaitingForResponse)
+                return;
+
+            if (microphoneRecord.IsRecording)
+                return;
+
+            Debug.Log("Starting microphone recording...");
+            microphoneRecord.StartRecord();
+            isMicRecording = true;
+            UpdateMicStatusUI(true);
+        }
+
+        private void StopMicrophoneRecording()
+        {
+            if (microphoneRecord == null || !microphoneRecord.IsRecording)
+                return;
+
+            Debug.Log("Stopping microphone recording...");
+            microphoneRecord.StopRecord();
+            isMicRecording = false;
+            UpdateMicStatusUI(false);
+        }
+
+        private void OnMicrophoneChanged(int index)
+        {
+            if (microphoneDropdown == null || microphoneRecord == null)
+                return;
+
+            string selectedDevice = microphoneDropdown.options[index].text;
+            
+            if (selectedDevice == microphoneDefaultLabel)
+            {
+                microphoneRecord.SelectedMicDevice = null;
+                Debug.Log("Switched to default microphone");
+            }
+            else
+            {
+                microphoneRecord.SelectedMicDevice = selectedDevice;
+                Debug.Log($"Switched to microphone: {selectedDevice}");
+            }
+        }
+
+        private void OnVadChanged(bool isSpeechDetected)
+        {
+            Debug.Log($"Speech detected: {isSpeechDetected}");
+            UpdateMicStatusUI(isSpeechDetected);
+        }
+
+        private async void OnMicrophoneRecordStop(AudioChunk recordedAudio)
+        {
+            if (isWaitingForResponse || !enableVoiceInput)
+                return;
+
+            Debug.Log($"Microphone stopped. Audio length: {recordedAudio.Length}s");
+
+            await TranscribeAudio(recordedAudio);
+
+            // Mikrofonu yeniden başlat
+            if (!isWaitingForResponse && enableVoiceInput && autoStartRecording)
+            {
+                StartMicrophoneRecording();
+            }
+        }
+
+        private async Task TranscribeAudio(AudioChunk audioChunk)
+        {
+            if (whisperManager == null || !whisperManager.IsLoaded)
+            {
+                Debug.LogError("Whisper is not initialized!");
+                return;
+            }
+
+            try
+            {
+                isTranscribing = true;
+                currentTranscription = "";
+
+                Debug.Log("Starting transcription...");
+
+                var result = await whisperManager.GetTextAsync(
+                    audioChunk.Data,
+                    audioChunk.Frequency,
+                    audioChunk.Channels
+                );
+
+                if (result != null && !string.IsNullOrEmpty(result.Result))
+                {
+                    currentTranscription = result.Result.Trim();
+                    
+                    // Check if transcription is not empty or just whitespace
+                    if (!string.IsNullOrWhiteSpace(currentTranscription) && currentTranscription.Length > 1)
+                    {
+                        Debug.Log($"Transcription: {currentTranscription}");
+
+                        if (showTranscriptionInRealtime && playerInputField != null)
+                        {
+                            playerInputField.text = currentTranscription;
+                        }
+
+                        if (!isWaitingForResponse)
+                        {
+                            SendChatMessage(currentTranscription);
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("Transcription is empty or too short, skipping message send.");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("No text transcribed from audio");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Transcription error: {ex.Message}");
+            }
+            finally
+            {
+                isTranscribing = false;
+            }
+        }
+
+        private void SendChatMessage(string userMessage)
+        {
+            if (currentAgent == null || isWaitingForResponse)
+                return;
+
+            if (string.IsNullOrEmpty(userMessage))
+                return;
+
+            AddToChatDisplay($"Siz: {userMessage}");
+            playerInputField.text = "";
+            isWaitingForResponse = true;
+            sendButton.interactable = false;
+            currentNPCResponse = "";
+
+            _ = currentAgent.Chat(userMessage, 
+                (reply) => UpdateNPCResponse(reply),
+                OnResponseComplete);
+        }
+
+        private void UpdateMicStatusUI(bool isActive)
+        {
+            if (micStatusIndicator != null)
+            {
+                micStatusIndicator.color = isActive ? Color.green : Color.red;
+            }
+
+            if (toggleMicButton != null)
+            {
+                var buttonText = toggleMicButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                {
+                    buttonText.text = isActive ? "Stop Mic" : "Start Mic";
+                }
+            }
         }
 
         private void DisablePlayerController()
         {
-            // StarterAssetsInputs ve ThirdPersonController'ı deaktif et
             var inputScript = FindFirstObjectByType<StarterAssetsInputs>();
             if (inputScript != null)
             {
@@ -275,7 +502,6 @@ namespace LLMUnitySamples
 
         private void EnablePlayerController()
         {
-            // StarterAssetsInputs ve ThirdPersonController'ı aktif et
             var inputScript = FindFirstObjectByType<StarterAssetsInputs>();
             if (inputScript != null)
             {
@@ -301,6 +527,15 @@ namespace LLMUnitySamples
         public bool IsChatOpen()
         {
             return chatPanel.activeSelf;
+        }
+
+        private void OnDestroy()
+        {
+            if (microphoneRecord != null)
+            {
+                microphoneRecord.OnRecordStop -= OnMicrophoneRecordStop;
+                microphoneRecord.OnVadChanged -= OnVadChanged;
+            }
         }
     }
 }
