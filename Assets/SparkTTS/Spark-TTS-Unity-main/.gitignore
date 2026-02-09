@@ -73,10 +73,3 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
-
-# Large library files that exceed GitHub limits
-/[Aa]ssets/[Ss]treamingAssets/LlamaLib-v2.0.0/
-
-# Large asset folders
-/[Aa]ssets/[Mm]odels/
-/[Aa]ssets/[Ss]treamingAssets/
