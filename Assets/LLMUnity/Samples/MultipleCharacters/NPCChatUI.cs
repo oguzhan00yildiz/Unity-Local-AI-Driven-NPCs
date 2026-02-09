@@ -7,6 +7,10 @@ using StarterAssets;
 using System.Threading.Tasks;
 using Whisper;
 using Whisper.Utils;
+using SparkTTS;
+using SparkTTS.Models;
+using SparkTTS.Utils;
+using SparkLogLevel = SparkTTS.Utils.LogLevel;
 
 namespace LLMUnitySamples
 {
@@ -31,6 +35,19 @@ namespace LLMUnitySamples
         public WhisperManager whisperManager;
         public MicrophoneRecord microphoneRecord;
 
+        [Header("Voice Output - SparkTTS")]
+        public bool enableVoiceOutput = true;
+        public AudioSource npcVoiceAudioSource;
+        public TextMeshProUGUI ttsStatusText;
+        public string voiceGender = "male";
+        public string voicePitch = "moderate";
+        public string voiceSpeed = "moderate";
+        public string voiceWarmupText = "Hello, I am ready to speak.";
+        public bool preloadVoiceOnStart = true;
+        public SparkLogLevel sparkLogLevel = SparkLogLevel.WARNING;
+        public MemoryUsage sparkMemoryUsage = MemoryUsage.Balanced;
+        public ExecutionProvider sparkExecutionProvider = ExecutionProvider.CPU;
+
         [Header("Settings")]
         public int maxDisplayMessages = 10;
         public float autoScrollDelay = 0.1f;
@@ -38,6 +55,7 @@ namespace LLMUnitySamples
         public bool autoStartRecording = true;
         public bool showTranscriptionInRealtime = true;
         public string microphoneDefaultLabel = "Default Microphone";
+        public float micSilenceThreshold = 0.0015f;
 
         private LLMAgent currentAgent;
         private string currentNPCName;
@@ -49,6 +67,13 @@ namespace LLMUnitySamples
         private bool isMicRecording = false;
         private bool isTranscribing = false;
         private string currentTranscription = "";
+        private CharacterVoiceFactory voiceFactory;
+        private CharacterVoice currentVoice;
+        private bool isVoiceLoading = false;
+        private bool isVoiceReady = false;
+        private bool isSpeaking = false;
+        private bool micPausedForTts = false;
+        private string pendingSpeech = "";
 
         void Start()
         {
@@ -77,6 +102,13 @@ namespace LLMUnitySamples
             }
             
             InitializeMicrophone();
+
+            SetTtsStatus("Idle");
+
+            if (enableVoiceOutput && preloadVoiceOnStart)
+            {
+                _ = LoadCharacterVoiceAsync();
+            }
             
             // Sahnedeki tüm modelleri arka planda yükle
             _ = WarmupAllModels();
@@ -154,6 +186,51 @@ namespace LLMUnitySamples
             }
         }
 
+        private async Task LoadCharacterVoiceAsync()
+        {
+            if (!enableVoiceOutput || isVoiceLoading)
+                return;
+
+            isVoiceLoading = true;
+            SetTtsStatus("Preparing voice...");
+
+            try
+            {
+                CharacterVoiceFactory.Initialize(sparkLogLevel, sparkMemoryUsage, sparkExecutionProvider);
+                voiceFactory = CharacterVoiceFactory.Instance;
+
+                if (sparkMemoryUsage == MemoryUsage.Performance)
+                {
+                    await CharacterVoiceFactory.WaitForModelsLoadedAsync();
+                }
+
+                currentVoice = await voiceFactory.CreateFromStyleAsync(
+                    voiceGender,
+                    voicePitch,
+                    voiceSpeed,
+                    voiceWarmupText);
+
+                isVoiceReady = currentVoice != null;
+                SetTtsStatus(isVoiceReady ? "Voice ready" : "Voice not ready");
+
+                if (isVoiceReady && !string.IsNullOrWhiteSpace(pendingSpeech))
+                {
+                    var textToSpeak = pendingSpeech;
+                    pendingSpeech = "";
+                    _ = SpeakResponseAsync(textToSpeak);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"SparkTTS voice load error: {ex.Message}");
+                SetTtsStatus("Voice load failed");
+            }
+            finally
+            {
+                isVoiceLoading = false;
+            }
+        }
+
         public void OpenChat(LLMAgent agent, string npcName)
         {
             currentAgent = agent;
@@ -198,6 +275,11 @@ namespace LLMUnitySamples
         public void CloseChat()
         {
             StopMicrophoneRecording();
+
+            if (npcVoiceAudioSource != null)
+            {
+                npcVoiceAudioSource.Stop();
+            }
 
             if (chatPanel != null)
                 chatPanel.SetActive(false);
@@ -279,7 +361,8 @@ namespace LLMUnitySamples
             // Son yanıtı history'ye ekle
             if (!string.IsNullOrEmpty(currentNPCResponse))
             {
-                chatHistory.Add($"{currentNPCName}: {currentNPCResponse}");
+                string finalResponse = currentNPCResponse;
+                chatHistory.Add($"{currentNPCName}: {finalResponse}");
                 
                 // Son N mesajı göster
                 if (chatHistory.Count > maxDisplayMessages)
@@ -289,10 +372,17 @@ namespace LLMUnitySamples
                 
                 currentNPCResponse = ""; // Sıfırla
                 RefreshChatDisplay();
+
+                if (enableVoiceOutput)
+                {
+                    TrySpeakResponse(finalResponse);
+                }
+                else if (enableVoiceInput && microphoneRecord != null && !microphoneRecord.IsRecording)
+                {
+                    StartMicrophoneRecording();
+                }
             }
-            
-            // Mikrofonu yeniden başlat
-            if (enableVoiceInput && microphoneRecord != null && !microphoneRecord.IsRecording)
+            else if (enableVoiceInput && microphoneRecord != null && !microphoneRecord.IsRecording)
             {
                 StartMicrophoneRecording();
             }
@@ -325,7 +415,7 @@ namespace LLMUnitySamples
 
         private void StartMicrophoneRecording()
         {
-            if (!enableVoiceInput || microphoneRecord == null || isWaitingForResponse)
+            if (!enableVoiceInput || microphoneRecord == null || isWaitingForResponse || isSpeaking)
                 return;
 
             if (microphoneRecord.IsRecording)
@@ -375,8 +465,24 @@ namespace LLMUnitySamples
 
         private async void OnMicrophoneRecordStop(AudioChunk recordedAudio)
         {
+            if (micPausedForTts)
+            {
+                micPausedForTts = false;
+                return;
+            }
+
             if (isWaitingForResponse || !enableVoiceInput)
                 return;
+
+            if (recordedAudio.Data == null || recordedAudio.Data.Length == 0 || IsSilentAudio(recordedAudio.Data))
+            {
+                Debug.Log("Microphone input is silent. Skipping transcription.");
+                if (enableVoiceInput && autoStartRecording)
+                {
+                    StartMicrophoneRecording();
+                }
+                return;
+            }
 
             Debug.Log($"Microphone stopped. Audio length: {recordedAudio.Length}s");
 
@@ -426,7 +532,14 @@ namespace LLMUnitySamples
 
                         if (!isWaitingForResponse)
                         {
-                            SendChatMessage(currentTranscription);
+                            if (string.Equals(currentTranscription, "[blank audio]", System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                Debug.Log("Transcription is [blank audio]. Skipping message send.");
+                            }
+                            else
+                            {
+                                SendChatMessage(currentTranscription);
+                            }
                         }
                     }
                     else
@@ -449,6 +562,21 @@ namespace LLMUnitySamples
             }
         }
 
+        private bool IsSilentAudio(float[] samples)
+        {
+            if (samples == null || samples.Length == 0)
+                return true;
+
+            float sumAbs = 0f;
+            for (int i = 0; i < samples.Length; i++)
+            {
+                sumAbs += Mathf.Abs(samples[i]);
+            }
+
+            float meanAbs = sumAbs / samples.Length;
+            return meanAbs < micSilenceThreshold;
+        }
+
         private void SendChatMessage(string userMessage)
         {
             if (currentAgent == null || isWaitingForResponse)
@@ -468,6 +596,100 @@ namespace LLMUnitySamples
                 OnResponseComplete);
         }
 
+        private void TrySpeakResponse(string responseText)
+        {
+            if (!enableVoiceOutput || string.IsNullOrWhiteSpace(responseText))
+                return;
+
+            if (!isVoiceReady || currentVoice == null)
+            {
+                pendingSpeech = responseText;
+                if (!isVoiceLoading)
+                {
+                    _ = LoadCharacterVoiceAsync();
+                }
+                return;
+            }
+
+            _ = SpeakResponseAsync(responseText);
+        }
+
+        private async Task SpeakResponseAsync(string responseText)
+        {
+            if (npcVoiceAudioSource == null)
+            {
+                Debug.LogWarning("NPC voice AudioSource is not assigned.");
+                SetTtsStatus("No audio source");
+                return;
+            }
+
+            if (isSpeaking)
+                return;
+
+            isSpeaking = true;
+            micPausedForTts = true;
+            StopMicrophoneRecording();
+            SetTtsStatus("Generating voice...");
+
+            try
+            {
+                AudioClip generatedClip = await currentVoice.GenerateSpeechAsync(responseText);
+                if (generatedClip == null)
+                {
+                    Debug.LogWarning("SparkTTS returned an empty audio clip.");
+                    SetTtsStatus("Voice generation failed");
+                    return;
+                }
+
+                npcVoiceAudioSource.Stop();
+                npcVoiceAudioSource.clip = generatedClip;
+                npcVoiceAudioSource.Play();
+                SetTtsStatus("Speaking...");
+                StartCoroutine(WaitForVoicePlayback());
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"SparkTTS speech generation error: {ex.Message}");
+                SetTtsStatus("Voice error");
+            }
+            finally
+            {
+                if (npcVoiceAudioSource == null || !npcVoiceAudioSource.isPlaying)
+                {
+                    isSpeaking = false;
+                    micPausedForTts = false;
+                    SetTtsStatus("Idle");
+                    if (enableVoiceInput && autoStartRecording && microphoneRecord != null && !isWaitingForResponse)
+                    {
+                        StartMicrophoneRecording();
+                    }
+                }
+            }
+        }
+
+        private System.Collections.IEnumerator WaitForVoicePlayback()
+        {
+            if (npcVoiceAudioSource == null)
+            {
+                isSpeaking = false;
+                yield break;
+            }
+
+            while (npcVoiceAudioSource.isPlaying)
+            {
+                yield return null;
+            }
+
+            isSpeaking = false;
+            micPausedForTts = false;
+            SetTtsStatus("Idle");
+
+            if (enableVoiceInput && autoStartRecording && microphoneRecord != null && !isWaitingForResponse)
+            {
+                StartMicrophoneRecording();
+            }
+        }
+
         private void UpdateMicStatusUI(bool isActive)
         {
             if (micStatusIndicator != null)
@@ -483,6 +705,20 @@ namespace LLMUnitySamples
                     buttonText.text = isActive ? "Stop Mic" : "Start Mic";
                 }
             }
+        }
+
+        private void SetTtsStatus(string status)
+        {
+            if (ttsStatusText == null)
+                return;
+
+            if (!enableVoiceOutput)
+            {
+                ttsStatusText.text = "Voice off";
+                return;
+            }
+
+            ttsStatusText.text = status;
         }
 
         private void DisablePlayerController()
@@ -536,6 +772,8 @@ namespace LLMUnitySamples
                 microphoneRecord.OnRecordStop -= OnMicrophoneRecordStop;
                 microphoneRecord.OnVadChanged -= OnVadChanged;
             }
+
+            currentVoice?.Dispose();
         }
     }
 }

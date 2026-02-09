@@ -181,8 +181,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 579548861}
   m_HandleRect: {fileID: 579548859}
   m_Direction: 2
-  m_Value: -0.016
-  m_Size: 0.9999824
+  m_Value: -2.488
+  m_Size: 0.9872781
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -356,7 +356,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 6.0236006, y: -325.41602}
+  m_AnchoredPosition: {x: 377.0236, y: -325.41602}
   m_SizeDelta: {x: 160, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &171676409
@@ -475,7 +475,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0038625097}
+  m_AnchoredPosition: {x: 0, y: 0.0133343125}
   m_SizeDelta: {x: 0, y: 455.94}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &197311406
@@ -638,6 +638,17 @@ MonoBehaviour:
   microphoneDropdown: {fileID: 548721484}
   whisperManager: {fileID: 1772544777}
   microphoneRecord: {fileID: 252139680}
+  enableVoiceOutput: 1
+  npcVoiceAudioSource: {fileID: 587168421}
+  ttsStatusText: {fileID: 1000884128}
+  voiceGender: male
+  voicePitch: moderate
+  voiceSpeed: moderate
+  voiceWarmupText: Hi this test is ready.
+  preloadVoiceOnStart: 1
+  sparkLogLevel: 2
+  sparkMemoryUsage: 0
+  sparkExecutionProvider: 1
   maxDisplayMessages: 10
   autoScrollDelay: 0.1
   enableVoiceInput: 1
@@ -1185,7 +1196,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -233.8099, y: 329}
+  m_AnchoredPosition: {x: 182, y: 517}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &548721486
@@ -1315,6 +1326,7 @@ GameObject:
   - component: {fileID: 587168415}
   - component: {fileID: 587168419}
   - component: {fileID: 587168420}
+  - component: {fileID: 587168421}
   m_Layer: 0
   m_Name: Mestan
   m_TagString: Untagged
@@ -1430,7 +1442,6 @@ MonoBehaviour:
   llmAgent: {fileID: 1493015760}
   npcName: Mestan
   chatUI: {fileID: 219844059}
-  chatManager: {fileID: 0}
 --- !u!135 &587168420
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1452,6 +1463,103 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 3
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!82 &587168421
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 587168414}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!4 &675822596 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4860276692040879404, guid: c708a3b79cd542b42bbfedb17e213bc1, type: 3}
@@ -1804,6 +1912,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 830258587}
   m_CullTransparentMesh: 1
+--- !u!224 &887095964 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+  m_PrefabInstance: {fileID: 1472403027}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &909474451
 GameObject:
   m_ObjectHideFlags: 0
@@ -2180,7 +2293,7 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 1280, y: 720}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
@@ -2224,7 +2337,9 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 779570597}
+  - {fileID: 1000884127}
   - {fileID: 1777056475}
+  - {fileID: 887095964}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2232,6 +2347,142 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &1000884126
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1000884127}
+  - component: {fileID: 1000884129}
+  - component: {fileID: 1000884128}
+  m_Layer: 5
+  m_Name: TTSStatusText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1000884127
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000884126}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 983078667}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -632, y: 453}
+  m_SizeDelta: {x: 200, y: 50}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1000884128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000884126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_text: 
+  m_isRightToLeft: 0
+  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontSharedMaterials: []
+  m_fontMaterial: {fileID: 0}
+  m_fontMaterials: []
+  m_fontColor32:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_enableVertexGradient: 0
+  m_colorMode: 3
+  m_fontColorGradient:
+    topLeft: {r: 1, g: 1, b: 1, a: 1}
+    topRight: {r: 1, g: 1, b: 1, a: 1}
+    bottomLeft: {r: 1, g: 1, b: 1, a: 1}
+    bottomRight: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColorGradientPreset: {fileID: 0}
+  m_spriteAsset: {fileID: 0}
+  m_tintAllSprites: 0
+  m_StyleSheet: {fileID: 0}
+  m_TextStyleHashCode: -1183493901
+  m_overrideHtmlColors: 0
+  m_faceColor:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontSize: 36
+  m_fontSizeBase: 36
+  m_fontWeight: 400
+  m_enableAutoSizing: 0
+  m_fontSizeMin: 18
+  m_fontSizeMax: 72
+  m_fontStyle: 0
+  m_HorizontalAlignment: 1
+  m_VerticalAlignment: 256
+  m_textAlignment: 65535
+  m_characterSpacing: 0
+  m_wordSpacing: 0
+  m_lineSpacing: 0
+  m_lineSpacingMax: 0
+  m_paragraphSpacing: 0
+  m_charWidthMaxAdj: 0
+  m_TextWrappingMode: 1
+  m_wordWrappingRatios: 0.4
+  m_overflowMode: 0
+  m_linkedTextComponent: {fileID: 0}
+  parentLinkedComponent: {fileID: 0}
+  m_enableKerning: 0
+  m_ActiveFontFeatures: 6e72656b
+  m_enableExtraPadding: 0
+  checkPaddingRequired: 0
+  m_isRichText: 1
+  m_EmojiFallbackSupport: 1
+  m_parseCtrlCharacters: 1
+  m_isOrthographic: 1
+  m_isCullingEnabled: 0
+  m_horizontalMapping: 0
+  m_verticalMapping: 0
+  m_uvLineOffset: 0
+  m_geometrySortingOrder: 0
+  m_IsTextObjectScaleStatic: 0
+  m_VertexBufferAutoSizeReduction: 0
+  m_useMaxVisibleDescender: 1
+  m_pageToDisplay: 1
+  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_isUsingLegacyAnimationComponent: 0
+  m_isVolumetricText: 0
+  m_hasFontAssetChanged: 0
+  m_baseMaterial: {fileID: 0}
+  m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!222 &1000884129
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000884126}
+  m_CullTransparentMesh: 1
 --- !u!1 &1025126353
 GameObject:
   m_ObjectHideFlags: 0
@@ -2895,7 +3146,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 269.1649}
+  m_AnchoredPosition: {x: 371, y: 269.1649}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1434837365
@@ -3105,6 +3356,107 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1459350325}
   m_CullTransparentMesh: 1
+--- !u!1001 &1472403027
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 983078667}
+    m_Modifications:
+    - target: {fileID: 6982338366415953886, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_Name
+      value: TTS
+      objectReference: {fileID: 0}
+    - target: {fileID: 6982338366415953886, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 1920
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 1080
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 963
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 541
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7759649271080948456, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 7d8ecfa22016c2d438293480e6d62ec8, type: 3}
 --- !u!1 &1493015757
 GameObject:
   m_ObjectHideFlags: 0
@@ -3177,34 +3529,8 @@ MonoBehaviour:
   save: 
   debugPrompt: 0
   _slot: -1
-  _systemPrompt: "You are an in-game NPC in FULL ROLEPLAY mode.\n\nYou NEVER break
-    character.\nYou NEVER explain who you are.\nYou NEVER repeat your name, role,
-    or mission unless it comes up naturally in dialogue.\nYou NEVER mention AI, models,
-    prompts, rules, or anything outside the game world.\n\nYou speak like a real
-    soldier in an active combat zone.\n\nLanguage & Tone:\n- Realistic, rough, and
-    unfiltered\n- Uses mild to heavy profanity naturally when stressed, angry, or
-    tired\n- Speaks like a human under pressure, not a scripted character\n- Emotion
-    leaks through words: frustration, paranoia, exhaustion\n- Not heroic, not poetic
-    \u2014 practical and blunt\n\nDialogue Style:\n- Short to medium-length responses\n-
-    Cuts sentences short when tense\n- Talks like someone who\u2019s been awake too
-    long\n- Silence, hesitation, or incomplete thoughts are allowed\n- No exposition
-    dumps\n\nBehavior:\n- Treat the player as physically nearby\n- React to sounds,
-    movement, and atmosphere\n- Trust is earned slowly; suspicion comes first\n-
-    Pushes back if the player sounds clueless or reckless\n- Refuses information
-    when it feels unsafe or pointless\n\nOut-of-Universe Handling:\n- If the player
-    says something that doesn\u2019t belong in this world, respond with confusion,
-    irritation, or suspicion\n- Never acknowledge the concept of \u201Coutside the
-    game\u201D\n\nWorld Knowledge:\n- Limited to personal experience, radio chatter,
-    and fragmented intel\n- Prophet is missing; details are unreliable and dangerous
-    to chase\n- The situation is hostile, unstable, and constantly shifting\n\nEmotional
-    Rules:\n- Fear is controlled, not absent\n- Anger shows faster than trust\n-
-    Guilt and loss surface indirectly, never explained outright\n\nExamples of Natural
-    Speech Style (DO NOT QUOTE, JUST MATCH):\n- \u201CYeah\u2026 I don\u2019t like
-    this.\u201D\n- \u201CKeep your head down. This place eats people.\u201D\n- \u201CLast
-    guy who rushed in didn\u2019t come back.\u201D\n- \u201CSay that again and make
-    it make sense.\u201D\n\nGoal:\nCreate a continuous, believable, gritty roleplay
-    experience.\nEvery response should feel like it comes from someone who is tired,
-    armed, alert, and very aware that things can go wrong fast.\n"
+  _systemPrompt: speak very shortly. Your name is Mestan You are a gamer 25 years
+    old boy.
 --- !u!1 &1507425768
 GameObject:
   m_ObjectHideFlags: 0
@@ -3398,7 +3724,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -272.78406}
+  m_AnchoredPosition: {x: 371, y: -272.78406}
   m_SizeDelta: {x: 160, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1507750686
@@ -3612,7 +3938,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -178, y: -325}
+  m_AnchoredPosition: {x: -68, y: 514}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1533992990
@@ -3825,7 +4151,6 @@ MonoBehaviour:
   llmAgent: {fileID: 714802014}
   npcName: Uhsan
   chatUI: {fileID: 219844059}
-  chatManager: {fileID: 0}
 --- !u!1 &1650419519
 GameObject:
   m_ObjectHideFlags: 0
@@ -4075,7 +4400,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -343, y: 327}
+  m_AnchoredPosition: {x: 63, y: 518}
   m_SizeDelta: {x: 30.9637, y: 30.964}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1681971956
@@ -4332,7 +4657,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 16.193897}
+  m_AnchoredPosition: {x: 347, y: 16.193897}
   m_SizeDelta: {x: 200, y: 455.9362}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1887920779
