@@ -9,6 +9,31 @@
       },
       "hash": "3d478a6b17054f4578de0846091cbee3f9b7449f"
     },
+    "com.github.asus4.onnxruntime": {
+      "version": "0.4.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://registry.npmjs.com"
+    },
+    "com.github.asus4.onnxruntime-extensions": {
+      "version": "0.4.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.github.asus4.onnxruntime": "0.4.2"
+      },
+      "url": "https://registry.npmjs.com"
+    },
+    "com.github.asus4.onnxruntime.unity": {
+      "version": "0.4.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.github.asus4.onnxruntime": "0.4.2"
+      },
+      "url": "https://registry.npmjs.com"
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.9",
       "depth": 0,
@@ -104,7 +129,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.nuget.newtonsoft-json": {
-      "version": "3.2.2",
+      "version": "3.2.1",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
