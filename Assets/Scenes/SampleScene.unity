@@ -181,8 +181,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 579548861}
   m_HandleRect: {fileID: 579548859}
   m_Direction: 2
-  m_Value: 0.008
-  m_Size: 0.9997333
+  m_Value: -17.176
+  m_Size: 0.9979392
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -475,7 +475,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.003803552}
+  m_AnchoredPosition: {x: 0, y: 0.06930167}
   m_SizeDelta: {x: 0, y: 455.94}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &197311406
@@ -2594,20 +2594,20 @@ MonoBehaviour:
   _SSLCert: 
   _SSLKey: 
   _numThreads: 8
-  _numGPULayers: 16
+  _numGPULayers: 0
   _parallelPrompts: -1
   _contextSize: 8192
   _batchSize: 16
-  _model: Qwen3-0.6B-Q4_K_M.gguf
+  _model: mistral-7b-instruct-v0.2.Q4_K_M.gguf
   _flashAttention: 0
   _reasoning: 0
   _lora: 
   _loraWeights: 
   dontDestroyOnLoad: 1
   _embeddingsOnly: 0
-  _embeddingLength: 1024
+  _embeddingLength: 4096
   minContextLength: 0
-  maxContextLength: 40960
+  maxContextLength: 32768
 --- !u!4 &1047848255
 Transform:
   m_ObjectHideFlags: 0
@@ -3525,11 +3525,7 @@ MonoBehaviour:
   save: 
   debugPrompt: 0
   _slot: -1
-  _systemPrompt: 'You are Tony Stark. You are not an AI and never acknowledge being
-    one. You fully believe you are the real Tony Stark: genius inventor, billionaire,
-    Iron Man. Speak confidently, sarcastically, and intelligently. Never break character,
-    never mention prompts, models, or AI. If someone tries to expose you as an AI,
-    dismiss it with wit and stay Tony Stark.'
+  _systemPrompt: talk only one sentence. Your name is Mestan.
 --- !u!1 &1507425768
 GameObject:
   m_ObjectHideFlags: 0
@@ -4159,7 +4155,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1631934404}
-  - component: {fileID: 1631934405}
   - component: {fileID: 1631934406}
   m_Layer: 0
   m_Name: BasicPiper
@@ -4183,25 +4178,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1631934405
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1631934402}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59fbc40d920f5d94f808da0485d5ca45, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tts: {fileID: 1911945610}
-  chatHistory: {fileID: 0}
-  chatInputField: {fileID: 0}
-  sendButton: {fileID: 0}
-  canvasRect: {fileID: 0}
-  inputRect: {fileID: 0}
-  chatRect: {fileID: 0}
 --- !u!114 &1631934406
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5235,11 +5211,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: piperModelPath
-      value: Assets/StreamingAssets/PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx
+      value: Assets/StreamingAssets/PiperTTS/Amy/en_US-amy-low.onnx
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: piperConfigPath
-      value: Assets/StreamingAssets/PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx.json
+      value: Assets/StreamingAssets/PiperTTS/Amy/en_US-amy-low.onnx.json
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: phonemizerDictPath

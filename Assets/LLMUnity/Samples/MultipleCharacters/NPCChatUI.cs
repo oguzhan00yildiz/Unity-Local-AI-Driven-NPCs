@@ -64,6 +64,7 @@ namespace LLMUnitySamples
         private bool micPausedForTts = false;
         private string pendingSpeech = "";
         private int lastSpokenLength = 0;
+        private Queue<string> speechQueue = new Queue<string>();
 
         void Start()
         {
@@ -229,9 +230,6 @@ namespace LLMUnitySamples
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
             
-            // Oyunu duraklat (karakter kontrol kapalı)
-            Time.timeScale = 0f;
-            
             // Third Person Controller'ı deaktif et
             DisablePlayerController();
 
@@ -264,9 +262,6 @@ namespace LLMUnitySamples
             // Cursor'u gizle ve Lock et
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
-            
-            // Oyunu devam ettir
-            Time.timeScale = 1f;
             
             // Third Person Controller'ı aktif et
             EnablePlayerController();
@@ -611,7 +606,61 @@ namespace LLMUnitySamples
                 return;
             }
 
-            piperTts.Prompt(responseText);
+            // Split response into sentences to handle commas and other punctuation properly
+            var sentences = SplitIntoSentences(responseText);
+            
+            // Clear and queue all sentences
+            speechQueue.Clear();
+            foreach (var sentence in sentences)
+            {
+                if (!string.IsNullOrWhiteSpace(sentence))
+                {
+                    speechQueue.Enqueue(sentence.Trim());
+                }
+            }
+
+            // Speak the first sentence
+            if (speechQueue.Count > 0)
+            {
+                string firstSentence = speechQueue.Dequeue();
+                piperTts.Prompt(firstSentence);
+            }
+        }
+
+        private List<string> SplitIntoSentences(string text)
+        {
+            var sentences = new List<string>();
+            var currentSentence = "";
+            
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                currentSentence += c;
+                
+                // Check for sentence-ending punctuation
+                if ((c == '.' || c == '!' || c == '?') && i + 1 < text.Length && text[i + 1] == ' ')
+                {
+                    // This is a sentence boundary
+                    sentences.Add(currentSentence);
+                    currentSentence = "";
+                    i++; // Skip the space after punctuation
+                }
+                else if ((c == ',' || c == ';' || c == ':') && i + 1 < text.Length && char.IsWhiteSpace(text[i + 1]))
+                {
+                    // For commas, semicolons, and colons followed by space, continue in same sentence
+                    // This ensures commas don't break up the speech
+                    i++; // Skip the space
+                    currentSentence += ' ';
+                }
+            }
+            
+            // Add any remaining text
+            if (!string.IsNullOrWhiteSpace(currentSentence))
+            {
+                sentences.Add(currentSentence);
+            }
+            
+            return sentences;
         }
 
         private void UpdateMicStatusIndicator(bool isActive)
@@ -740,7 +789,16 @@ namespace LLMUnitySamples
                         isSpeaking = false;
                         micPausedForTts = false;
                         SetTtsStatus("Idle");
-                        if (enableVoiceInput && autoStartRecording && microphoneRecord != null && !isWaitingForResponse && !isMicMuted)
+                        
+                        // Check if there are more sentences in the queue
+                        if (speechQueue.Count > 0)
+                        {
+                            string nextSentence = speechQueue.Dequeue();
+                            piperTts.Prompt(nextSentence);
+                            isSpeaking = true;
+                            micPausedForTts = true;
+                        }
+                        else if (enableVoiceInput && autoStartRecording && microphoneRecord != null && !isWaitingForResponse && !isMicMuted)
                         {
                             StartMicrophoneRecording();
                         }
@@ -754,7 +812,7 @@ namespace LLMUnitySamples
                     {
                         var textToSpeak = pendingSpeech;
                         pendingSpeech = "";
-                        piperTts.Prompt(textToSpeak);
+                        TrySpeakResponse(textToSpeak);
                     }
                     break;
                 case ModelStatus.Generate:
@@ -766,6 +824,7 @@ namespace LLMUnitySamples
                 case ModelStatus.Error:
                     isSpeaking = false;
                     micPausedForTts = false;
+                    speechQueue.Clear();
                     SetTtsStatus("Voice error");
                     break;
             }
