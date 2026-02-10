@@ -1,5 +1,21 @@
 {
   "dependencies": {
+    "ai.lookbe.obbmount": {
+      "version": "https://github.com/lookbe/obb-mount-unity.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "00ae2db97d386d34bc4400b909f1bdf2e8400396"
+    },
+    "ai.lookbe.piper": {
+      "version": "https://github.com/lookbe/piper-no-espeak-unity.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.2.2"
+      },
+      "hash": "39b51ff434fc056056e40c648bd8774c78fda110"
+    },
     "ai.undream.llm": {
       "version": "https://github.com/undreamai/LLMUnity.git",
       "depth": 0,
@@ -33,6 +49,23 @@
         "com.github.asus4.onnxruntime": "0.4.2"
       },
       "url": "https://registry.npmjs.com"
+    },
+    "com.mopsicus.umi": {
+      "version": "https://github.com/mopsicus/umi.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "ba206bad1ca37892dadebc89dc9274135771f8c2"
+    },
+    "com.oguztts": {
+      "version": "file:com.oguztts",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.github.asus4.onnxruntime": "0.4.2",
+        "com.github.asus4.onnxruntime.unity": "0.4.2",
+        "com.unity.modules.ui": "1.0.0"
+      }
     },
     "com.unity.ai.navigation": {
       "version": "2.0.9",
@@ -129,8 +162,8 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.nuget.newtonsoft-json": {
-      "version": "3.2.1",
-      "depth": 0,
+      "version": "3.2.2",
+      "depth": 1,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"

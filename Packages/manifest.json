@@ -9,7 +9,10 @@
     }
   ],
   "dependencies": {
+    "ai.lookbe.obbmount": "https://github.com/lookbe/obb-mount-unity.git",
+    "ai.lookbe.piper": "https://github.com/lookbe/piper-no-espeak-unity.git",
     "ai.undream.llm": "https://github.com/undreamai/LLMUnity.git",
+    "com.mopsicus.umi": "https://github.com/mopsicus/umi.git",
     "com.github.asus4.onnxruntime": "0.4.2",
     "com.github.asus4.onnxruntime-extensions": "0.4.2",
     "com.github.asus4.onnxruntime.unity": "0.4.2",
