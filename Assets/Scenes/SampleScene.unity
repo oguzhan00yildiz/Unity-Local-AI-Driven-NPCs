@@ -181,8 +181,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 579548861}
   m_HandleRect: {fileID: 579548859}
   m_Direction: 2
-  m_Value: -2.488
-  m_Size: 0.9872781
+  m_Value: 0.008
+  m_Size: 0.9997333
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -475,7 +475,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0133343125}
+  m_AnchoredPosition: {x: 0, y: 0.003803552}
   m_SizeDelta: {x: 0, y: 455.94}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &197311406
@@ -636,25 +636,21 @@ MonoBehaviour:
   toggleMicButton: {fileID: 1533992990}
   micStatusIndicator: {fileID: 1681971956}
   microphoneDropdown: {fileID: 548721484}
+  micOnButtonColor: {r: 0.2, g: 0.7, b: 0.2, a: 1}
+  micOffButtonColor: {r: 0.75, g: 0.2, b: 0.2, a: 1}
   whisperManager: {fileID: 1772544777}
   microphoneRecord: {fileID: 252139680}
   enableVoiceOutput: 1
-  npcVoiceAudioSource: {fileID: 587168421}
+  piperTts: {fileID: 1911945610}
   ttsStatusText: {fileID: 1000884128}
-  voiceGender: male
-  voicePitch: moderate
-  voiceSpeed: moderate
-  voiceWarmupText: Hi this test is ready.
-  preloadVoiceOnStart: 1
-  sparkLogLevel: 2
-  sparkMemoryUsage: 0
-  sparkExecutionProvider: 1
+  initPiperOnStart: 1
   maxDisplayMessages: 10
   autoScrollDelay: 0.1
   enableVoiceInput: 1
   autoStartRecording: 1
   showTranscriptionInRealtime: 1
   microphoneDefaultLabel: Default Microphone
+  micSilenceThreshold: 0.0015
 --- !u!1 &252139679
 GameObject:
   m_ObjectHideFlags: 0
@@ -2598,20 +2594,20 @@ MonoBehaviour:
   _SSLCert: 
   _SSLKey: 
   _numThreads: 8
-  _numGPULayers: 0
+  _numGPULayers: 16
   _parallelPrompts: -1
   _contextSize: 8192
   _batchSize: 16
-  _model: mistral-7b-instruct-v0.2.Q4_K_M.gguf
+  _model: Qwen3-0.6B-Q4_K_M.gguf
   _flashAttention: 0
   _reasoning: 0
   _lora: 
   _loraWeights: 
   dontDestroyOnLoad: 1
   _embeddingsOnly: 0
-  _embeddingLength: 4096
+  _embeddingLength: 1024
   minContextLength: 0
-  maxContextLength: 32768
+  maxContextLength: 40960
 --- !u!4 &1047848255
 Transform:
   m_ObjectHideFlags: 0
@@ -3529,8 +3525,11 @@ MonoBehaviour:
   save: 
   debugPrompt: 0
   _slot: -1
-  _systemPrompt: speak very shortly. Your name is Mestan You are a gamer 25 years
-    old boy.
+  _systemPrompt: 'You are Tony Stark. You are not an AI and never acknowledge being
+    one. You fully believe you are the real Tony Stark: genius inventor, billionaire,
+    Iron Man. Speak confidently, sarcastically, and intelligently. Never break character,
+    never mention prompts, models, or AI. If someone tries to expose you as an AI,
+    dismiss it with wit and stay Tony Stark.'
 --- !u!1 &1507425768
 GameObject:
   m_ObjectHideFlags: 0
@@ -4151,6 +4150,71 @@ MonoBehaviour:
   llmAgent: {fileID: 714802014}
   npcName: Uhsan
   chatUI: {fileID: 219844059}
+--- !u!1 &1631934402
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1631934404}
+  - component: {fileID: 1631934405}
+  - component: {fileID: 1631934406}
+  m_Layer: 0
+  m_Name: BasicPiper
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1631934404
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1631934402}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1631934405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1631934402}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59fbc40d920f5d94f808da0485d5ca45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tts: {fileID: 1911945610}
+  chatHistory: {fileID: 0}
+  chatInputField: {fileID: 0}
+  sendButton: {fileID: 0}
+  canvasRect: {fileID: 0}
+  inputRect: {fileID: 0}
+  chatRect: {fileID: 0}
+--- !u!114 &1631934406
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1631934402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bba9229ab7d326443928b7b04930da3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tts: {fileID: 1911945610}
 --- !u!1 &1650419519
 GameObject:
   m_ObjectHideFlags: 0
@@ -4698,6 +4762,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1887920776}
   m_CullTransparentMesh: 1
+--- !u!114 &1911945610 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+  m_PrefabInstance: {fileID: 3167190307851608089}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1545bcb5f7af2344591c9f3568e9ef9e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1968415687
 GameObject:
   m_ObjectHideFlags: 0
@@ -5102,6 +5177,91 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &3167190307851608089
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1078335506489242433, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2808657974564647034, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: m_Name
+      value: PiperTTS
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: periodDelay
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: piperModelPath
+      value: Assets/StreamingAssets/PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: piperConfigPath
+      value: Assets/StreamingAssets/PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx.json
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: phonemizerDictPath
+      value: Assets/StreamingAssets/PiperTTS/phoneme_dict.json
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: phonemizerModelPath
+      value: Assets/StreamingAssets/PiperTTS/model.onnx
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: phonemizerConfigPath
+      value: Assets/StreamingAssets/PiperTTS/tokenizer.json
+      objectReference: {fileID: 0}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: questionExclamationDelay
+      value: 0.3
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -5118,3 +5278,5 @@ SceneRoots:
   - {fileID: 1390527354}
   - {fileID: 1772544778}
   - {fileID: 252139681}
+  - {fileID: 1631934404}
+  - {fileID: 3167190307851608089}

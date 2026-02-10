@@ -27,21 +27,19 @@ namespace LLMUnitySamples
         public Button toggleMicButton;
         public Image micStatusIndicator;
         public Dropdown microphoneDropdown;
-        public Color micOnButtonColor = new Color(0.2f, 0.7f, 0.2f);
-        public Color micOffButtonColor = new Color(0.75f, 0.2f, 0.2f);
 
         [Header("Speech Recognition - Konuşma Tanıma")]
         public WhisperManager whisperManager;
         public MicrophoneRecord microphoneRecord;
 
-        [Header("Voice Output - PiperTTS")]
+        [Header("Voice Output - SparkTTS")]
+        public bool enableVoiceOutput = true;
+        public AudioSource npcVoiceAudioSource;
+        public TextMeshProUGUI tPiperTTS")]
         public bool enableVoiceOutput = true;
         public PiperTTS.PiperTTS piperTts;
         public TextMeshProUGUI ttsStatusText;
-        public bool initPiperOnStart = true;
-
-        [Header("Settings")]
-        public int maxDisplayMessages = 10;
+        public bool initPiperOnStart = true
         public float autoScrollDelay = 0.1f;
         public bool enableVoiceInput = true;
         public bool autoStartRecording = true;
@@ -57,20 +55,20 @@ namespace LLMUnitySamples
         private List<string> chatHistory = new List<string>();
         private string currentNPCResponse = "";
         private bool isMicRecording = false;
-        private bool isMicMuted = false;
+        private bool isTranscribing = false;
+        private string currentTranscription = "";
+        private CharacterVoiceFactory voiceFactory;
+        private CharacterVoice currentVoice;
+        private bool isVoiceLoading = false;
+        private bool isVoiceReady = false;
+        private bool isSpeaking = false;
+        private bool miMicMuted = false;
         private bool isTranscribing = false;
         private string currentTranscription = "";
         private bool isSpeaking = false;
         private bool micPausedForTts = false;
         private string pendingSpeech = "";
-        private int lastSpokenLength = 0;
-
-        void Start()
-        {
-            // UI Event Listener'ları bağla
-            if (sendButton != null)
-                sendButton.onClick.AddListener(OnSendMessage);
-            
+        private int lastSpokenLength = 0
             if (closeButton != null)
                 closeButton.onClick.AddListener(CloseChat);
 
@@ -93,13 +91,11 @@ namespace LLMUnitySamples
             
             InitializeMicrophone();
 
-            UpdateMicButtonUI();
-
             SetTtsStatus("Idle");
 
-            if (enableVoiceOutput && initPiperOnStart)
+            if (enableVoiceOutput && preloadVoiceOnStart)
             {
-                InitializePiperTts();
+                _ = LoadCharacterVoiceAsync();
             }
             
             // Sahnedeki tüm modelleri arka planda yükle
@@ -241,7 +237,6 @@ namespace LLMUnitySamples
                 StartMicrophoneRecording();
             }
         }
-
         public void CloseChat()
         {
             StopMicrophoneRecording();
@@ -288,6 +283,57 @@ namespace LLMUnitySamples
         {
             currentNPCResponse = fullResponse;
             RefreshChatDisplay();
+
+            // Stream voice generation: send complete sentences immediately
+            if (enableVoiceOutput && piperTts != null)
+            {
+                ExtractAndSpeakNewSentences(fullResponse);
+            }
+        }
+
+        private void ExtractAndSpeakNewSentences(string response)
+        {
+            if (lastSpokenLength >= response.Length)
+                return;
+
+            // Get new text since last spoken
+            string newText = response.Substring(lastSpokenLength);
+            
+            // Look for sentence endings
+            int lastSentenceEnd = -1;
+            for (int i = newText.Length - 1; i >= 0; i--)
+            {
+                char c = newText[i];
+                if (c == '.' || c == '!' || c == '?')
+                {
+                    lastSentenceEnd = i;
+                    break;
+                }
+            }
+
+            // If we found a complete sentence, send it for voice generation
+            if (lastSentenceEnd >= 0)
+            {
+                string sentenceToSpeak = newText.Substring(0, lastSentenceEnd + 1).Trim();
+                if (!string.IsNullOrEmpty(sentenceToSpeak))
+                {
+                    // Queue this sentence for voice generation
+                    TrySpeakResponse(sentenceToSpeak);
+                    lastSpokenLength += lastSentenceEnd + 1;
+                }
+            }
+            // If response is very long without punctuation, speak in chunks
+            else if (newText.Length > 100)
+            {
+                // Find last space to break at word boundary
+                int lastSpace = newText.LastIndexOf(' ', System.Math.Min(newText.Length - 1, 80));
+                if (lastSpace > 20)
+                {
+                    string chunkToSpeak = newText.Substring(0, lastSpace).Trim();
+                    TrySpeakResponse(chunkToSpeak);
+                    lastSpokenLength += lastSpace;
+                }
+            }
         }
 
         private void RefreshChatDisplay()
@@ -344,10 +390,14 @@ namespace LLMUnitySamples
                     chatHistory.RemoveAt(0);
                 }
                 
-                // Speak the complete response
-                if (enableVoiceOutput)
+                // Speak any remaining text that wasn't sent yet
+                if (enableVoiceOutput && lastSpokenLength < finalResponse.Length)
                 {
-                    TrySpeakResponse(finalResponse);
+                    string remainingText = finalResponse.Substring(lastSpokenLength).Trim();
+                    if (!string.IsNullOrEmpty(remainingText))
+                    {
+                        TrySpeakResponse(remainingText);
+                    }
                 }
                 
                 currentNPCResponse = ""; // Sıfırla
@@ -399,7 +449,7 @@ namespace LLMUnitySamples
 
         private void StartMicrophoneRecording()
         {
-            if (!enableVoiceInput || microphoneRecord == null || isWaitingForResponse || isSpeaking || isMicMuted)
+            if (!enableVoiceInput || microphoneRecord == null || isWaitingForResponse || isSpeaking)
                 return;
 
             if (microphoneRecord.IsRecording)
@@ -408,8 +458,7 @@ namespace LLMUnitySamples
             Debug.Log("Starting microphone recording...");
             microphoneRecord.StartRecord();
             isMicRecording = true;
-            UpdateMicStatusIndicator(true);
-            UpdateMicButtonUI();
+            UpdateMicStatusUI(true);
         }
 
         private void StopMicrophoneRecording()
@@ -420,8 +469,7 @@ namespace LLMUnitySamples
             Debug.Log("Stopping microphone recording...");
             microphoneRecord.StopRecord();
             isMicRecording = false;
-            UpdateMicStatusIndicator(false);
-            UpdateMicButtonUI();
+            UpdateMicStatusUI(false);
         }
 
         private void OnMicrophoneChanged(int index)
@@ -446,7 +494,7 @@ namespace LLMUnitySamples
         private void OnVadChanged(bool isSpeechDetected)
         {
             Debug.Log($"Speech detected: {isSpeechDetected}");
-            UpdateMicStatusIndicator(isSpeechDetected);
+            UpdateMicStatusUI(isSpeechDetected);
         }
 
         private async void OnMicrophoneRecordStop(AudioChunk recordedAudio)
@@ -594,20 +642,13 @@ namespace LLMUnitySamples
                 return;
             }
 
-            // Allow prompting when Ready or Generate (PiperTTS has a queue)
-            if (piperTts.status == ModelStatus.Init || piperTts.status == ModelStatus.Loading)
+            if (piperTts.status != ModelStatus.Ready)
             {
                 pendingSpeech = responseText;
                 if (piperTts.status == ModelStatus.Init)
                 {
                     InitializePiperTts();
                 }
-                return;
-            }
-
-            if (piperTts.status == ModelStatus.Error)
-            {
-                SetTtsStatus("Voice error");
                 return;
             }
 
