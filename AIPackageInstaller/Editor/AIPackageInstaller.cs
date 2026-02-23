@@ -4,17 +4,18 @@ using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using Newtonsoft.Json.Linq;
 
 [InitializeOnLoad]
 public class AIPackageInstaller
 {
-    // List of Git URLs to install
+    // List of Git URLs to install (in order of dependency)
     private static readonly string[] RequiredPackages = new string[]
     {
         "https://github.com/undreamai/LLMUnity.git",
         "https://github.com/lookbe/piper-no-espeak-unity.git",
-        "https://github.com/Macoron/whisper.unity.git?path=Whisper",
-        "https://github.com/asus4/onnxruntime-unity.git"
+        "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
     };
 
     private static Queue<string> packagesToInstall = new Queue<string>();
@@ -23,9 +24,100 @@ public class AIPackageInstaller
 
     static AIPackageInstaller()
     {
-        Debug.Log("<b>[AI Package Installer]</b> Initialized. Scheduling installation check...");
-        // Run the check after a short delay to ensure Unity is fully loaded
-        EditorApplication.delayCall += CheckAndInstallPackages;
+        Debug.Log("<b>[AI Package Installer]</b> Initializing...");
+        
+        // First, ensure manifest has required registries
+        EditorApplication.delayCall += EnsureManifestSetup;
+    }
+
+    private static void EnsureManifestSetup()
+    {
+        try
+        {
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            string manifestPath = Path.Combine(projectRoot, "Packages", "manifest.json");
+
+            if (!File.Exists(manifestPath))
+            {
+                Debug.LogError("<b>[AI Package Installer]</b> manifest.json not found!");
+                return;
+            }
+
+            string manifestContent = File.ReadAllText(manifestPath);
+            JObject manifest = JObject.Parse(manifestContent);
+
+            // Ensure scopedRegistries array exists
+            if (manifest["scopedRegistries"] == null)
+            {
+                manifest["scopedRegistries"] = new JArray();
+            }
+
+            JArray registries = (JArray)manifest["scopedRegistries"];
+            
+            // Check if NPM registry already exists
+            bool npmRegistryExists = registries.Any(reg => 
+                reg["name"] != null && reg["name"].ToString() == "NPM" &&
+                reg["url"] != null && reg["url"].ToString() == "https://registry.npmjs.com");
+
+            if (!npmRegistryExists)
+            {
+                Debug.Log("<b>[AI Package Installer]</b> Adding NPM scoped registry to manifest.json...");
+                
+                JObject npmRegistry = new JObject();
+                npmRegistry["name"] = "NPM";
+                npmRegistry["url"] = "https://registry.npmjs.com";
+                npmRegistry["scopes"] = new JArray("com.github.asus4");
+                
+                registries.Add(npmRegistry);
+            }
+
+            // Ensure dependencies exists
+            if (manifest["dependencies"] == null)
+            {
+                manifest["dependencies"] = new JObject();
+            }
+
+            JObject dependencies = (JObject)manifest["dependencies"];
+
+            // Add ONNX Runtime dependencies
+            string[] onnxDeps = new string[]
+            {
+                "com.github.asus4.onnxruntime",
+                "com.github.asus4.onnxruntime.unity",
+                "com.github.asus4.onnxruntime-extensions"
+            };
+
+            bool manifestModified = false;
+            foreach (var dep in onnxDeps)
+            {
+                if (dependencies[dep] == null)
+                {
+                    Debug.Log($"<b>[AI Package Installer]</b> Adding {dep} to manifest.json...");
+                    dependencies[dep] = "0.4.4";
+                    manifestModified = true;
+                }
+            }
+
+            // Write back if modified
+            if (npmRegistryExists == false || manifestModified)
+            {
+                File.WriteAllText(manifestPath, manifest.ToString(Newtonsoft.Json.Formatting.Indented));
+                Debug.Log("<b>[AI Package Installer]</b> Manifest.json updated successfully!");
+                
+                // Reload packages after modifying manifest
+                EditorApplication.delayCall += () =>
+                {
+                    Client.Resolve();
+                };
+            }
+
+            // Schedule package installation check
+            EditorApplication.delayCall += CheckAndInstallPackages;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"<b>[AI Package Installer]</b> Error setting up manifest: {ex.Message}");
+        }
     }
 
     [MenuItem("Tools/AI Packages/Force Install Dependencies")]
@@ -42,6 +134,8 @@ public class AIPackageInstaller
 
     private static void CheckAndInstallPackages()
     {
+        Debug.Log("<b>[AI Package Installer]</b> Checking installed packages...");
+        
         // First, list installed packages to avoid reinstalling
         listRequest = Client.List(true, false);
         EditorApplication.update += CheckInstalledProgress;
@@ -75,6 +169,10 @@ public class AIPackageInstaller
                 {
                     Debug.Log($"<b>[AI Package Installer]</b> Found {packagesToInstall.Count} missing AI packages. Installing...");
                     InstallNextPackage();
+                }
+                else
+                {
+                    Debug.Log("<b>[AI Package Installer]</b> All AI packages are already installed!");
                 }
             }
             else
@@ -119,3 +217,4 @@ public class AIPackageInstaller
         }
     }
 }
+
