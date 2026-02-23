@@ -10,164 +10,169 @@ using Newtonsoft.Json.Linq;
 [InitializeOnLoad]
 public class AIPackageInstaller
 {
-    // ONNX Runtime must be installed FIRST as dependency for Piper
-    private static readonly string[] RequiredPackages = new string[]
+    // Git packages to install via Client.Add() after manifest is set up
+    private static readonly string[] GitPackages = new string[]
     {
-        // Install ONNX Runtime first (npm scoped registry)
-        "com.github.asus4.onnxruntime@0.4.4",
-        "com.github.asus4.onnxruntime.unity@0.4.4",
-        "com.github.asus4.onnxruntime-extensions@0.4.4",
-        // Git packages that depend on ONNX Runtime
         "https://github.com/undreamai/LLMUnity.git",
         "https://github.com/lookbe/piper-no-espeak-unity.git",
         "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
     };
 
+    // NPM scoped packages - written directly to manifest.json
+    private static readonly Dictionary<string, string> NpmPackages = new Dictionary<string, string>
+    {
+        { "com.github.asus4.onnxruntime", "0.4.4" },
+        { "com.github.asus4.onnxruntime.unity", "0.4.4" },
+        { "com.github.asus4.onnxruntime-extensions", "0.4.4" }
+    };
+
     private static Queue<string> packagesToInstall = new Queue<string>();
     private static AddRequest currentRequest;
     private static ListRequest listRequest;
+    private static ResolveRequest resolveRequest;
 
     static AIPackageInstaller()
     {
         Debug.Log("<b>[AI Package Installer]</b> Initializing...");
-        EditorApplication.delayCall += EnsureNPMRegistry;
+        EditorApplication.delayCall += SetupManifestAndInstall;
     }
 
-    private static void EnsureNPMRegistry()
+    private static void SetupManifestAndInstall()
     {
+        bool manifestChanged = false;
+
         try
         {
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string manifestPath = Path.Combine(projectRoot, "Packages", "manifest.json");
 
-            if (!File.Exists(manifestPath))
-            {
-                Debug.LogError("<b>[AI Package Installer]</b> manifest.json not found!");
-                return;
-            }
-
             string manifestContent = File.ReadAllText(manifestPath);
             JObject manifest = JObject.Parse(manifestContent);
 
-            // Ensure scopedRegistries array exists
+            // 1. Ensure NPM scoped registry exists
             if (manifest["scopedRegistries"] == null)
-            {
                 manifest["scopedRegistries"] = new JArray();
-            }
 
             JArray registries = (JArray)manifest["scopedRegistries"];
-            
-            // Check if NPM registry already exists
-            bool npmRegistryExists = registries.Any(reg => 
-                reg["name"] != null && reg["name"].ToString() == "NPM" &&
-                reg["url"] != null && reg["url"].ToString() == "https://registry.npmjs.com");
+            bool npmExists = registries.Any(r =>
+                r["url"] != null && r["url"].ToString() == "https://registry.npmjs.com");
 
-            if (!npmRegistryExists)
+            if (!npmExists)
             {
-                Debug.Log("<b>[AI Package Installer]</b> Adding NPM scoped registry to manifest.json...");
-                
-                JObject npmRegistry = new JObject();
-                npmRegistry["name"] = "NPM";
-                npmRegistry["url"] = "https://registry.npmjs.com";
-                npmRegistry["scopes"] = new JArray("com.github.asus4");
-                
-                registries.Add(npmRegistry);
-                File.WriteAllText(manifestPath, manifest.ToString(Newtonsoft.Json.Formatting.Indented));
-                Debug.Log("<b>[AI Package Installer]</b> NPM registry added. Reloading Package Manager...");
-                
-                // Reload and wait before starting installations
-                Client.Resolve();
-                EditorApplication.delayCall += () =>
+                registries.Add(new JObject
                 {
-                    System.Threading.Thread.Sleep(3000);
-                    CheckAndInstallPackages();
-                };
+                    ["name"] = "NPM",
+                    ["url"] = "https://registry.npmjs.com",
+                    ["scopes"] = new JArray("com.github.asus4")
+                });
+                Debug.Log("<b>[AI Package Installer]</b> Added NPM scoped registry.");
+                manifestChanged = true;
+            }
+
+            // 2. Add ONNX Runtime packages directly to dependencies
+            if (manifest["dependencies"] == null)
+                manifest["dependencies"] = new JObject();
+
+            JObject deps = (JObject)manifest["dependencies"];
+            foreach (var pkg in NpmPackages)
+            {
+                if (deps[pkg.Key] == null)
+                {
+                    deps[pkg.Key] = pkg.Value;
+                    Debug.Log($"<b>[AI Package Installer]</b> Added {pkg.Key}@{pkg.Value} to manifest.");
+                    manifestChanged = true;
+                }
+            }
+
+            // 3. Save manifest if changed and reload
+            if (manifestChanged)
+            {
+                File.WriteAllText(manifestPath, manifest.ToString(Newtonsoft.Json.Formatting.Indented));
+                Debug.Log("<b>[AI Package Installer]</b> manifest.json saved. Waiting for Package Manager to resolve...");
+
+                resolveRequest = Client.Resolve();
+                EditorApplication.update += WaitForResolve;
             }
             else
             {
-                CheckAndInstallPackages();
+                Debug.Log("<b>[AI Package Installer]</b> Manifest already up to date. Checking git packages...");
+                EditorApplication.delayCall += CheckAndInstallGitPackages;
             }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"<b>[AI Package Installer]</b> Error setting up registry: {ex.Message}");
+            Debug.LogError($"<b>[AI Package Installer]</b> Error: {ex.Message}");
+        }
+    }
+
+    private static void WaitForResolve()
+    {
+        if (resolveRequest.IsCompleted)
+        {
+            EditorApplication.update -= WaitForResolve;
+
+            if (resolveRequest.Status == StatusCode.Success)
+            {
+                Debug.Log("<b>[AI Package Installer]</b> Package Manager resolved. Now installing git packages...");
+            }
+            else
+            {
+                Debug.LogWarning($"<b>[AI Package Installer]</b> Resolve warning: {resolveRequest.Error?.message}. Continuing anyway...");
+            }
+
+            EditorApplication.delayCall += CheckAndInstallGitPackages;
         }
     }
 
     [MenuItem("Tools/AI Packages/Force Install Dependencies")]
     public static void ForceInstall()
     {
-        Debug.Log("<b>[AI Package Installer]</b> Force install triggered by user");
+        Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
         packagesToInstall.Clear();
-        foreach (var pkg in RequiredPackages)
-        {
+        foreach (var pkg in GitPackages)
             packagesToInstall.Enqueue(pkg);
-        }
         InstallNextPackage();
     }
 
-    private static void CheckAndInstallPackages()
+    private static void CheckAndInstallGitPackages()
     {
-        Debug.Log("<b>[AI Package Installer]</b> Checking installed packages...");
-        
         listRequest = Client.List(true, false);
         EditorApplication.update += CheckInstalledProgress;
     }
 
     private static void CheckInstalledProgress()
     {
-        if (listRequest.IsCompleted)
+        if (!listRequest.IsCompleted) return;
+        EditorApplication.update -= CheckInstalledProgress;
+
+        if (listRequest.Status != StatusCode.Success)
         {
-            EditorApplication.update -= CheckInstalledProgress;
+            Debug.LogError($"<b>[AI Package Installer]</b> Failed to list packages: {listRequest.Error.message}");
+            return;
+        }
 
-            if (listRequest.Status == StatusCode.Success)
-            {
-                var installedPackages = listRequest.Result.Select(p => p.packageId.ToLower()).ToList();
-                packagesToInstall.Clear();
+        var installed = listRequest.Result.Select(p => p.packageId.ToLower()).ToList();
+        packagesToInstall.Clear();
 
-                foreach (var pkg in RequiredPackages)
-                {
-                    bool isInstalled = false;
-                    string searchTerm = pkg.ToLower();
-                    
-                    if (searchTerm.Contains("onnxruntime"))
-                    {
-                        // For ONNX packages, check by name prefix
-                        if (searchTerm.Contains("com.github.asus4.onnxruntime"))
-                        {
-                            if (searchTerm.Contains("extensions"))
-                                isInstalled = installedPackages.Any(p => p.Contains("onnxruntime-extensions"));
-                            else if (searchTerm.Contains("onnxruntime.unity"))
-                                isInstalled = installedPackages.Any(p => p.Contains("onnxruntime.unity"));
-                            else if (searchTerm.Contains("com.github.asus4.onnxruntime"))
-                                isInstalled = installedPackages.Any(p => p.Contains("com.github.asus4.onnxruntime") && !p.Contains("extensions") && !p.Contains("unity"));
-                        }
-                    }
-                    else if (searchTerm.Contains("llmunity"))
-                        isInstalled = installedPackages.Any(p => p.Contains("ai.undream.llm"));
-                    else if (searchTerm.Contains("piper"))
-                        isInstalled = installedPackages.Any(p => p.Contains("ai.lookbe.piper"));
-                    else if (searchTerm.Contains("whisper"))
-                        isInstalled = installedPackages.Any(p => p.Contains("com.whisper.unity"));
+        foreach (var pkg in GitPackages)
+        {
+            bool isInstalled =
+                (pkg.Contains("LLMUnity") && installed.Any(p => p.Contains("ai.undream.llm"))) ||
+                (pkg.Contains("piper") && installed.Any(p => p.Contains("ai.lookbe.piper"))) ||
+                (pkg.Contains("whisper") && installed.Any(p => p.Contains("com.whisper.unity")));
 
-                    if (!isInstalled)
-                        packagesToInstall.Enqueue(pkg);
-                }
+            if (!isInstalled)
+                packagesToInstall.Enqueue(pkg);
+        }
 
-                if (packagesToInstall.Count > 0)
-                {
-                    Debug.Log($"<b>[AI Package Installer]</b> Found {packagesToInstall.Count} missing AI packages. Installing in order...");
-                    InstallNextPackage();
-                }
-                else
-                {
-                    Debug.Log("<b>[AI Package Installer]</b> All AI packages are already installed!");
-                }
-            }
-            else
-            {
-                Debug.LogError($"<b>[AI Package Installer]</b> Failed to list packages: {listRequest.Error.message}");
-            }
+        if (packagesToInstall.Count > 0)
+        {
+            Debug.Log($"<b>[AI Package Installer]</b> Installing {packagesToInstall.Count} missing git packages...");
+            InstallNextPackage();
+        }
+        else
+        {
+            Debug.Log("<b>[AI Package Installer]</b> All packages are already installed! ");
         }
     }
 
@@ -175,40 +180,26 @@ public class AIPackageInstaller
     {
         if (packagesToInstall.Count == 0)
         {
-            Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
+            Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ");
             return;
         }
 
-        string packageUrl = packagesToInstall.Dequeue();
-        Debug.Log($"<b>[AI Package Installer]</b> [{RequiredPackages.Length - packagesToInstall.Count}/{RequiredPackages.Length}] Installing: {packageUrl}...");
-        
-        currentRequest = Client.Add(packageUrl);
+        string pkg = packagesToInstall.Dequeue();
+        Debug.Log($"<b>[AI Package Installer]</b> Installing: {pkg}...");
+        currentRequest = Client.Add(pkg);
         EditorApplication.update += InstallProgress;
     }
 
     private static void InstallProgress()
     {
-        if (currentRequest.IsCompleted)
-        {
-            EditorApplication.update -= InstallProgress;
+        if (!currentRequest.IsCompleted) return;
+        EditorApplication.update -= InstallProgress;
 
-            if (currentRequest.Status == StatusCode.Success)
-            {
-                Debug.Log($"<b>[AI Package Installer]</b> ✅ Successfully installed: {currentRequest.Result.packageId}");
-            }
-            else if (currentRequest.Status >= StatusCode.Failure)
-            {
-                Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed to install: {currentRequest.Error.message}");
-            }
+        if (currentRequest.Status == StatusCode.Success)
+            Debug.Log($"<b>[AI Package Installer]</b>  Installed: {currentRequest.Result.packageId}");
+        else
+            Debug.LogError($"<b>[AI Package Installer]</b>  Failed: {currentRequest.Error.message}");
 
-            // Add delay before next installation to let Package Manager settle
-            EditorApplication.delayCall += () =>
-            {
-                System.Threading.Thread.Sleep(1000);
-                InstallNextPackage();
-            };
-        }
+        InstallNextPackage();
     }
 }
-
-
