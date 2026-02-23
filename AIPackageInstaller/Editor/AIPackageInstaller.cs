@@ -22,6 +22,7 @@ public class AIPackageInstaller
 
     static AIPackageInstaller()
     {
+        Debug.Log("<b>[AI Package Installer]</b> Initialized. Scheduling installation check...");
         // Run the check after a short delay to ensure Unity is fully loaded
         EditorApplication.delayCall += CheckAndInstallPackages;
     }
@@ -29,6 +30,7 @@ public class AIPackageInstaller
     [MenuItem("Tools/AI Packages/Force Install Dependencies")]
     public static void ForceInstall()
     {
+        Debug.Log("<b>[AI Package Installer]</b> Force install triggered by user");
         packagesToInstall.Clear();
         foreach (var pkg in RequiredPackages)
         {
