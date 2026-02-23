@@ -13,7 +13,8 @@ public class AIPackageInstaller
     {
         "https://github.com/undreamai/LLMUnity.git",
         "https://github.com/lookbe/piper-no-espeak-unity.git",
-        "https://github.com/Macoron/whisper.unity.git"
+        "https://github.com/Macoron/whisper.unity.git?path=Whisper",
+        "https://github.com/asus4/onnxruntime-unity.git"
     };
 
     private static Queue<string> packagesToInstall = new Queue<string>();
