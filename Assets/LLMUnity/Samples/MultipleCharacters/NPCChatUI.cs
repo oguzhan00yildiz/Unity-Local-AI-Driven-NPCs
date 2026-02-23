@@ -3,7 +3,6 @@ using UnityEngine.UI;
 using TMPro;
 using LLMUnity;
 using System.Collections.Generic;
-using StarterAssets;
 using System.Threading.Tasks;
 using Whisper;
 using Whisper.Utils;
@@ -703,33 +702,27 @@ namespace LLMUnitySamples
             ttsStatusText.text = status;
         }
 
-        private void DisablePlayerController()
-        {
-            var inputScript = FindFirstObjectByType<StarterAssetsInputs>();
-            if (inputScript != null)
-            {
-                inputScript.enabled = false;
-            }
-            
-            var controllerScript = FindFirstObjectByType<ThirdPersonController>();
-            if (controllerScript != null)
-            {
-                controllerScript.enabled = false;
-            }
-        }
+        // Disables/enables player controller components without requiring StarterAssets assembly.
+        // Works with StarterAssets, custom controllers, or any project.
+        private void DisablePlayerController() => SetPlayerControllerEnabled(false);
+        private void EnablePlayerController() => SetPlayerControllerEnabled(true);
 
-        private void EnablePlayerController()
+        private void SetPlayerControllerEnabled(bool enabled)
         {
-            var inputScript = FindFirstObjectByType<StarterAssetsInputs>();
-            if (inputScript != null)
+            var player = GameObject.FindWithTag("Player");
+            if (player == null) return;
+
+            foreach (var mb in player.GetComponentsInChildren<MonoBehaviour>())
             {
-                inputScript.enabled = true;
-            }
-            
-            var controllerScript = FindFirstObjectByType<ThirdPersonController>();
-            if (controllerScript != null)
-            {
-                controllerScript.enabled = true;
+                if (mb == null) continue;
+                string typeName = mb.GetType().Name;
+                if (typeName == "StarterAssetsInputs" ||
+                    typeName == "ThirdPersonController" ||
+                    typeName == "FirstPersonController" ||
+                    typeName == "PlayerInput")
+                {
+                    mb.enabled = enabled;
+                }
             }
         }
 
