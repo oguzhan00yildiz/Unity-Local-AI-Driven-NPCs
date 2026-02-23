@@ -16,11 +16,11 @@ This is a fully automatic Unity package that installs all AI-related dependencie
    ```
 3. Click **Add**
 
-That's it! ✅ The script will automatically:
-- Modify your `Packages/manifest.json` (adds NPM registry)
-- Install ONNX Runtime dependencies
-- Download and install all AI packages
-- Set everything up for you
+That's it! ✅ The script will automatically install in this order:
+1. **ONNX Runtime** (required by Piper TTS)
+2. **LLMUnity** - Local LLM
+3. **Piper TTS** - Text-to-Speech
+4. **Whisper STT** - Speech recognition
 
 ## What Happens Next?
 
@@ -28,14 +28,14 @@ Open the **Console** (Window → General → Console) to see the progress:
 
 ```
 [AI Package Installer] Initializing...
-[AI Package Installer] Adding NPM scoped registry to manifest.json...
-[AI Package Installer] Manifest.json updated successfully!
 [AI Package Installer] Checking installed packages...
-[AI Package Installer] Found 3 missing AI packages. Installing...
-[AI Package Installer] Installing package: https://github.com/undreamai/LLMUnity.git...
-[AI Package Installer] Successfully installed: ai.undream.llm@...
+[AI Package Installer] Installing 5 missing packages...
+[AI Package Installer] Installing: https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime...
+[AI Package Installer] ✅ Installed: com.github.asus4.onnxruntime@...
+[AI Package Installer] Installing: https://github.com/undreamai/LLMUnity.git...
+[AI Package Installer] ✅ Installed: ai.undream.llm@...
 ...
-[AI Package Installer] All AI packages are successfully installed!
+[AI Package Installer] All AI packages installed successfully! ✅
 ```
 
 Installation typically takes 2-5 minutes depending on your internet connection.
@@ -56,29 +56,20 @@ Some packages work better with custom models:
 
 If you see errors in Console:
 
-1. **Compile errors related to ONNX Runtime**: Wait a few seconds for packages to fully install
-2. **"Package Manager is busy"**: Unity is still downloading packages. Wait and check Console again
-3. **Any other error**: Restart Unity completely
-
-For detailed logs, check `Packages/manifest.json` to verify all dependencies are listed.
+1. **Compile errors after install**: Wait for all packages to finish — ONNX Runtime must fully compile before Piper TTS compiles. Check the Console for `[AI Package Installer] All AI packages installed successfully!`
+2. **"Package Manager is busy"**: Unity is still downloading packages. Wait and check Console again.
+3. **A package failed**: Use **Tools → AI Packages → Force Install Dependencies** in the menu bar to retry.
+4. **Any other error**: Restart Unity completely.
 
 ## Manual Install (Last Resort)
 
-If automatic installation fails completely, edit `Packages/manifest.json` manually and add:
+If automatic installation fails, add these to `Packages/manifest.json` manually:
 
 ```json
 {
-  "scopedRegistries": [
-    {
-      "name": "NPM",
-      "url": "https://registry.npmjs.com",
-      "scopes": ["com.github.asus4"]
-    }
-  ],
   "dependencies": {
-    "com.github.asus4.onnxruntime": "0.4.4",
-    "com.github.asus4.onnxruntime.unity": "0.4.4",
-    "com.github.asus4.onnxruntime-extensions": "0.4.4",
+    "com.github.asus4.onnxruntime": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime",
+    "com.github.asus4.onnxruntime.unity": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime.unity",
     "ai.undream.llm": "https://github.com/undreamai/LLMUnity.git",
     "ai.lookbe.piper": "https://github.com/lookbe/piper-no-espeak-unity.git",
     "com.whisper.unity": "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
@@ -90,6 +81,6 @@ Save and Unity will automatically resolve packages.
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: February 23, 2026
+**Version**: 1.0.1  
+**Last Updated**: February 24, 2026
 
