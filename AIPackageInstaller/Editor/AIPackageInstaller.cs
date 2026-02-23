@@ -104,15 +104,25 @@ public class AIPackageInstaller
                 File.WriteAllText(manifestPath, manifest.ToString(Newtonsoft.Json.Formatting.Indented));
                 Debug.Log("<b>[AI Package Installer]</b> Manifest.json updated successfully!");
                 
-                // Reload packages after modifying manifest
+                // Wait and reload packages after modifying manifest
                 EditorApplication.delayCall += () =>
                 {
+                    Debug.Log("<b>[AI Package Installer]</b> Reloading Package Manager...");
                     Client.Resolve();
+                    
+                    // Schedule package check after a delay to let packages resolve
+                    EditorApplication.delayCall += () =>
+                    {
+                        System.Threading.Thread.Sleep(2000); // Wait 2 seconds
+                        CheckAndInstallPackages();
+                    };
                 };
             }
-
-            // Schedule package installation check
-            EditorApplication.delayCall += CheckAndInstallPackages;
+            else
+            {
+                // Schedule package installation check if no manifest changes
+                EditorApplication.delayCall += CheckAndInstallPackages;
+            }
         }
         catch (System.Exception ex)
         {
