@@ -10,9 +10,14 @@ using Newtonsoft.Json.Linq;
 [InitializeOnLoad]
 public class AIPackageInstaller
 {
-    // List of Git URLs to install (in order of dependency)
+    // ONNX Runtime must be installed FIRST as dependency for Piper
     private static readonly string[] RequiredPackages = new string[]
     {
+        // Install ONNX Runtime first (npm scoped registry)
+        "com.github.asus4.onnxruntime@0.4.4",
+        "com.github.asus4.onnxruntime.unity@0.4.4",
+        "com.github.asus4.onnxruntime-extensions@0.4.4",
+        // Git packages that depend on ONNX Runtime
         "https://github.com/undreamai/LLMUnity.git",
         "https://github.com/lookbe/piper-no-espeak-unity.git",
         "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
@@ -25,12 +30,10 @@ public class AIPackageInstaller
     static AIPackageInstaller()
     {
         Debug.Log("<b>[AI Package Installer]</b> Initializing...");
-        
-        // First, ensure manifest has required registries
-        EditorApplication.delayCall += EnsureManifestSetup;
+        EditorApplication.delayCall += EnsureNPMRegistry;
     }
 
-    private static void EnsureManifestSetup()
+    private static void EnsureNPMRegistry()
     {
         try
         {
@@ -69,64 +72,25 @@ public class AIPackageInstaller
                 npmRegistry["scopes"] = new JArray("com.github.asus4");
                 
                 registries.Add(npmRegistry);
-            }
-
-            // Ensure dependencies exists
-            if (manifest["dependencies"] == null)
-            {
-                manifest["dependencies"] = new JObject();
-            }
-
-            JObject dependencies = (JObject)manifest["dependencies"];
-
-            // Add ONNX Runtime dependencies
-            string[] onnxDeps = new string[]
-            {
-                "com.github.asus4.onnxruntime",
-                "com.github.asus4.onnxruntime.unity",
-                "com.github.asus4.onnxruntime-extensions"
-            };
-
-            bool manifestModified = false;
-            foreach (var dep in onnxDeps)
-            {
-                if (dependencies[dep] == null)
-                {
-                    Debug.Log($"<b>[AI Package Installer]</b> Adding {dep} to manifest.json...");
-                    dependencies[dep] = "0.4.4";
-                    manifestModified = true;
-                }
-            }
-
-            // Write back if modified
-            if (npmRegistryExists == false || manifestModified)
-            {
                 File.WriteAllText(manifestPath, manifest.ToString(Newtonsoft.Json.Formatting.Indented));
-                Debug.Log("<b>[AI Package Installer]</b> Manifest.json updated successfully!");
+                Debug.Log("<b>[AI Package Installer]</b> NPM registry added. Reloading Package Manager...");
                 
-                // Wait and reload packages after modifying manifest
+                // Reload and wait before starting installations
+                Client.Resolve();
                 EditorApplication.delayCall += () =>
                 {
-                    Debug.Log("<b>[AI Package Installer]</b> Reloading Package Manager...");
-                    Client.Resolve();
-                    
-                    // Schedule package check after a delay to let packages resolve
-                    EditorApplication.delayCall += () =>
-                    {
-                        System.Threading.Thread.Sleep(2000); // Wait 2 seconds
-                        CheckAndInstallPackages();
-                    };
+                    System.Threading.Thread.Sleep(3000);
+                    CheckAndInstallPackages();
                 };
             }
             else
             {
-                // Schedule package installation check if no manifest changes
-                EditorApplication.delayCall += CheckAndInstallPackages;
+                CheckAndInstallPackages();
             }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"<b>[AI Package Installer]</b> Error setting up manifest: {ex.Message}");
+            Debug.LogError($"<b>[AI Package Installer]</b> Error setting up registry: {ex.Message}");
         }
     }
 
@@ -146,7 +110,6 @@ public class AIPackageInstaller
     {
         Debug.Log("<b>[AI Package Installer]</b> Checking installed packages...");
         
-        // First, list installed packages to avoid reinstalling
         listRequest = Client.List(true, false);
         EditorApplication.update += CheckInstalledProgress;
     }
@@ -159,25 +122,41 @@ public class AIPackageInstaller
 
             if (listRequest.Status == StatusCode.Success)
             {
-                var installedPackages = listRequest.Result.Select(p => p.packageId).ToList();
+                var installedPackages = listRequest.Result.Select(p => p.packageId.ToLower()).ToList();
                 packagesToInstall.Clear();
 
-                foreach (var pkgUrl in RequiredPackages)
+                foreach (var pkg in RequiredPackages)
                 {
                     bool isInstalled = false;
-                    if (pkgUrl.Contains("LLMUnity") && installedPackages.Any(p => p.Contains("ai.undream.llm"))) isInstalled = true;
-                    if (pkgUrl.Contains("piper") && installedPackages.Any(p => p.Contains("ai.lookbe.piper"))) isInstalled = true;
-                    if (pkgUrl.Contains("whisper") && installedPackages.Any(p => p.Contains("com.whisper.unity"))) isInstalled = true;
+                    string searchTerm = pkg.ToLower();
+                    
+                    if (searchTerm.Contains("onnxruntime"))
+                    {
+                        // For ONNX packages, check by name prefix
+                        if (searchTerm.Contains("com.github.asus4.onnxruntime"))
+                        {
+                            if (searchTerm.Contains("extensions"))
+                                isInstalled = installedPackages.Any(p => p.Contains("onnxruntime-extensions"));
+                            else if (searchTerm.Contains("onnxruntime.unity"))
+                                isInstalled = installedPackages.Any(p => p.Contains("onnxruntime.unity"));
+                            else if (searchTerm.Contains("com.github.asus4.onnxruntime"))
+                                isInstalled = installedPackages.Any(p => p.Contains("com.github.asus4.onnxruntime") && !p.Contains("extensions") && !p.Contains("unity"));
+                        }
+                    }
+                    else if (searchTerm.Contains("llmunity"))
+                        isInstalled = installedPackages.Any(p => p.Contains("ai.undream.llm"));
+                    else if (searchTerm.Contains("piper"))
+                        isInstalled = installedPackages.Any(p => p.Contains("ai.lookbe.piper"));
+                    else if (searchTerm.Contains("whisper"))
+                        isInstalled = installedPackages.Any(p => p.Contains("com.whisper.unity"));
 
                     if (!isInstalled)
-                    {
-                        packagesToInstall.Enqueue(pkgUrl);
-                    }
+                        packagesToInstall.Enqueue(pkg);
                 }
 
                 if (packagesToInstall.Count > 0)
                 {
-                    Debug.Log($"<b>[AI Package Installer]</b> Found {packagesToInstall.Count} missing AI packages. Installing...");
+                    Debug.Log($"<b>[AI Package Installer]</b> Found {packagesToInstall.Count} missing AI packages. Installing in order...");
                     InstallNextPackage();
                 }
                 else
@@ -196,12 +175,12 @@ public class AIPackageInstaller
     {
         if (packagesToInstall.Count == 0)
         {
-            Debug.Log("<b>[AI Package Installer]</b> All AI packages are successfully installed!");
+            Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
             return;
         }
 
         string packageUrl = packagesToInstall.Dequeue();
-        Debug.Log($"<b>[AI Package Installer]</b> Installing package: {packageUrl}...");
+        Debug.Log($"<b>[AI Package Installer]</b> [{RequiredPackages.Length - packagesToInstall.Count}/{RequiredPackages.Length}] Installing: {packageUrl}...");
         
         currentRequest = Client.Add(packageUrl);
         EditorApplication.update += InstallProgress;
@@ -215,16 +194,21 @@ public class AIPackageInstaller
 
             if (currentRequest.Status == StatusCode.Success)
             {
-                Debug.Log($"<b>[AI Package Installer]</b> Successfully installed: {currentRequest.Result.packageId}");
+                Debug.Log($"<b>[AI Package Installer]</b> ✅ Successfully installed: {currentRequest.Result.packageId}");
             }
             else if (currentRequest.Status >= StatusCode.Failure)
             {
-                Debug.LogError($"<b>[AI Package Installer]</b> Failed to install package: {currentRequest.Error.message}");
+                Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed to install: {currentRequest.Error.message}");
             }
 
-            // Install the next one regardless of success/failure of the current one
-            InstallNextPackage();
+            // Add delay before next installation to let Package Manager settle
+            EditorApplication.delayCall += () =>
+            {
+                System.Threading.Thread.Sleep(1000);
+                InstallNextPackage();
+            };
         }
     }
 }
+
 
