@@ -66,5 +66,5 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj"
     },
-    "dotnet.defaultSolution": "Unity-Local-AI-Driven-NPCs.sln"
+    "dotnet.defaultSolution": "Unity-Local-AI-Driven-NPCs.slnx"
 }
