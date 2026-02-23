@@ -40,17 +40,26 @@ Open the **Console** (Window → General → Console) to see the progress:
 
 Installation typically takes 2-5 minutes depending on your internet connection.
 
-## Optional: Download Model Files
+## Step 2 — Download Model Files
 
-Some packages work better with custom models:
+After packages are installed, open the model downloader:
 
-### Whisper (Speech-to-Text)
-- Download from [HuggingFace](https://huggingface.co/ggerganov/whisper.cpp)
-- Place `.bin` files in `StreamingAssets` folder
+**Tools → AI Packages → Download Model Files**
 
-### Piper (Text-to-Speech)
-- Download voice models from [HuggingFace](https://huggingface.co/rhasspy/piper-voices)
-- Place in `StreamingAssets` folder
+This opens a window where you can download everything with one click:
+
+| Model | Size | Purpose |
+|-------|------|---------|
+| `ggml-tiny.bin` | 74 MB | Whisper speech recognition |
+| `model.onnx` | 59 MB | Piper TTS phonemizer |
+| `phoneme_dict.json` | 10 MB | Piper TTS phonemizer |
+| `en_US-amy-low.onnx` | 60 MB | Piper voice – Amy (female) |
+| `en_US-reza_ibrahim-medium.onnx` | 61 MB | Piper voice – Ibrahim (male) |
+
+All files are saved automatically to `StreamingAssets/`.
+
+> **LLM model** is managed separately by LLMUnity.
+> Open your scene → select the **LLM** GameObject → click **Download Model** in the Inspector.
 
 ## Troubleshooting
 
