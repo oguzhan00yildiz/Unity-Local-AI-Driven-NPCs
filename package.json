@@ -1,0 +1,7 @@
+{
+  "name": "com.yourname.ai-driven-npcs",
+  "version": "1.0.0",
+  "displayName": "AI Driven NPCs System",
+  "description": "A complete AI system for Unity including LLM, TTS, and STT.",
+  "unity": "2021.3"
+}
