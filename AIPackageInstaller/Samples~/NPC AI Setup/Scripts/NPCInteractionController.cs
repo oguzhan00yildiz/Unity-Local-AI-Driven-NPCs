@@ -76,8 +76,8 @@ namespace LLMUnitySamples
                 case KeyCode.Tab:       return Key.Tab;
                 case KeyCode.LeftShift: return Key.LeftShift;
                 case KeyCode.RightShift:return Key.RightShift;
-                case KeyCode.LeftCtrl:  return Key.LeftCtrl;
-                case KeyCode.RightCtrl: return Key.RightCtrl;
+                case KeyCode.LeftControl: return Key.LeftCtrl;
+                case KeyCode.RightControl:return Key.RightCtrl;
                 case KeyCode.F1:        return Key.F1;
                 case KeyCode.F2:        return Key.F2;
                 case KeyCode.F3:        return Key.F3;
