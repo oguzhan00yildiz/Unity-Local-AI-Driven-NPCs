@@ -13,6 +13,9 @@
 // ============================================================
 
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 using UnityEngine.UI;
 using TMPro;
 using LLMUnity;
@@ -742,8 +745,13 @@ namespace LLMUnitySamples
 
         void Update()
         {
-            // ESC tuşuyla da pencereyi kapatabilme
-            if (Input.GetKeyDown(KeyCode.Escape) && chatPanel.activeSelf)
+            // Close chat panel with Escape key
+#if ENABLE_INPUT_SYSTEM
+            bool escPressed = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+#else
+            bool escPressed = Input.GetKeyDown(KeyCode.Escape);
+#endif
+            if (escPressed && chatPanel.activeSelf)
             {
                 CloseChat();
             }
