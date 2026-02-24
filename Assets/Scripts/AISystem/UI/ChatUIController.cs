@@ -50,18 +50,16 @@ namespace AISystem
         public bool IsOpen => _isOpen;
 
         //  Lifecycle 
-        void Awake()
-        {
-            if (chatPanel == null) return;
-            // Force TMP canvas renderers to initialize before we hide the panel.
-            // Without this, TextMeshProUGUI.Cull throws NullReferenceException
-            // when SetActive(false) is called before the canvas has rendered once.
-            Canvas.ForceUpdateCanvases();
-            chatPanel.SetActive(false);
-        }
+        void Awake() { /* intentionally empty — panel is hidden in Start after TMP initialises */ }
 
         void Start()
         {
+            // Hide here (not Awake) so TMP children have completed their own
+            // Awake → OnEnable cycle first. Calling SetActive(false) or
+            // Canvas.ForceUpdateCanvases() before TMP's OnEnable sets
+            // m_canvasRenderer causes NullReferenceException in Cull().
+            if (chatPanel != null) chatPanel.SetActive(false);
+
             if (sendButton  != null) sendButton.onClick.AddListener(OnSendClicked);
             if (closeButton != null) closeButton.onClick.AddListener(OnCloseClicked);
             if (playerInputField != null)
