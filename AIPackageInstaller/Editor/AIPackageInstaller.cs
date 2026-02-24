@@ -30,8 +30,7 @@ public class AIPackageInstaller
     {
         "https://github.com/undreamai/LLMUnity.git",
         "https://github.com/lookbe/piper-no-espeak-unity.git",
-        "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity",
-        "com.unity.starter-assets"   // Unity registry – needed by ReadyScene player prefab
+        "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
     };
 
     // Known package ids for the git packages above (for installed-check)
@@ -39,8 +38,7 @@ public class AIPackageInstaller
     {
         "ai.undream.llm",
         "ai.lookbe.piper",
-        "com.whisper.unity",
-        "com.unity.starter-assets"
+        "com.whisper.unity"
     };
 
     private static readonly string ManifestPath = Path.Combine(
