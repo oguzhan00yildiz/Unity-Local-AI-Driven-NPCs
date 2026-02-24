@@ -15,8 +15,8 @@ namespace AISystem
         public PiperTTS.PiperTTS piperTts;
 
         [Header("Settings")]
-        public bool enabled     = true;
-        public bool initOnStart = true;
+        public bool voiceEnabled = true;
+        public bool initOnStart  = true;
 
         [Header("Optional status label")]
         public TMPro.TextMeshProUGUI statusLabel;
@@ -35,7 +35,7 @@ namespace AISystem
         //  Lifecycle 
         void Start()
         {
-            if (!this.enabled) return;
+            if (!voiceEnabled) return;
 
             if (piperTts == null)
                 piperTts = GetComponent<PiperTTS.PiperTTS>();
@@ -71,7 +71,7 @@ namespace AISystem
 
         public void Speak(string text)
         {
-            if (!this.enabled || string.IsNullOrWhiteSpace(text)) return;
+            if (!voiceEnabled || string.IsNullOrWhiteSpace(text)) return;
 
             if (piperTts == null)
             {
@@ -123,7 +123,7 @@ namespace AISystem
 
         private void OnPiperStatusChanged(ModelStatus status)
         {
-            if (!this.enabled) return;
+            if (!voiceEnabled) return;
 
             switch (status)
             {

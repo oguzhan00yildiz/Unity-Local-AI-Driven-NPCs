@@ -23,23 +23,23 @@
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       },
-      "hash": "3d478a6b17054f4578de0846091cbee3f9b7449f"
+      "hash": "180b57d2f7f6a33f7729171cf3e32469a1be6451"
     },
     "com.github.asus4.onnxruntime": {
-      "version": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime",
+      "version": "0.4.4",
       "depth": 0,
-      "source": "git",
+      "source": "registry",
       "dependencies": {},
-      "hash": "06527f54445acafc0310c685c92c0b10c0f5a120"
+      "url": "https://registry.npmjs.org"
     },
     "com.github.asus4.onnxruntime.unity": {
-      "version": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime.unity",
+      "version": "0.4.4",
       "depth": 0,
-      "source": "git",
+      "source": "registry",
       "dependencies": {
         "com.github.asus4.onnxruntime": "0.4.4"
       },
-      "hash": "06527f54445acafc0310c685c92c0b10c0f5a120"
+      "url": "https://registry.npmjs.org"
     },
     "com.mopsicus.umi": {
       "version": "https://github.com/mopsicus/umi.git",

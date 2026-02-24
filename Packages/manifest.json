@@ -1,10 +1,19 @@
 {
+  "scopedRegistries": [
+    {
+      "name": "NPM",
+      "url": "https://registry.npmjs.org",
+      "scopes": [
+        "com.github.asus4"
+      ]
+    }
+  ],
   "dependencies": {
     "ai.lookbe.obbmount": "https://github.com/lookbe/obb-mount-unity.git",
     "ai.lookbe.piper": "https://github.com/lookbe/piper-no-espeak-unity.git",
     "ai.undream.llm": "https://github.com/undreamai/LLMUnity.git",
-    "com.github.asus4.onnxruntime": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime",
-    "com.github.asus4.onnxruntime.unity": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime.unity",
+    "com.github.asus4.onnxruntime": "0.4.4",
+    "com.github.asus4.onnxruntime.unity": "0.4.4",
     "com.mopsicus.umi": "https://github.com/mopsicus/umi.git",
     "com.unity.ai.navigation": "2.0.9",
     "com.unity.cinemachine": "3.1.5",
