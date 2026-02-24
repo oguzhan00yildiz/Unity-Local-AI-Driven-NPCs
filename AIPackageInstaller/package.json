@@ -1,13 +1,13 @@
 {
   "name": "com.yourname.ai-driven-npcs",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "displayName": "AI Driven NPCs System",
-  "description": "Modüler, prefab tabanlı yerel AI-NPC sistemi. LLM (LLMUnity), konuşma tanıma (Whisper) ve TTS (PiperTTS) entegrasyonu. Sahneye [AI System] prefabını + [NPC] prefablarını sürükle-bırak ile ekle — Inspector'da çapraz bağlantı gerekmez.",
+  "description": "Modular, prefab-based local AI NPC system. Integrates LLM (LLMUnity), speech recognition (Whisper) and TTS (PiperTTS). Drag and drop [AI System] + [NPC] prefabs into your scene. No cross-Inspector wiring needed.",
   "unity": "2021.3",
   "samples": [
     {
       "displayName": "NPC AI Setup",
-      "description": "Modüler AI-NPC sistemi. Şunları içerir: AISystemManager (singleton koordinatör), ChatUIController (saf UI), VoiceInputService (Whisper STT), VoiceOutputService (PiperTTS), ModelBootstrapper (model ısıtma), NPCAgent (NPC başına bileşen). Kurulum: Scripts/AISystem/ scriplerini Assets klasörüne import edin, [AI System] ve [NPC] prefablarını oluşturun.",
+      "description": "Modular AI-NPC system. Includes: AISystemManager (singleton coordinator), ChatUIController (pure UI), VoiceInputService (Whisper STT), VoiceOutputService (PiperTTS), ModelBootstrapper (model warmup), NPCAgent (per-NPC component), and ReadyScene (pre-configured demo scene).",
       "path": "Samples~/NPC AI Setup"
     }
   ]
