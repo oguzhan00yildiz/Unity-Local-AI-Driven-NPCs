@@ -52,7 +52,12 @@ namespace AISystem
         //  Lifecycle 
         void Awake()
         {
-            if (chatPanel != null) chatPanel.SetActive(false);
+            if (chatPanel == null) return;
+            // Force TMP canvas renderers to initialize before we hide the panel.
+            // Without this, TextMeshProUGUI.Cull throws NullReferenceException
+            // when SetActive(false) is called before the canvas has rendered once.
+            Canvas.ForceUpdateCanvases();
+            chatPanel.SetActive(false);
         }
 
         void Start()
@@ -148,8 +153,18 @@ namespace AISystem
         public void SetLoadingOverlay(bool visible, string message = "")
         {
             if (loadingOverlayText == null) return;
-            loadingOverlayText.gameObject.SetActive(visible);
-            if (visible) loadingOverlayText.text = message;
+            // Guard: only manipulate TMP text while the canvas hierarchy is active
+            // to avoid NullReferenceException in TextMeshProUGUI.Cull.
+            if (visible)
+            {
+                loadingOverlayText.gameObject.SetActive(true);
+                loadingOverlayText.text = message;
+            }
+            else
+            {
+                loadingOverlayText.text = string.Empty;
+                loadingOverlayText.gameObject.SetActive(false);
+            }
         }
 
         //  Internal 
