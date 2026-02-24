@@ -1,3 +1,17 @@
+// ============================================================
+// DEPRECATED — Bu script artık kullanılmıyor.
+// Yeni modüler sistem: Assets/Scripts/AISystem/
+//   • AISystemManager  → merkez koordinatör (singleton)
+//   • ChatUIController → saf UI bileşeni
+//   • VoiceInputService → Whisper STT
+//   • VoiceOutputService → PiperTTS
+//   • ModelBootstrapper → model ısıtma
+//   • NPCAgent         → NPC başına bileşen
+//
+// Sahnede yalnızca [AI System] prefabını ve [NPC] prefablarını
+// kullanın; Inspector'da çapraz bağlantı gerekmez.
+// ============================================================
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

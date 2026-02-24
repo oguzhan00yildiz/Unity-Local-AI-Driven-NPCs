@@ -1,3 +1,10 @@
+// ============================================================
+// DEPRECATED — Bu script artık kullanılmıyor.
+// Yeni modüler sistem: Assets/Scripts/AISystem/NPC/NPCAgent.cs
+//   NPCAgent aynı işlevi yapar, AISystemManager.Instance'ı
+//   otomatik bulur — Inspector'da bağlantı gerekmez.
+// ============================================================
+
 using UnityEngine;
 using LLMUnity;
 

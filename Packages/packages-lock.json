@@ -26,29 +26,20 @@
       "hash": "3d478a6b17054f4578de0846091cbee3f9b7449f"
     },
     "com.github.asus4.onnxruntime": {
-      "version": "0.4.4",
+      "version": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime",
       "depth": 0,
-      "source": "registry",
+      "source": "git",
       "dependencies": {},
-      "url": "https://registry.npmjs.com"
-    },
-    "com.github.asus4.onnxruntime-extensions": {
-      "version": "0.4.4",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.github.asus4.onnxruntime": "0.4.4"
-      },
-      "url": "https://registry.npmjs.com"
+      "hash": "06527f54445acafc0310c685c92c0b10c0f5a120"
     },
     "com.github.asus4.onnxruntime.unity": {
-      "version": "0.4.4",
+      "version": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime.unity",
       "depth": 0,
-      "source": "registry",
+      "source": "git",
       "dependencies": {
         "com.github.asus4.onnxruntime": "0.4.4"
       },
-      "url": "https://registry.npmjs.com"
+      "hash": "06527f54445acafc0310c685c92c0b10c0f5a120"
     },
     "com.mopsicus.umi": {
       "version": "https://github.com/mopsicus/umi.git",
