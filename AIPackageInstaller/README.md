@@ -1,95 +1,110 @@
-# AI Package Installer
+# AI NPC Package – Setup Guide
 
-This is a fully automatic Unity package that installs all AI-related dependencies:
-- ✅ **LLMUnity** - Local LLM integration
-- ✅ **Piper TTS** - Text-to-Speech synthesis  
-- ✅ **Whisper STT** - Speech recognition
+Adds **local AI-driven NPCs** (LLM + TTS + STT) to any Unity project via a single git URL.  
+No manual dependency management required.
 
-**Everything is automatic. No manual configuration needed!**
+---
 
-## Installation (One Step)
+## Step 1 — Add the Package
 
-1. In Unity Package Manager, click **+** → **Add package from git URL...**
-2. Paste this URL:
+1. Open **Window → Package Manager**
+2. Click **+** → **Add package from git URL…**
+3. Paste:
    ```
    https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller#packagetest
    ```
-3. Click **Add**
+4. Click **Add**
 
-That's it! ✅ The script will automatically install in this order:
-1. **ONNX Runtime** (required by Piper TTS)
-2. **LLMUnity** - Local LLM
-3. **Piper TTS** - Text-to-Speech
-4. **Whisper STT** - Speech recognition
+**What happens automatically:**
+- `manifest.json` is patched to add a npm scoped registry for ONNX Runtime (prevents native crashes caused by git-URL LFS stub DLLs)
+- ONNX Runtime 0.4.4 is pinned in `manifest.json` via npm
+- LLMUnity, Piper TTS, and Whisper STT are installed via their git URLs
+- Unity reloads once (after the manifest patch), then installs remaining packages
 
-## What Happens Next?
-
-Open the **Console** (Window → General → Console) to see the progress:
-
+Watch **Window → General → Console** for progress:
 ```
-[AI Package Installer] Initializing...
-[AI Package Installer] Checking installed packages...
-[AI Package Installer] Installing 5 missing packages...
-[AI Package Installer] Installing: https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime...
-[AI Package Installer] ✅ Installed: com.github.asus4.onnxruntime@...
-[AI Package Installer] Installing: https://github.com/undreamai/LLMUnity.git...
-[AI Package Installer] ✅ Installed: ai.undream.llm@...
-...
+[AI Package Installer] Initializing…
+[AI Package Installer] manifest.json patched (npm ONNX registry added). Unity will reload…
+[AI Package Installer] Checking git packages…
+[AI Package Installer] Installing: https://github.com/undreamai/LLMUnity.git…
+[AI Package Installer] ✅ Installed: ai.undream.llm@…
+…
 [AI Package Installer] All AI packages installed successfully! ✅
 ```
 
-Installation typically takes 2-5 minutes depending on your internet connection.
+Installation takes **2–5 minutes** depending on connection speed.
 
-## Step 2 — Download Model Files
+---
 
-After packages are installed, open the model downloader:
+## Step 2 — Model Files (automatic)
 
-**Tools → AI Packages → Download Model Files**
+After all packages finish installing, the **AI Model Downloader** window opens automatically and begins downloading all missing model files (~265 MB total).
 
-This opens a window where you can download everything with one click:
+| File | Size | Purpose |
+|------|------|---------|
+| `Whisper/ggml-tiny.bin` | 74 MB | Speech recognition (Whisper) |
+| `PiperTTS/model.onnx` | 59 MB | TTS phonemizer |
+| `PiperTTS/phoneme_dict.json` | 10 MB | TTS phonemizer dictionary |
+| `PiperTTS/tokenizer.json` | ~1 MB | TTS tokenizer |
+| `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice |
+| `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice |
 
-| Model | Size | Purpose |
-|-------|------|---------|
-| `ggml-tiny.bin` | 74 MB | Whisper speech recognition |
-| `model.onnx` | 59 MB | Piper TTS phonemizer |
-| `phoneme_dict.json` | 10 MB | Piper TTS phonemizer |
-| `en_US-amy-low.onnx` | 60 MB | Piper voice – Amy (female) |
-| `en_US-reza_ibrahim-medium.onnx` | 61 MB | Piper voice – Ibrahim (male) |
+All files save to `Assets/StreamingAssets/` automatically.  
+If the window doesn't open, trigger it manually: **Tools → AI Packages → Download Model Files**
 
-All files are saved automatically to `StreamingAssets/`.
+> **LLM model** is handled separately by LLMUnity.  
+> Select the **LLM** GameObject in your scene → click **Download Model** in the Inspector.
 
-> **LLM model** is managed separately by LLMUnity.
-> Open your scene → select the **LLM** GameObject → click **Download Model** in the Inspector.
+---
+
+## Step 3 — Import the Ready Scene (Optional)
+
+1. **Window → Package Manager** → select **AI NPC Package** → **Samples** tab
+2. Click **Import** next to **NPC AI Setup**
+3. Open `Assets/Samples/AI NPC Package/…/Scenes/ReadyScene.unity`
+4. Press **Play**
+
+---
 
 ## Troubleshooting
 
-If you see errors in Console:
+| Problem | Solution |
+|---------|----------|
+| Compile errors right after install | Wait — ONNX must compile before Piper. Watch Console for the ✅ message. |
+| "Package Manager is busy" | Packages still downloading. Wait and check Console. |
+| A package failed to install | **Tools → AI Packages → Force Install Dependencies** |
+| ONNX native crash on Play | Old git-URL ONNX is cached. Delete `Library/PackageCache/com.github.asus4.onnxruntime@*` and restart Unity. |
+| Any other error | Restart Unity completely. |
 
-1. **Compile errors after install**: Wait for all packages to finish — ONNX Runtime must fully compile before Piper TTS compiles. Check the Console for `[AI Package Installer] All AI packages installed successfully!`
-2. **"Package Manager is busy"**: Unity is still downloading packages. Wait and check Console again.
-3. **A package failed**: Use **Tools → AI Packages → Force Install Dependencies** in the menu bar to retry.
-4. **Any other error**: Restart Unity completely.
+---
 
 ## Manual Install (Last Resort)
 
-If automatic installation fails, add these to `Packages/manifest.json` manually:
+If automatic installation fails entirely, add this to `Packages/manifest.json` by hand:
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "NPM",
+      "url": "https://registry.npmjs.org",
+      "scopes": ["com.github.asus4"]
+    }
+  ],
   "dependencies": {
-    "com.github.asus4.onnxruntime": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime",
-    "com.github.asus4.onnxruntime.unity": "https://github.com/asus4/onnxruntime-unity.git?path=com.github.asus4.onnxruntime.unity",
-    "ai.undream.llm": "https://github.com/undreamai/LLMUnity.git",
-    "ai.lookbe.piper": "https://github.com/lookbe/piper-no-espeak-unity.git",
-    "com.whisper.unity": "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
+    "com.github.asus4.onnxruntime":       "0.4.4",
+    "com.github.asus4.onnxruntime.unity": "0.4.4",
+    "ai.undream.llm":   "https://github.com/undreamai/LLMUnity.git",
+    "ai.lookbe.piper":  "https://github.com/lookbe/piper-no-espeak-unity.git",
+    "com.whisper.unity":"https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
   }
 }
 ```
 
-Save and Unity will automatically resolve packages.
+> ⚠️ **Do NOT use git URLs for ONNX Runtime.** The repository uses git LFS for DLLs; Unity will download only the pointer stubs, causing a native crash at runtime. Always use the npm version (`0.4.4`).
 
 ---
 
-**Version**: 1.0.1  
+**Version**: 2.2.0  
 **Last Updated**: February 24, 2026
 

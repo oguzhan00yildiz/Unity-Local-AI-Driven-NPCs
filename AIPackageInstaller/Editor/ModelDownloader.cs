@@ -112,6 +112,29 @@ public class ModelDownloader : EditorWindow
         window.RefreshStatus();
     }
 
+    /// <summary>
+    /// Opens the downloader window and immediately starts downloading all missing models.
+    /// Called automatically by AIPackageInstaller after all packages are installed.
+    /// </summary>
+    public static void AutoStartDownloads()
+    {
+        var window = GetWindow<ModelDownloader>("AI Model Downloader");
+        window.minSize = new Vector2(480, 500);
+        window.RefreshStatus();
+        window.Focus();
+
+        bool anyMissing = Models.Exists(m => !m.IsDownloaded);
+        if (anyMissing)
+        {
+            Debug.Log("<b>[Model Downloader]</b> Auto-starting download of missing model files…");
+            window.DownloadAll();
+        }
+        else
+        {
+            Debug.Log("<b>[Model Downloader]</b> All model files already present. ✅");
+        }
+    }
+
     private void OnEnable() => RefreshStatus();
 
     private void RefreshStatus()
