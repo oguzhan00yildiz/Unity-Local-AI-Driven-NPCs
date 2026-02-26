@@ -67,6 +67,17 @@ public class AIPackageInstaller
         EnqueueAndInstallGitPackages(checkFirst: false);
     }
 
+    [MenuItem("Tools/AI Packages/Import TMP Essential Resources")]
+    public static void ForceImportTMP()
+    {
+        // Reset folder check so it runs even if previously imported
+        if (AssetDatabase.IsValidFolder("Assets/TextMesh Pro"))
+        {
+            Debug.Log("<b>[AI Package Installer]</b> TMP Essential Resources folder already exists at Assets/TextMesh Pro.");
+        }
+        EnsureTMPEssentials();
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 1 — ensure npm registry + ONNX packages in manifest.json
     // ─────────────────────────────────────────────────────────────────────────
@@ -211,6 +222,9 @@ public class AIPackageInstaller
         else
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
+            // Still ensure TMP essentials even when all packages were already present
+            EditorApplication.delayCall += EnsureTMPEssentials;
+            EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
         }
     }
 
