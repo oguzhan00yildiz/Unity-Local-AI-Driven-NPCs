@@ -69,7 +69,10 @@ namespace AISystem
         {
             if (whisperManager == null || whisperManager.IsLoaded) return;
             await whisperManager.InitModel();
-            Debug.Log("[ModelBootstrapper] Whisper model ready.");
+            if (whisperManager.IsLoaded)
+                Debug.Log("[ModelBootstrapper] Whisper model ready.");
+            else
+                Debug.LogWarning("[ModelBootstrapper] Whisper InitModel completed but IsLoaded=false. Check libwhisper.dll and its dependencies.");
         }
     }
 }

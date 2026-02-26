@@ -22,6 +22,13 @@ namespace AISystem
         public VoiceOutputService voiceOutput;
         public ModelBootstrapper modelBootstrapper;
 
+        //  Interaction options 
+        [Header("Interaction Options")]
+        [Tooltip("Show cursor and unlock it while chat is open.")]
+        public bool manageCursor = true;
+        [Tooltip("Disable StarterAssets / custom player controllers while chat is open (reflection-based, no hard ref).")]
+        public bool managePlayerController = true;
+
         //  Active NPC 
         private NPCAgent _currentNPC;
         private bool _isWaitingForResponse;
@@ -89,6 +96,13 @@ namespace AISystem
             _currentNPC           = npc;
             _isWaitingForResponse = false;
 
+            if (manageCursor)
+            {
+                Cursor.visible   = true;
+                Cursor.lockState = CursorLockMode.None;
+            }
+            if (managePlayerController) SetPlayerControllerEnabled(false);
+
             chatUI?.Open(npc.NPCName);
             voiceInput?.StartListening();
         }
@@ -101,6 +115,13 @@ namespace AISystem
             chatUI?.Close();
             _currentNPC           = null;
             _isWaitingForResponse = false;
+
+            if (manageCursor)
+            {
+                Cursor.visible   = false;
+                Cursor.lockState = CursorLockMode.Locked;
+            }
+            if (managePlayerController) SetPlayerControllerEnabled(true);
         }
 
         public bool IsChatOpen() => chatUI != null && chatUI.IsOpen;
@@ -153,6 +174,24 @@ namespace AISystem
         {
             if (IsChatOpen() && !_isWaitingForResponse)
                 voiceInput?.StartListening();
+        }
+
+        /// <summary>
+        /// Enables or disables common player controller components via reflection.
+        /// Works with StarterAssets, custom controllers, PlayerInput  no hard dependency.
+        /// </summary>
+        private static void SetPlayerControllerEnabled(bool state)
+        {
+            var player = GameObject.FindWithTag("Player");
+            if (player == null) return;
+            foreach (var mb in player.GetComponentsInChildren<MonoBehaviour>())
+            {
+                if (mb == null) continue;
+                var t = mb.GetType().Name;
+                if (t is "StarterAssetsInputs" or "ThirdPersonController"
+                       or "FirstPersonController" or "PlayerInput")
+                    mb.enabled = state;
+            }
         }
     }
 }

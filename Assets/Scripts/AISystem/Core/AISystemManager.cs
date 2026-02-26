@@ -152,7 +152,7 @@ namespace AISystem
         private void HandleSpeechFinished()
         {
             if (IsChatOpen() && !_isWaitingForResponse)
-                voiceInput?.StartListening();
+                voiceInput?.ResumeListening();
         }
     }
 }

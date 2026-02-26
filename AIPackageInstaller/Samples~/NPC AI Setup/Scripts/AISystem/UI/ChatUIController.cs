@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -18,14 +17,14 @@ namespace AISystem
         public GameObject chatPanel;
 
         [Header("Text Fields")]
-        public TextMeshProUGUI npcNameText;
-        public TextMeshProUGUI chatDisplayText;
-        public TextMeshProUGUI loadingOverlayText;
+        public Text npcNameText;
+        public Text chatDisplayText;
+        public Text loadingOverlayText;
 
         [Header("Input")]
-        public TMP_InputField playerInputField;
-        public Button         sendButton;
-        public Button         closeButton;
+        public InputField playerInputField;
+        public Button     sendButton;
+        public Button     closeButton;
 
         [Header("Scroll")]
         public ScrollRect chatScrollRect;
@@ -43,27 +42,25 @@ namespace AISystem
 
         //  State 
         private bool               _isOpen;
-        private string             _currentNPCName;
+        private string             _currentNPCName  = string.Empty;
         private readonly List<string> _chatHistory      = new();
         private string             _streamingResponse = string.Empty;
 
         public bool IsOpen => _isOpen;
 
         //  Lifecycle 
-        void Awake() { /* intentionally empty — panel is hidden in Start after TMP initialises */ }
+        void Awake() { /* intentionally empty — panel is hidden in Start after UI children initialise */ }
 
         void Start()
         {
-            // Hide here (not Awake) so TMP children have completed their own
-            // Awake → OnEnable cycle first. Calling SetActive(false) or
-            // Canvas.ForceUpdateCanvases() before TMP's OnEnable sets
-            // m_canvasRenderer causes NullReferenceException in Cull().
+            // Hide here (not Awake) so all UI children have completed their own
+            // Awake → OnEnable cycle first.
             if (chatPanel != null) chatPanel.SetActive(false);
 
             if (sendButton  != null) sendButton.onClick.AddListener(OnSendClicked);
             if (closeButton != null) closeButton.onClick.AddListener(OnCloseClicked);
             if (playerInputField != null)
-                playerInputField.onSubmit.AddListener(_ => OnSendClicked());
+                playerInputField.onEndEdit.AddListener(OnInputEndEdit);
         }
 
         void Update()
@@ -89,10 +86,6 @@ namespace AISystem
                 playerInputField.Select();
                 playerInputField.ActivateInputField();
             }
-
-            SetPlayerControllerEnabled(false);
-            Cursor.visible   = true;
-            Cursor.lockState = CursorLockMode.None;
         }
 
         public void Close()
@@ -100,10 +93,6 @@ namespace AISystem
             if (chatPanel != null) chatPanel.SetActive(false);
             _isOpen            = false;
             _streamingResponse = string.Empty;
-
-            SetPlayerControllerEnabled(true);
-            Cursor.visible   = false;
-            Cursor.lockState = CursorLockMode.Locked;
         }
 
         /// <summary>Adds a completed message to the chat history.</summary>
@@ -151,8 +140,8 @@ namespace AISystem
         public void SetLoadingOverlay(bool visible, string message = "")
         {
             if (loadingOverlayText == null) return;
-            // Guard: only manipulate TMP text while the canvas hierarchy is active
-            // to avoid NullReferenceException in TextMeshProUGUI.Cull.
+            // Guard: only manipulate text while the canvas hierarchy is active
+            // to avoid NullReferenceException in UI.Text.Cull.
             if (visible)
             {
                 loadingOverlayText.gameObject.SetActive(true);
@@ -173,6 +162,14 @@ namespace AISystem
             string msg = playerInputField.text.Trim();
             if (!string.IsNullOrEmpty(msg))
                 OnSendMessage?.Invoke(msg);
+        }
+
+        private void OnInputEndEdit(string value)
+        {
+            // onEndEdit fires on Enter press OR focus loss.
+            // Only send if the field wasn't cancelled (i.e. Enter was the cause).
+            if (!playerInputField.wasCanceled)
+                OnSendClicked();
         }
 
         private void OnCloseClicked() => OnCloseChat?.Invoke();
@@ -196,30 +193,9 @@ namespace AISystem
         {
             yield return new WaitForSecondsRealtime(autoScrollDelay);
             if (chatScrollRect != null)
-                chatScrollRect.verticalNormalizedPosition = 1f;
+                chatScrollRect.verticalNormalizedPosition = 0f;  // 0 = bottom, 1 = top
         }
 
-        /// <summary>
-        /// Enables or disables player controller components without hard assembly references.
-        /// Compatible with StarterAssets, custom controllers, and any project.
-        /// </summary>
-        private void SetPlayerControllerEnabled(bool state)
-        {
-            var player = GameObject.FindWithTag("Player");
-            if (player == null) return;
 
-            foreach (var mb in player.GetComponentsInChildren<MonoBehaviour>())
-            {
-                if (mb == null) continue;
-                var typeName = mb.GetType().Name;
-                if (typeName is "StarterAssetsInputs"
-                             or "ThirdPersonController"
-                             or "FirstPersonController"
-                             or "PlayerInput")
-                {
-                    mb.enabled = state;
-                }
-            }
-        }
     }
 }

@@ -27,6 +27,13 @@ namespace AISystem
         public Dropdown microphoneDropdown;
         public string defaultMicLabel = "Default Microphone";
 
+        [Header("VAD Indicator")]
+        [Tooltip("Image that shows mic state: yellow=ready, green=speaking, red=off")]
+        public Image vadIndicator;
+        public Color colorReady    = new Color(1f,  0.92f, 0f,   1f); // yellow
+        public Color colorSpeaking = new Color(0.2f, 0.8f, 0.2f, 1f); // green
+        public Color colorOff      = new Color(0.8f, 0.2f, 0.2f, 1f); // red
+
         //  Events 
         /// <summary>Fired when audio has been successfully transcribed to text.</summary>
         public event Action<string> OnTranscription;
@@ -72,9 +79,30 @@ namespace AISystem
 
         public void StartListening()
         {
-            if (microphoneRecord == null || _isListening || _isPaused || _isTranscribing) return;
+            if (microphoneRecord == null)
+            {
+                Debug.LogWarning("[VoiceInput] Cannot start: microphoneRecord is null");
+                return;
+            }
+            if (_isListening)
+            {
+                Debug.LogWarning("[VoiceInput] Cannot start: already listening (_isListening=true)");
+                return;
+            }
+            if (_isPaused)
+            {
+                Debug.LogWarning("[VoiceInput] Cannot start: paused (_isPaused=true)");
+                return;
+            }
+            if (_isTranscribing)
+            {
+                Debug.LogWarning("[VoiceInput] Cannot start: transcribing (_isTranscribing=true)");
+                return;
+            }
+
             _isListening = true;
             microphoneRecord.StartRecord();
+            SetVadIndicator(colorReady);
             Debug.Log("[VoiceInput] Listening started.");
         }
 
@@ -82,6 +110,7 @@ namespace AISystem
         {
             _isPaused    = false;
             _isListening = false;
+            SetVadIndicator(colorOff);
             if (microphoneRecord != null && microphoneRecord.IsRecording)
             {
                 microphoneRecord.StopRecord();
@@ -92,8 +121,14 @@ namespace AISystem
         /// <summary>Temporarily pauses listening while TTS is speaking (prevents silent captures).</summary>
         public void PauseListening()
         {
-            if (!_isListening) return;
-            _isPaused = true;
+            if (!_isListening)
+            {
+                Debug.LogWarning("[VoiceInput] Cannot pause: not listening (_isListening=false)");
+                return;
+            }
+            _isPaused    = true;
+            _isListening = false;
+            SetVadIndicator(colorOff);
             if (microphoneRecord != null && microphoneRecord.IsRecording)
                 microphoneRecord.StopRecord();
             Debug.Log("[VoiceInput] Listening paused (TTS active).");
@@ -102,7 +137,12 @@ namespace AISystem
         /// <summary>Resumes listening after a pause.</summary>
         public void ResumeListening()
         {
-            if (!_isPaused) return;
+            if (!_isPaused)
+            {
+                Debug.LogWarning("[VoiceInput] Cannot resume: not paused (_isPaused=false)");
+                return;
+            }
+            Debug.Log("[VoiceInput] Resuming from pause...");
             _isPaused = false;
             StartListening();
         }
@@ -170,7 +210,6 @@ namespace AISystem
                 if (string.Equals(text, "[blank audio]", StringComparison.OrdinalIgnoreCase)) return;
                 if (text.Length <= 1) return;
 
-                Debug.Log($"[VoiceInput] Transcription: {text}");
                 OnTranscription?.Invoke(text);
             }
             catch (Exception ex)
@@ -183,7 +222,17 @@ namespace AISystem
             }
         }
 
-        private void OnVadChanged(bool speechDetected) { /* Override for UI indicators */ }
+        private void OnVadChanged(bool speechDetected)
+        {
+            if (_isListening)
+                SetVadIndicator(speechDetected ? colorSpeaking : colorReady);
+        }
+
+        private void SetVadIndicator(Color color)
+        {
+            if (vadIndicator != null)
+                vadIndicator.color = color;
+        }
 
         private bool IsSilent(float[] samples)
         {

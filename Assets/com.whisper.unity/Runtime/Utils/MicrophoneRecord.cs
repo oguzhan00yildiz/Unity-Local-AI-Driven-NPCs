@@ -221,9 +221,10 @@ namespace Whisper.Utils
             }
             
             // update vad indicator
+            // green = speech detected, yellow = listening but silent (red is set externally when mic is off)
             if (vadIndicatorImage)
             {
-                var color = vad ? Color.green : Color.red;
+                var color = vad ? Color.green : new Color(1f, 0.92f, 0f, 1f);
                 vadIndicatorImage.color = color;
             }
 

@@ -33,16 +33,21 @@ namespace AISystem
         public bool IsSpeaking => _isSpeaking;
 
         //  Lifecycle 
+
+        // Awake runs before OnEnable, so piperTts is resolved before the first
+        // OnEnable subscription attempt — prevents double-subscription when
+        // piperTts is assigned in the Inspector.
+        void Awake()
+        {
+            if (piperTts == null)
+                piperTts = GetComponent<PiperTTS.PiperTTS>();
+        }
+
         void Start()
         {
             if (!voiceEnabled) return;
-
-            if (piperTts == null)
-                piperTts = GetComponent<PiperTTS.PiperTTS>();
-
-            if (piperTts != null)
-                piperTts.OnStatusChanged += OnPiperStatusChanged;
-
+            // piperTts already resolved in Awake and subscribed in OnEnable.
+            // Do NOT subscribe again here — that would cause double-firing.
             if (initOnStart && piperTts != null && piperTts.status == ModelStatus.Init)
                 piperTts.InitModel();
 
@@ -102,7 +107,10 @@ namespace AISystem
                     _sentenceQueue.Enqueue(s.Trim());
 
             if (_sentenceQueue.Count > 0)
-                piperTts.Prompt(_sentenceQueue.Dequeue());
+            {
+                var firstSentence = _sentenceQueue.Dequeue();
+                piperTts.Prompt(firstSentence);
+            }
         }
 
         public void StopSpeaking()
@@ -139,7 +147,8 @@ namespace AISystem
                         // Speak next sentence in queue if available
                         if (_sentenceQueue.Count > 0)
                         {
-                            piperTts.Prompt(_sentenceQueue.Dequeue());
+                            var nextSentence = _sentenceQueue.Dequeue();
+                            piperTts.Prompt(nextSentence);
                             _isSpeaking = true;
                         }
                         else
