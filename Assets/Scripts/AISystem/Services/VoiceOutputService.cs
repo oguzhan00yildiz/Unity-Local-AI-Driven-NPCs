@@ -19,7 +19,7 @@ namespace AISystem
         public bool initOnStart  = true;
 
         [Header("Optional status label")]
-        public UnityEngine.UI.Text statusLabel;
+        public TMPro.TextMeshProUGUI statusLabel;
 
         //  Events 
         public event Action OnSpeechStarted;

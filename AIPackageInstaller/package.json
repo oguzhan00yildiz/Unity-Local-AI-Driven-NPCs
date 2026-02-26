@@ -1,13 +1,13 @@
 {
   "name": "com.yourname.ai-driven-npcs",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "displayName": "AI Driven NPCs System",
   "description": "Modular, prefab-based local AI NPC system. Integrates LLM (LLMUnity), speech recognition (Whisper) and TTS (PiperTTS). Drag and drop [AI System] + [NPC] prefabs into your scene. No cross-Inspector wiring needed.",
   "unity": "2021.3",
   "samples": [
     {
       "displayName": "NPC AI Setup",
-      "description": "Modular AI-NPC system. Includes: AISystemManager (singleton coordinator), ChatUIController (pure UI – standard UnityEngine.UI.Text, no TextMeshPro), VoiceInputService (Whisper STT), VoiceOutputService (PiperTTS), ModelBootstrapper (model warmup), NPCAgent (per-NPC component), AIOTest scene, and all prefabs (AISystem, LLM, NPC, Player, TTS).",
+      "description": "Modular AI-NPC system. Includes: AISystemManager, ChatUIController, VoiceInputService (Whisper STT), VoiceOutputService (PiperTTS + TextMeshPro), ModelBootstrapper, NPCAgent, AIOTest scene, and all prefabs (AISystem, LLM, NPC, Player, TTS). TMP Essential Resources are imported automatically."
       "path": "Samples~/NPC AI Setup"
     }
   ]
