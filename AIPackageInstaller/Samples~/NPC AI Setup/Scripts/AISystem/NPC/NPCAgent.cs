@@ -1,4 +1,7 @@
 ﻿using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 using LLMUnity;
 
 namespace AISystem
@@ -76,8 +79,30 @@ namespace AISystem
             // Skip interaction key while chat panel is already open
             if (AISystemManager.Instance != null && AISystemManager.Instance.IsChatOpen()) return;
 
-            if (Input.GetKeyDown(interactionKey))
+            if (IsInteractionKeyPressed())
                 TriggerChat();
+        }
+
+        private bool IsInteractionKeyPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            // Input System package is active
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return false;
+
+            return interactionKey switch
+            {
+                KeyCode.E => keyboard.eKey.wasPressedThisFrame,
+                KeyCode.F => keyboard.fKey.wasPressedThisFrame,
+                KeyCode.Space => keyboard.spaceKey.wasPressedThisFrame,
+                KeyCode.Return => keyboard.enterKey.wasPressedThisFrame,
+                KeyCode.Escape => keyboard.escapeKey.wasPressedThisFrame,
+                _ => false
+            };
+#else
+            // Old Input manager
+            return Input.GetKeyDown(interactionKey);
+#endif
         }
 
         //  Trigger 

@@ -1,5 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -63,8 +66,18 @@ namespace AISystem
 
         void Update()
         {
-            if (_isOpen && Input.GetKeyDown(KeyCode.Escape))
+            if (_isOpen && IsEscapePressed())
                 OnCloseClicked();
+        }
+
+        private bool IsEscapePressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Escape);
+#endif
         }
 
         //  Public API 
