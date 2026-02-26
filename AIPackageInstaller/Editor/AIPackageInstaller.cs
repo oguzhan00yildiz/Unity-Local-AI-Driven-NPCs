@@ -214,49 +214,11 @@ public class AIPackageInstaller
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Imports TMP Essential Resources silently if not already present.
-    /// Required for any scene that uses TextMeshPro components.
-    /// </summary>
-    private static void EnsureTMPEssentials()
-    {
-        // Already imported?
-        if (AssetDatabase.IsValidFolder("Assets/TextMesh Pro"))
-        {
-            Debug.Log("<b>[AI Package Installer]</b> TMP Essential Resources already present. ✅");
-            return;
-        }
-
-        // Find the TMP package in the project (it ships inside com.unity.ugui)
-        var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath("Packages/com.unity.ugui");
-        if (packageInfo == null)
-        {
-            Debug.LogWarning("<b>[AI Package Installer]</b> com.unity.ugui package not found – skipping TMP import.");
-            return;
-        }
-
-        string essentialsPath = Path.Combine(packageInfo.resolvedPath,
-            "Package Resources", "TMP Essential Resources.unitypackage");
-
-        if (!File.Exists(essentialsPath))
-        {
-            Debug.LogWarning($"<b>[AI Package Installer]</b> TMP Essential Resources not found at: {essentialsPath}");
-            return;
-        }
-
-        Debug.Log("<b>[AI Package Installer]</b> Importing TMP Essential Resources…");
-        AssetDatabase.ImportPackage(essentialsPath, false); // false = no dialog
-        Debug.Log("<b>[AI Package Installer]</b> ✅ TMP Essential Resources imported.");
-    }
-
     private static void InstallNext()
     {
         if (_gitQueue.Count == 0)
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
-            // Import TMP essentials (needed by any scene with TextMeshPro)
-            EditorApplication.delayCall += EnsureTMPEssentials;
             // Automatically open the model downloader and start downloading missing files
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
             return;

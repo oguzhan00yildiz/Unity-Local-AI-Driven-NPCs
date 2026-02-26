@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using LLMUnity;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Whisper;
 
@@ -42,6 +43,14 @@ namespace AISystem
 
             // Warm up all LLMAgents in the scene
             var agents = FindObjectsByType<LLMAgent>(FindObjectsSortMode.None);
+
+            // Save each agent's numPredict BEFORE warmup.
+            // Warmup() temporarily sets numPredict = 0.  If another script
+            // (e.g. the legacy NPCChatUI) also calls Warmup() on the same
+            // agent concurrently, a race condition can leave numPredict = 0
+            // permanently, causing the LLM to emit only ~1 token.
+            var savedNumPredict = agents.ToDictionary(a => a, a => a.numPredict);
+
             foreach (var agent in agents)
                 tasks.Add(agent.Warmup());
 
@@ -52,6 +61,18 @@ namespace AISystem
             try
             {
                 await Task.WhenAll(tasks);
+
+                // Restore numPredict — guards against the concurrent-warmup race.
+                foreach (var agent in agents)
+                {
+                    if (agent.numPredict != savedNumPredict[agent])
+                    {
+                        Debug.LogWarning($"[ModelBootstrapper] {agent.name}.numPredict was corrupted "
+                            + $"({agent.numPredict}), restoring to {savedNumPredict[agent]}");
+                        agent.numPredict = savedNumPredict[agent];
+                    }
+                }
+
                 Debug.Log($"[ModelBootstrapper] All models ready ({agents.Length} LLMAgent(s)).");
             }
             catch (System.Exception ex)

@@ -53,8 +53,6 @@ namespace AISystem
 
         void Start()
         {
-            // Hide here (not Awake) so all UI children have completed their own
-            // Awake → OnEnable cycle first.
             if (chatPanel != null) chatPanel.SetActive(false);
 
             if (sendButton  != null) sendButton.onClick.AddListener(OnSendClicked);
@@ -86,6 +84,10 @@ namespace AISystem
                 playerInputField.Select();
                 playerInputField.ActivateInputField();
             }
+
+            SetPlayerControllerEnabled(false);
+            Cursor.visible   = true;
+            Cursor.lockState = CursorLockMode.None;
         }
 
         public void Close()
@@ -93,6 +95,10 @@ namespace AISystem
             if (chatPanel != null) chatPanel.SetActive(false);
             _isOpen            = false;
             _streamingResponse = string.Empty;
+
+            SetPlayerControllerEnabled(true);
+            Cursor.visible   = false;
+            Cursor.lockState = CursorLockMode.Locked;
         }
 
         /// <summary>Adds a completed message to the chat history.</summary>
@@ -140,8 +146,7 @@ namespace AISystem
         public void SetLoadingOverlay(bool visible, string message = "")
         {
             if (loadingOverlayText == null) return;
-            // Guard: only manipulate text while the canvas hierarchy is active
-            // to avoid NullReferenceException in UI.Text.Cull.
+            // Guard: only manipulate text while the canvas hierarchy is active.
             if (visible)
             {
                 loadingOverlayText.gameObject.SetActive(true);
@@ -166,8 +171,6 @@ namespace AISystem
 
         private void OnInputEndEdit(string value)
         {
-            // onEndEdit fires on Enter press OR focus loss.
-            // Only send if the field wasn't cancelled (i.e. Enter was the cause).
             if (!playerInputField.wasCanceled)
                 OnSendClicked();
         }
@@ -196,6 +199,27 @@ namespace AISystem
                 chatScrollRect.verticalNormalizedPosition = 0f;  // 0 = bottom, 1 = top
         }
 
+        /// <summary>
+        /// Enables or disables player controller components without hard assembly references.
+        /// Compatible with StarterAssets, custom controllers, and any project.
+        /// </summary>
+        private void SetPlayerControllerEnabled(bool state)
+        {
+            var player = GameObject.FindWithTag("Player");
+            if (player == null) return;
 
+            foreach (var mb in player.GetComponentsInChildren<MonoBehaviour>())
+            {
+                if (mb == null) continue;
+                var typeName = mb.GetType().Name;
+                if (typeName is "StarterAssetsInputs"
+                             or "ThirdPersonController"
+                             or "FirstPersonController"
+                             or "PlayerInput")
+                {
+                    mb.enabled = state;
+                }
+            }
+        }
     }
 }
