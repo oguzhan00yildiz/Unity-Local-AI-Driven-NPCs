@@ -87,7 +87,14 @@ public class AIPackageInstaller
         // [InitializeOnLoad] fires on every domain reload (including every Play press),
         // so guard with SessionState to avoid unnecessary package listing & window calls.
         if (SessionState.GetBool("AIPackageInstaller.Done", false))
+        {
+            // Packages are already installed. Still trigger the model downloader because
+            // the delayCall scheduled at end of InstallNext() may have been wiped by the
+            // domain reload that follows the last package's DLL compilation.
+            // AutoStartDownloads is a no-op when all models are already present.
+            EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
             return;
+        }
 
         Debug.Log("<b>[AI Package Installer]</b> Initializing…");
 
