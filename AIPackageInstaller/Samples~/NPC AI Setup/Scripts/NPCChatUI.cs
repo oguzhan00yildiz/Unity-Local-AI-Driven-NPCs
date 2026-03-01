@@ -17,7 +17,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 #endif
 using UnityEngine.UI;
-using TMPro;
 using LLMUnity;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -31,13 +30,13 @@ namespace LLMUnitySamples
     {
         [Header("UI Elements")]
         public GameObject chatPanel;
-        public TextMeshProUGUI npcNameText;
-        public TextMeshProUGUI chatDisplayText;
-        public TMP_InputField playerInputField;
+        public Text npcNameText;
+        public Text chatDisplayText;
+        public InputField playerInputField;
         public Button sendButton;
         public Button closeButton;
         public ScrollRect chatScrollRect;
-        public TextMeshProUGUI loadingText;
+        public Text loadingText;
 
         [Header("Voice Input - Ses Girişi")]
         public Button toggleMicButton;
@@ -53,7 +52,7 @@ namespace LLMUnitySamples
         [Header("Voice Output - PiperTTS")]
         public bool enableVoiceOutput = true;
         public PiperTTS.PiperTTS piperTts;
-        public TextMeshProUGUI ttsStatusText;
+        public Text ttsStatusText;
         public bool initPiperOnStart = true;
 
         [Header("Settings")]
@@ -691,7 +690,7 @@ namespace LLMUnitySamples
         {
             if (toggleMicButton != null)
             {
-                var buttonText = toggleMicButton.GetComponentInChildren<TextMeshProUGUI>();
+                var buttonText = toggleMicButton.GetComponentInChildren<Text>();
                 if (buttonText != null)
                 {
                     buttonText.text = isMicMuted ? "Mic Off" : "Mic On";

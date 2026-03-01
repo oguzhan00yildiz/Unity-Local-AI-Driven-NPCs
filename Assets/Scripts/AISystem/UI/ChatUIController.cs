@@ -88,7 +88,14 @@ namespace AISystem
             _streamingResponse = string.Empty;
 
             if (npcNameText != null) npcNameText.text = npcName;
-            if (chatPanel   != null) chatPanel.SetActive(true);
+            if (chatPanel   != null)
+            {
+                chatPanel.SetActive(true);
+                // Force UI components inside the ScrollRect to fully initialize before
+                // Unity's culling/clipping pass runs, preventing NullReferenceException
+                // in ScrollRect.LateUpdate.
+                Canvas.ForceUpdateCanvases();
+            }
             _isOpen = true;
 
             if (playerInputField != null)

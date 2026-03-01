@@ -236,44 +236,8 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
-            // Still ensure TMP essentials even when all packages were already present
-            EditorApplication.delayCall += EnsureTMPEssentials;
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Imports TMP Essential Resources silently if not already present.
-    /// Required for prefabs and scenes that use TextMeshPro components.
-    /// </summary>
-    private static void EnsureTMPEssentials()
-    {
-        if (AssetDatabase.IsValidFolder("Assets/TextMesh Pro"))
-        {
-            Debug.Log("<b>[AI Package Installer]</b> TMP Essential Resources already present. ✅");
-            return;
-        }
-
-        var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath("Packages/com.unity.ugui");
-        if (packageInfo == null)
-        {
-            Debug.LogWarning("<b>[AI Package Installer]</b> com.unity.ugui not found – skipping TMP import.");
-            return;
-        }
-
-        string essentialsPath = Path.Combine(packageInfo.resolvedPath,
-            "Package Resources", "TMP Essential Resources.unitypackage");
-
-        if (!File.Exists(essentialsPath))
-        {
-            Debug.LogWarning($"<b>[AI Package Installer]</b> TMP Essential Resources not found at: {essentialsPath}");
-            return;
-        }
-
-        Debug.Log("<b>[AI Package Installer]</b> Importing TMP Essential Resources…");
-        AssetDatabase.ImportPackage(essentialsPath, false);
-        Debug.Log("<b>[AI Package Installer]</b> ✅ TMP Essential Resources imported.");
     }
 
     private static void InstallNext()
@@ -282,8 +246,6 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
-            // Import TMP essentials (needed by prefabs that use TextMeshPro components)
-            EditorApplication.delayCall += EnsureTMPEssentials;
             // Automatically open the model downloader and start downloading missing files
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
             return;

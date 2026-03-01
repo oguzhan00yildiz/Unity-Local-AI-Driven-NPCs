@@ -1,5 +1,4 @@
 using PiperTTS;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,8 +6,8 @@ public class BasicPiper : MonoBehaviour
 {
     public PiperTTS.PiperTTS tts;
 
-    public TMP_Text chatHistory;
-    public TMP_InputField chatInputField;
+    public Text chatHistory;
+    public InputField chatInputField;
     public Button sendButton;
 
     void Start()
