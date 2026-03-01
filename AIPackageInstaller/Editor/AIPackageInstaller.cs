@@ -83,6 +83,12 @@ public class AIPackageInstaller
     // ─────────────────────────────────────────────────────────────────────────
     private static void Initialize()
     {
+        // Skip if we already ran the full check during this Editor session.
+        // [InitializeOnLoad] fires on every domain reload (including every Play press),
+        // so guard with SessionState to avoid unnecessary package listing & window calls.
+        if (SessionState.GetBool("AIPackageInstaller.Done", false))
+            return;
+
         Debug.Log("<b>[AI Package Installer]</b> Initializing…");
 
         bool manifestChanged = PatchManifest();
@@ -222,6 +228,7 @@ public class AIPackageInstaller
         else
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
+            SessionState.SetBool("AIPackageInstaller.Done", true);
             // Still ensure TMP essentials even when all packages were already present
             EditorApplication.delayCall += EnsureTMPEssentials;
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
@@ -267,6 +274,7 @@ public class AIPackageInstaller
         if (_gitQueue.Count == 0)
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
+            SessionState.SetBool("AIPackageInstaller.Done", true);
             // Import TMP essentials (needed by prefabs that use TextMeshPro components)
             EditorApplication.delayCall += EnsureTMPEssentials;
             // Automatically open the model downloader and start downloading missing files
