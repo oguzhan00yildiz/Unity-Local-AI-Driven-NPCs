@@ -618,18 +618,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1491779523838420420, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
-      propertyPath: m_AnchorMax.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1491779523838420420, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
-      propertyPath: m_AnchorMax.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1491779523838420420, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
-      propertyPath: m_AnchorMin.y
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 3260186744857605378, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_Name
       value: AISystem
@@ -673,14 +661,6 @@ PrefabInstance:
     - target: {fileID: 3647490288870431427, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3954670537852558211, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -0.00009875592
-      objectReference: {fileID: 0}
-    - target: {fileID: 9077060952098412730, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
-      propertyPath: m_Size
-      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
