@@ -25,6 +25,7 @@ namespace AISystem
         //  Active NPC 
         private NPCAgent _currentNPC;
         private bool _isWaitingForResponse;
+        private bool _playerLeftDuringChat;
 
         //  Lifecycle 
         void Awake()
@@ -91,6 +92,14 @@ namespace AISystem
 
             chatUI?.Open(npc.NPCName);
             voiceInput?.StartListening();
+
+            npc.SetChatActive(true);
+            npc.SetPromptText("Listening");
+
+            // Unlock cursor for interaction
+            Cursor.visible   = true;
+            Cursor.lockState = CursorLockMode.None;
+            SetPlayerMovement(false);
         }
 
         /// <summary>Closes the chat panel (close button or ESC key).</summary>
@@ -99,11 +108,45 @@ namespace AISystem
             voiceInput?.StopListening();
             voiceOutput?.StopSpeaking();
             chatUI?.Close();
+
+            _currentNPC?.SetChatActive(false);
             _currentNPC           = null;
             _isWaitingForResponse = false;
+            _playerLeftDuringChat = false;
+
+            // Re-lock cursor and re-enable player
+            Cursor.visible   = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            SetPlayerMovement(true);
         }
 
-        public bool IsChatOpen() => chatUI != null && chatUI.IsOpen;
+        public bool IsChatOpen() => _currentNPC != null;
+
+        /// <summary>
+        /// Called by NPCAgent when the player leaves the trigger range while a chat is active.
+        /// Stops listening immediately; if the NPC is currently speaking the session will
+        /// close automatically once speech finishes.
+        /// </summary>
+        public void HandlePlayerLeftRange()
+        {
+            if (_currentNPC == null) return;
+
+            // Always stop listening — player is no longer in range
+            voiceInput?.StopListening();
+
+            if (voiceOutput != null && voiceOutput.IsSpeaking)
+            {
+                // NPC is mid-sentence — let it finish, then close in HandleSpeechFinished
+                _playerLeftDuringChat = true;
+                _currentNPC?.SetPromptText("Talking");
+            }
+            else
+            {
+                // Not speaking — close the session right away
+                _playerLeftDuringChat = false;
+                CloseChat();
+            }
+        }
 
         //  Internal event handlers 
 
@@ -120,39 +163,68 @@ namespace AISystem
 
             _isWaitingForResponse = true;
             voiceInput?.StopListening();
-
-            chatUI?.AddMessage("You", message);
-            chatUI?.SetInputText(string.Empty);
-            chatUI?.SetWaiting(true);
+            _currentNPC?.SetPromptText("Thinking");
 
             string fullResponse = string.Empty;
+            var npcForCallback   = _currentNPC;   // capture before await
 
             await _currentNPC.Agent.Chat(
                 message,
-                partial =>
-                {
-                    fullResponse = partial;
-                    chatUI?.UpdateStreamingResponse(_currentNPC.NPCName, partial);
-                },
+                partial => { fullResponse = partial; },
                 () =>
                 {
-                    chatUI?.FinalizeResponse(_currentNPC.NPCName, fullResponse);
-                    chatUI?.SetWaiting(false);
                     _isWaitingForResponse = false;
+
+                    // Guard: session may have been closed while LLM was generating
+                    // (e.g. player walked out of range during "Thinking" state)
+                    if (_currentNPC == null) return;
 
                     if (!string.IsNullOrWhiteSpace(fullResponse))
                         voiceOutput?.Speak(fullResponse);
                     else
+                    {
+                        npcForCallback?.SetPromptText("Listening");
                         voiceInput?.StartListening();
+                    }
                 });
         }
 
-        private void HandleSpeechStarted()  => voiceInput?.PauseListening();
+        private void HandleSpeechStarted()
+        {
+            voiceInput?.PauseListening();
+            _currentNPC?.SetPromptText("Talking");
+        }
 
         private void HandleSpeechFinished()
         {
-            if (IsChatOpen() && !_isWaitingForResponse)
+            if (!IsChatOpen()) return;
+
+            // If the player left the NPC's range while the NPC was still talking,
+            // close the session now that speech has ended.
+            if (_playerLeftDuringChat)
+            {
+                _playerLeftDuringChat = false;
+                CloseChat();
+                return;
+            }
+
+            _currentNPC?.SetPromptText("Listening");
+            if (!_isWaitingForResponse)
                 voiceInput?.ResumeListening();
+        }
+
+        private static void SetPlayerMovement(bool enabled)
+        {
+            var player = GameObject.FindWithTag("Player");
+            if (player == null) return;
+            foreach (var mb in player.GetComponentsInChildren<MonoBehaviour>())
+            {
+                if (mb == null) continue;
+                var t = mb.GetType().Name;
+                if (t is "StarterAssetsInputs" or "ThirdPersonController"
+                       or "FirstPersonController" or "PlayerInput")
+                    mb.enabled = enabled;
+            }
         }
     }
 }

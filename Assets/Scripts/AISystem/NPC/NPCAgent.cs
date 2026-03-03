@@ -31,12 +31,13 @@ namespace AISystem
         public float   interactionRange = 3f;
         public KeyCode interactionKey   = KeyCode.E;
 
-        [Header("Interaction Prompt (optional)")]
-        [Tooltip("World-space UI object shown when the player enters range.")]
-        public GameObject interactionPrompt;
+        [Header("Interaction Prompt")]
+        [Tooltip("TextMesh (3D Text) shown above NPC. Auto-found in children if left null.")]
+        public TextMesh promptText;
 
         //  Internal 
         private bool _playerInRange;
+        private bool _chatActive;
 
         /// <summary>Read by AISystemManager.</summary>
         public LLMAgent Agent   => llmAgent;
@@ -58,9 +59,13 @@ namespace AISystem
                     sphere.radius = interactionRange;
             }
 
-            // Hide interaction prompt at startup
-            if (interactionPrompt != null)
-                interactionPrompt.SetActive(false);
+            // Auto-find prompt TextMesh from children if not assigned
+            if (promptText == null)
+                promptText = GetComponentInChildren<TextMesh>(true);
+
+            // Set default text — always visible
+            if (promptText != null)
+                promptText.text = $"Press {interactionKey} to interact";
         }
 
         void Start()
@@ -111,16 +116,41 @@ namespace AISystem
         {
             if (!other.CompareTag("Player")) return;
             _playerInRange = true;
-            if (interactionPrompt != null)
-                interactionPrompt.SetActive(true);
+            if (promptText != null)
+                promptText.text = $"Press {interactionKey} to interact";
         }
 
         void OnTriggerExit(Collider other)
         {
             if (!other.CompareTag("Player")) return;
             _playerInRange = false;
-            if (interactionPrompt != null)
-                interactionPrompt.SetActive(false);
+
+            if (_chatActive)
+            {
+                // Player left while interacting — stop listening but let NPC finish speaking
+                AISystemManager.Instance?.HandlePlayerLeftRange();
+            }
+            else if (promptText != null)
+            {
+                promptText.text = $"Press {interactionKey} to interact";
+            }
+        }
+
+        /// <summary>Called by AISystemManager to show Listening / Thinking / Talking.</summary>
+        public void SetPromptText(string state)
+        {
+            if (promptText == null) return;
+            promptText.text = string.IsNullOrEmpty(state)
+                ? $"Press {interactionKey} to interact"
+                : state;
+        }
+
+        /// <summary>Called by AISystemManager on open/close.</summary>
+        public void SetChatActive(bool active)
+        {
+            _chatActive = active;
+            if (!active && promptText != null)
+                promptText.text = $"Press {interactionKey} to interact";
         }
 
         //  Internal 
@@ -144,3 +174,4 @@ namespace AISystem
         }
     }
 }
+
