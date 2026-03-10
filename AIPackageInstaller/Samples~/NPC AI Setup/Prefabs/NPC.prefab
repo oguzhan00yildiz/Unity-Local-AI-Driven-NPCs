@@ -178,7 +178,7 @@ MonoBehaviour:
   llmAgent: {fileID: 6237645991601663353}
   interactionRange: 3
   interactionKey: 101
-  interactionPrompt: {fileID: 1126826082234393643}
+  promptText: {fileID: 5660079689798306509}
 --- !u!114 &6237645991601663353
 MonoBehaviour:
   m_ObjectHideFlags: 0
