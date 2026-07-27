@@ -1,5 +1,5 @@
 {
-  "name": "com.yourname.ai-driven-npcs",
+  "name": "com.yildizoguzhan.ai-driven-npcs",
   "version": "2.3.1",
   "displayName": "AI Driven NPCs System",
   "description": "Modular, prefab-based local AI NPC system. Integrates LLM (LLMUnity), speech recognition (Whisper) and TTS (PiperTTS). Drag and drop [AI System] + [NPC] prefabs into your scene. No cross-Inspector wiring needed.",
