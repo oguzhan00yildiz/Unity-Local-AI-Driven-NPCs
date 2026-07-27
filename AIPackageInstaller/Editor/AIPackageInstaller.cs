@@ -45,6 +45,8 @@ public class AIPackageInstaller
         Directory.GetParent(Application.dataPath).FullName, "Packages", "manifest.json");
 
     private static Queue<string> _gitQueue  = new Queue<string>();
+    private static Queue<string> _gitNames  = new Queue<string>();
+    private static string        _currentPkgName;
     private static AddRequest    _addRequest;
     private static ListRequest   _listRequest;
 
@@ -58,47 +60,61 @@ public class AIPackageInstaller
     public static void ForceInstall()
     {
         Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
+        SessionState.SetBool("AIPackageInstaller.Done", false);
+
+        InitUI();
+        PackageInstallerWindow.ShowWindow();
+
         if (PatchManifest())
         {
             Debug.Log("<b>[AI Package Installer]</b> manifest.json updated → resolving packages (Unity will reload).");
+            PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.Completed);
             Client.Resolve();
             return;
         }
+
+        PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.Completed);
         EnqueueAndInstallGitPackages(checkFirst: false);
     }
 
+    private static void InitUI()
+    {
+        List<PackageInstallerWindow.InstallStep> steps = new List<PackageInstallerWindow.InstallStep>
+        {
+            new PackageInstallerWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
+            new PackageInstallerWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git" },
+            new PackageInstallerWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
+            new PackageInstallerWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
+        };
+        PackageInstallerWindow.InitSteps(steps);
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 1 — ensure npm registry + ONNX packages in manifest.json
     // ─────────────────────────────────────────────────────────────────────────
     private static void Initialize()
     {
-        // Skip if we already ran the full check during this Editor session.
-        // [InitializeOnLoad] fires on every domain reload (including every Play press),
-        // so guard with SessionState to avoid unnecessary package listing & window calls.
         if (SessionState.GetBool("AIPackageInstaller.Done", false))
         {
-            // Packages are already installed. Still trigger the model downloader because
-            // the delayCall scheduled at end of InstallNext() may have been wiped by the
-            // domain reload that follows the last package's DLL compilation.
-            // AutoStartDownloads is a no-op when all models are already present.
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
             return;
         }
 
         Debug.Log("<b>[AI Package Installer]</b> Initializing…");
+        InitUI();
 
         bool manifestChanged = PatchManifest();
         if (manifestChanged)
         {
-            // manifest.json was rewritten → let Unity resolve; domain reload will follow
+            PackageInstallerWindow.ShowWindow();
+            PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.InProgress);
             Debug.Log("<b>[AI Package Installer]</b> manifest.json patched (npm ONNX registry added). " +
                       "Unity will reload — git packages will be installed afterwards automatically.");
             Client.Resolve();
             return;
         }
 
-        // PHASE 2 — npm packages are already in place; check git packages
+        PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.Completed);
         Debug.Log("<b>[AI Package Installer]</b> npm packages already present. Checking git packages…");
         EnqueueAndInstallGitPackages(checkFirst: true);
     }
@@ -182,10 +198,19 @@ public class AIPackageInstaller
     // ─────────────────────────────────────────────────────────────────────────
     private static void EnqueueAndInstallGitPackages(bool checkFirst)
     {
+        _gitQueue.Clear();
+        _gitNames.Clear();
+
+        string[] names = new[] { "LLMUnity Package", "Piper TTS Package", "Whisper Unity Package" };
+
         if (!checkFirst)
         {
-            foreach (var url in GitPackages)
-                _gitQueue.Enqueue(url);
+            for (int i = 0; i < GitPackages.Length; i++)
+            {
+                _gitQueue.Enqueue(GitPackages[i]);
+                _gitNames.Enqueue(names[i]);
+            }
+            PackageInstallerWindow.ShowWindow();
             InstallNext();
             return;
         }
@@ -209,16 +234,27 @@ public class AIPackageInstaller
             .Select(p => p.packageId.ToLower())
             .ToList();
 
+        string[] names = new[] { "LLMUnity Package", "Piper TTS Package", "Whisper Unity Package" };
+
         _gitQueue.Clear();
+        _gitNames.Clear();
         for (int i = 0; i < GitPackages.Length; i++)
         {
             bool found = installed.Any(p => p.StartsWith(GitPackageIds[i]));
             if (!found)
+            {
                 _gitQueue.Enqueue(GitPackages[i]);
+                _gitNames.Enqueue(names[i]);
+            }
+            else
+            {
+                PackageInstallerWindow.UpdateStep(names[i], PackageInstallerWindow.StepStatus.Completed);
+            }
         }
 
         if (_gitQueue.Count > 0)
         {
+            PackageInstallerWindow.ShowWindow();
             Debug.Log($"<b>[AI Package Installer]</b> Installing {_gitQueue.Count} missing package(s)…");
             InstallNext();
         }
@@ -226,6 +262,7 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
+            PackageInstallerWindow.CloseWindow();
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
         }
     }
@@ -236,12 +273,16 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
-            // Automatically open the model downloader and start downloading missing files
+            PackageInstallerWindow.CloseWindow();
             EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
             return;
         }
 
         string pkg = _gitQueue.Dequeue();
+        _currentPkgName = _gitNames.Dequeue();
+
+        PackageInstallerWindow.UpdateStep(_currentPkgName, PackageInstallerWindow.StepStatus.InProgress);
+
         Debug.Log($"<b>[AI Package Installer]</b> Installing: {pkg}…");
         _addRequest = Client.Add(pkg);
         EditorApplication.update += OnAddComplete;
@@ -253,10 +294,18 @@ public class AIPackageInstaller
         EditorApplication.update -= OnAddComplete;
 
         if (_addRequest.Status == StatusCode.Success)
+        {
             Debug.Log($"<b>[AI Package Installer]</b> ✅ Installed: {_addRequest.Result.packageId}");
+            PackageInstallerWindow.UpdateStep(_currentPkgName, PackageInstallerWindow.StepStatus.Completed);
+        }
         else
+        {
             Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed: {_addRequest.Error.message}");
+            PackageInstallerWindow.UpdateStep(_currentPkgName, PackageInstallerWindow.StepStatus.Failed, _addRequest.Error.message);
+        }
 
         InstallNext();
     }
+}
+
 }
