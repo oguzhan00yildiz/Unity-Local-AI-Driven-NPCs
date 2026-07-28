@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
-using System;
 
 namespace AISystem
 {
@@ -14,10 +13,6 @@ namespace AISystem
         [Header("Status Text (UGUI Text — no TMPro)")]
         [Tooltip("Assign a UnityEngine.UI.Text component in the scene. Leave null to disable.")]
         public Text statusText;
-
-        //  Events (kept for API compatibility — not used in voice-only mode) 
-        public event Action<string> OnSendMessage;
-        public event Action OnCloseChat;
 
         //  State 
         private bool   _isOpen;

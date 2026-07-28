@@ -68,17 +68,13 @@ namespace LLMUnitySamples
         private string currentNPCName;
         private bool isWaitingForResponse = false;
         private bool isModelWarming = false;
-        private bool allModelsWarmed = false;
         private List<string> chatHistory = new List<string>();
         private string currentNPCResponse = "";
-        private bool isMicRecording = false;
         private bool isMicMuted = false;
-        private bool isTranscribing = false;
         private string currentTranscription = "";
         private bool isSpeaking = false;
         private bool micPausedForTts = false;
         private string pendingSpeech = "";
-        private int lastSpokenLength = 0;
         private Queue<string> speechQueue = new Queue<string>();
 
         void Start()
@@ -186,7 +182,6 @@ namespace LLMUnitySamples
             finally
             {
                 isModelWarming = false;
-                allModelsWarmed = true;
                 
                 // Loading göstergesini gizle
                 if (loadingText != null)
@@ -361,7 +356,6 @@ namespace LLMUnitySamples
                 }
                 
                 currentNPCResponse = ""; // Sıfırla
-                lastSpokenLength = 0; // Reset for next response
                 RefreshChatDisplay();
 
                 if (!enableVoiceOutput)
@@ -417,7 +411,6 @@ namespace LLMUnitySamples
 
             Debug.Log("Starting microphone recording...");
             microphoneRecord.StartRecord();
-            isMicRecording = true;
             UpdateMicStatusIndicator(true);
             UpdateMicButtonUI();
         }
@@ -429,7 +422,6 @@ namespace LLMUnitySamples
 
             Debug.Log("Stopping microphone recording...");
             microphoneRecord.StopRecord();
-            isMicRecording = false;
             UpdateMicStatusIndicator(false);
             UpdateMicButtonUI();
         }
@@ -501,7 +493,6 @@ namespace LLMUnitySamples
 
             try
             {
-                isTranscribing = true;
                 currentTranscription = "";
 
                 Debug.Log("Starting transcription...");
@@ -552,10 +543,6 @@ namespace LLMUnitySamples
             {
                 Debug.LogError($"Transcription error: {ex.Message}");
             }
-            finally
-            {
-                isTranscribing = false;
-            }
         }
 
         private bool IsSilentAudio(float[] samples)
@@ -586,7 +573,6 @@ namespace LLMUnitySamples
             isWaitingForResponse = true;
             sendButton.interactable = false;
             currentNPCResponse = "";
-            lastSpokenLength = 0;
 
             _ = currentAgent.Chat(userMessage, 
                 (reply) => UpdateNPCResponse(reply),
