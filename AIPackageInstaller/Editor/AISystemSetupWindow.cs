@@ -2,7 +2,9 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -118,6 +120,14 @@ public class AISystemSetupWindow : EditorWindow
             DestRelPath = "PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx.json",
             SizeMB = 1
         },
+        new ModelEntry
+        {
+            Group = "LLM — Qwen3.5 0.8B (Language Model)",
+            DisplayName = "Qwen3.5-0.8B-Q4_K_M.gguf",
+            Url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_K_M.gguf",
+            DestRelPath = "Qwen3.5-0.8B-Q4_K_M.gguf",
+            SizeMB = 500
+        },
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -154,11 +164,12 @@ public class AISystemSetupWindow : EditorWindow
     {
         return EditorUtility.DisplayDialog(
             "AI Driven NPCs — Setup Required",
-            "This package needs to install several Unity packages and download AI model files (~265 MB):\n\n" +
+            "This package needs to install several Unity packages and download AI model files (~765 MB):\n\n" +
             "  • LLMUnity (language model runtime)\n" +
             "  • Piper TTS (text-to-speech)\n" +
             "  • Whisper Unity (speech recognition)\n" +
             "  • ONNX Runtime 0.4.4 (via NPM registry)\n\n" +
+            "  • Qwen3.5 0.8B LLM model (~500 MB)\n" +
             "A setup window will open to track progress.\n" +
             "You can also run this later via Tools → AI Packages → AI System Setup.",
             "Yes, Set Up Now",
@@ -401,8 +412,8 @@ public class AISystemSetupWindow : EditorWindow
     private void DrawModelPhase()
     {
         EditorGUILayout.HelpBox(
-            "LLM models are managed by LLMUnity directly.\n" +
-            "Open the LLM component in your scene → Inspector → 'Download Model'.",
+            "The LLM language model (Qwen3.5 0.8B) will be downloaded and\n" +
+            "automatically configured on the LLM prefab. Just hit Play when done!",
             MessageType.Info);
         EditorGUILayout.Space(4);
 
@@ -527,6 +538,14 @@ public class AISystemSetupWindow : EditorWindow
             File.Move(temp, model.FullPath);
 
             model.IsDownloaded = true;
+
+            // Register LLM (.gguf) models with LLMUnity's model manager (via reflection
+            // to avoid hard dependency — LLMUnity package may still be installing)
+            if (Path.GetExtension(model.FullPath).ToLower() == ".gguf")
+            {
+                RegisterWithLLMManager(model.FullPath, model.DisplayName);
+            }
+
             Debug.Log($"<b>[AI System Setup]</b> ✅ Downloaded: {model.DestRelPath}");
         }
         catch (System.Exception ex)
@@ -545,8 +564,147 @@ public class AISystemSetupWindow : EditorWindow
             if (_activeDownloads == 0)
             {
                 AssetDatabase.Refresh();
+                AutoConfigureLLM();
                 Repaint();
                 Debug.Log("<b>[AI System Setup]</b> All downloads complete. ✅");
+            }
+        }
+    }
+
+    /// <summary>
+    /// After all models are downloaded, find and configure the LLM component
+    /// in the LLM.prefab asset and in any open scenes to use the downloaded model.
+    /// Uses reflection to avoid hard dependency on LLMUnity types (which may
+    /// still be installing when this script first compiles).
+    /// </summary>
+    private static void AutoConfigureLLM()
+    {
+        ModelEntry llmModel = Models.Find(m =>
+            Path.GetExtension(m.DestRelPath).ToLower() == ".gguf" && m.IsDownloaded);
+
+        if (llmModel == null) return;
+
+        string modelFilename = Path.GetFileName(llmModel.DestRelPath);
+
+        try
+        {
+            // Ensure the model is registered with LLMUnity's model manager
+            string registeredName = RegisterWithLLMManager(llmModel.FullPath, llmModel.DisplayName);
+
+            // ── 1. Update LLM.prefab asset ──────────────────────────────────
+            string prefabAssetPath = "Assets/Prefabs/LLM.prefab";
+            GameObject llmPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabAssetPath);
+            if (llmPrefab != null)
+            {
+                SetLLMModelOnGameObject(llmPrefab, registeredName, "LLM.prefab");
+            }
+
+            // ── 2. Update any LLM components in currently open scenes ───────
+            for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
+            {
+                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+                if (!scene.isLoaded) continue;
+
+                foreach (var rootGo in scene.GetRootGameObjects())
+                {
+                    SetLLMModelOnChildren(rootGo, registeredName);
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"<b>[AI System Setup]</b> LLM auto-configuration skipped " +
+                $"(LLMUnity may still be installing): {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Registers a model file with LLMUnity's LLMManager via reflection.
+    /// Returns the registered filename, or falls back to the file's own name.
+    /// </summary>
+    private static string RegisterWithLLMManager(string fullPath, string label)
+    {
+        string modelName = Path.GetFileName(fullPath);
+        try
+        {
+            // Resolve: LLMUnity.LLMManager.LoadModel(path, false, label)
+            var llmManagerType = System.Type.GetType("LLMUnity.LLMManager, undream.llmunity.Runtime");
+            if (llmManagerType == null)
+            {
+                Debug.LogWarning("[AI System Setup] LLMManager type not found — LLMUnity may not be loaded yet.");
+                return modelName;
+            }
+
+            var loadMethod = llmManagerType.GetMethod("LoadModel",
+                BindingFlags.Public | BindingFlags.Static);
+            if (loadMethod != null)
+            {
+                var result = loadMethod.Invoke(null, new object[] { fullPath, false, label });
+                if (result != null)
+                {
+                    Debug.Log($"<b>[AI System Setup]</b> ✅ Registered LLM model with LLMManager: {result}");
+                    return result.ToString();
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"<b>[AI System Setup]</b> LLMManager registration failed: {ex.Message}");
+        }
+        return modelName;
+    }
+
+    /// <summary>
+    /// Sets the _model field on an LLM component (via reflection) on a specific GameObject.
+    /// </summary>
+    private static void SetLLMModelOnGameObject(GameObject go, string modelName, string contextName)
+    {
+        var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
+        if (llmType == null) return;
+
+        var llmComponent = go.GetComponent(llmType);
+        if (llmComponent == null) return;
+
+        var modelProp = llmType.GetProperty("model",
+            BindingFlags.Public | BindingFlags.Instance);
+        if (modelProp == null) return;
+
+        string currentModel = modelProp.GetValue(llmComponent) as string ?? "";
+        if (currentModel != modelName)
+        {
+            // Use SerializedObject to properly mark the prefab as dirty
+            SerializedObject so = new SerializedObject(llmComponent);
+            SerializedProperty sp = so.FindProperty("_model");
+            if (sp != null)
+            {
+                sp.stringValue = modelName;
+                so.ApplyModifiedProperties();
+                Debug.Log($"<b>[AI System Setup]</b> ✅ {contextName} model set to: {modelName}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recursively searches for LLM components on a GameObject and its children,
+    /// setting the model field via reflection.
+    /// </summary>
+    private static void SetLLMModelOnChildren(GameObject go, string modelName)
+    {
+        var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
+        if (llmType == null) return;
+
+        var components = go.GetComponentsInChildren(llmType, true);
+        foreach (var comp in components)
+        {
+            SerializedObject so = new SerializedObject(comp);
+            SerializedProperty sp = so.FindProperty("_model");
+            if (sp != null && sp.stringValue != modelName)
+            {
+                sp.stringValue = modelName;
+                so.ApplyModifiedProperties();
+                Debug.Log($"<b>[AI System Setup]</b> ✅ LLM '{comp.name}' in scene set to: {modelName}");
             }
         }
     }
