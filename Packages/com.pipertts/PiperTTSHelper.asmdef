@@ -1,6 +1,6 @@
 {
-    "name": "OguzTTS",
-    "rootNamespace": "OguzTTS",
+    "name": "PiperTTSHelper",
+    "rootNamespace": "PiperTTSHelper",
     "references": [
         "PiperTTS",
         "UMI.Runtime",

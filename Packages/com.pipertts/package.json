@@ -1,7 +1,7 @@
 {
-  "name": "com.oguztts",
+  "name": "com.pipertts",
   "version": "1.0.0",
-  "displayName": "Oguz TTS",
+  "displayName": "Piper TTS",
   "scopedRegistries": [
     {
       "name": "npm",

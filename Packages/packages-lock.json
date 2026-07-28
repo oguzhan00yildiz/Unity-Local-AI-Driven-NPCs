@@ -48,8 +48,8 @@
       "dependencies": {},
       "hash": "ba206bad1ca37892dadebc89dc9274135771f8c2"
     },
-    "com.oguztts": {
-      "version": "file:com.oguztts",
+    "com.pipertts": {
+      "version": "file:com.pipertts",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
