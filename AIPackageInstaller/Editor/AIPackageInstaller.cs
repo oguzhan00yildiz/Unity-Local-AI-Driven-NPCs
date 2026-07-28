@@ -63,30 +63,30 @@ public class AIPackageInstaller
         SessionState.SetBool("AIPackageInstaller.Done", false);
 
         InitUI();
-        PackageInstallerWindow.ShowWindow();
+        AISystemSetupWindow.ShowWindow();
 
         if (PatchManifest())
         {
             Debug.Log("<b>[AI Package Installer]</b> manifest.json updated → resolving packages (Unity will reload).");
-            PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.Completed);
+            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
             Client.Resolve();
             return;
         }
 
-        PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.Completed);
+        AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
         EnqueueAndInstallGitPackages(checkFirst: false);
     }
 
     private static void InitUI()
     {
-        List<PackageInstallerWindow.InstallStep> steps = new List<PackageInstallerWindow.InstallStep>
+        List<AISystemSetupWindow.InstallStep> steps = new List<AISystemSetupWindow.InstallStep>
         {
-            new PackageInstallerWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
-            new PackageInstallerWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git" },
-            new PackageInstallerWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
-            new PackageInstallerWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
+            new AISystemSetupWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
+            new AISystemSetupWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git" },
+            new AISystemSetupWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
+            new AISystemSetupWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
         };
-        PackageInstallerWindow.InitSteps(steps);
+        AISystemSetupWindow.InitPackageSteps(steps);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ public class AIPackageInstaller
     {
         if (SessionState.GetBool("AIPackageInstaller.Done", false))
         {
-            EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
+            EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
             return;
         }
 
@@ -106,15 +106,15 @@ public class AIPackageInstaller
         bool manifestChanged = PatchManifest();
         if (manifestChanged)
         {
-            PackageInstallerWindow.ShowWindow();
-            PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.InProgress);
+            AISystemSetupWindow.ShowWindow();
+            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.InProgress);
             Debug.Log("<b>[AI Package Installer]</b> manifest.json patched (npm ONNX registry added). " +
                       "Unity will reload — git packages will be installed afterwards automatically.");
             Client.Resolve();
             return;
         }
 
-        PackageInstallerWindow.UpdateStep("Scoped Registry & ONNX", PackageInstallerWindow.StepStatus.Completed);
+        AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
         Debug.Log("<b>[AI Package Installer]</b> npm packages already present. Checking git packages…");
         EnqueueAndInstallGitPackages(checkFirst: true);
     }
@@ -210,7 +210,7 @@ public class AIPackageInstaller
                 _gitQueue.Enqueue(GitPackages[i]);
                 _gitNames.Enqueue(names[i]);
             }
-            PackageInstallerWindow.ShowWindow();
+            AISystemSetupWindow.ShowWindow();
             InstallNext();
             return;
         }
@@ -248,13 +248,13 @@ public class AIPackageInstaller
             }
             else
             {
-                PackageInstallerWindow.UpdateStep(names[i], PackageInstallerWindow.StepStatus.Completed);
+                AISystemSetupWindow.UpdatePackageStep(names[i], AISystemSetupWindow.StepStatus.Completed);
             }
         }
 
         if (_gitQueue.Count > 0)
         {
-            PackageInstallerWindow.ShowWindow();
+            AISystemSetupWindow.ShowWindow();
             Debug.Log($"<b>[AI Package Installer]</b> Installing {_gitQueue.Count} missing package(s)…");
             InstallNext();
         }
@@ -262,8 +262,7 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
-            PackageInstallerWindow.CloseWindow();
-            EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
+            EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
         }
     }
 
@@ -273,15 +272,14 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
-            PackageInstallerWindow.CloseWindow();
-            EditorApplication.delayCall += ModelDownloader.AutoStartDownloads;
+            EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
             return;
         }
 
         string pkg = _gitQueue.Dequeue();
         _currentPkgName = _gitNames.Dequeue();
 
-        PackageInstallerWindow.UpdateStep(_currentPkgName, PackageInstallerWindow.StepStatus.InProgress);
+        AISystemSetupWindow.UpdatePackageStep(_currentPkgName, AISystemSetupWindow.StepStatus.InProgress);
 
         Debug.Log($"<b>[AI Package Installer]</b> Installing: {pkg}…");
         _addRequest = Client.Add(pkg);
@@ -296,12 +294,12 @@ public class AIPackageInstaller
         if (_addRequest.Status == StatusCode.Success)
         {
             Debug.Log($"<b>[AI Package Installer]</b> ✅ Installed: {_addRequest.Result.packageId}");
-            PackageInstallerWindow.UpdateStep(_currentPkgName, PackageInstallerWindow.StepStatus.Completed);
+            AISystemSetupWindow.UpdatePackageStep(_currentPkgName, AISystemSetupWindow.StepStatus.Completed);
         }
         else
         {
             Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed: {_addRequest.Error.message}");
-            PackageInstallerWindow.UpdateStep(_currentPkgName, PackageInstallerWindow.StepStatus.Failed, _addRequest.Error.message);
+            AISystemSetupWindow.UpdatePackageStep(_currentPkgName, AISystemSetupWindow.StepStatus.Failed, _addRequest.Error.message);
         }
 
         InstallNext();
