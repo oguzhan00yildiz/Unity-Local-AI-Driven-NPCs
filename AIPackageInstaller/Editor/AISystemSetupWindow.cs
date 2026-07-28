@@ -6,14 +6,18 @@ using System.Net;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Unified single-window setup flow for the AI Driven NPCs package.
-/// Phase 1 — Package Installation: shows step-by-step progress for npm registry + git packages.
-/// Phase 2 — Model Downloads:       shows per-file download bars once all packages are ready.
+/// Unified setup window for the AI Driven NPCs package.
+/// 
+/// Flow:
+///   1. On first import → show a consent dialog asking the user to confirm setup.
+///   2. If accepted → open this window and run Phase 1 (package installation).
+///   3. When all packages are installed → switch to Phase 2 (model file downloads)
+///      in the SAME window without closing it.
 /// </summary>
 public class AISystemSetupWindow : EditorWindow
 {
     // ─────────────────────────────────────────────────────────────────────────
-    // Shared types
+    // Public types
     // ─────────────────────────────────────────────────────────────────────────
     public enum StepStatus { Pending, InProgress, Completed, Failed }
 
@@ -30,10 +34,9 @@ public class AISystemSetupWindow : EditorWindow
         public string Group;
         public string DisplayName;
         public string Url;
-        public string DestRelPath;   // relative to StreamingAssets
+        public string DestRelPath;
         public int    SizeMB;
 
-        // Runtime
         public bool   IsDownloaded;
         public bool   IsDownloading;
         public float  Progress;
@@ -51,7 +54,6 @@ public class AISystemSetupWindow : EditorWindow
     // ─────────────────────────────────────────────────────────────────────────
     private static readonly List<ModelEntry> Models = new List<ModelEntry>
     {
-        // ── Whisper ──────────────────────────────────────────────────────────
         new ModelEntry
         {
             Group = "Whisper (Speech Recognition)",
@@ -60,8 +62,6 @@ public class AISystemSetupWindow : EditorWindow
             DestRelPath = "Whisper/ggml-tiny.bin",
             SizeMB = 74
         },
-
-        // ── Piper Phonemizer (required) ───────────────────────────────────────
         new ModelEntry
         {
             Group = "Piper TTS – Phonemizer (required)",
@@ -86,8 +86,6 @@ public class AISystemSetupWindow : EditorWindow
             DestRelPath = "PiperTTS/tokenizer.json",
             SizeMB = 1
         },
-
-        // ── Piper Voice – Amy ─────────────────────────────────────────────────
         new ModelEntry
         {
             Group = "Piper Voice – Amy (English Female)",
@@ -104,8 +102,6 @@ public class AISystemSetupWindow : EditorWindow
             DestRelPath = "PiperTTS/Amy/en_US-amy-low.onnx.json",
             SizeMB = 1
         },
-
-        // ── Piper Voice – Ibrahim ─────────────────────────────────────────────
         new ModelEntry
         {
             Group = "Piper Voice – Ibrahim (English Male)",
@@ -129,6 +125,7 @@ public class AISystemSetupWindow : EditorWindow
     // ─────────────────────────────────────────────────────────────────────────
     private enum WindowPhase { PackageInstall, ModelDownload }
 
+    // Only ever one instance — never use GetWindow more than once.
     private static AISystemSetupWindow _instance;
 
     // Phase 1
@@ -136,7 +133,7 @@ public class AISystemSetupWindow : EditorWindow
 
     // Phase 2
     private WindowPhase _phase = WindowPhase.PackageInstall;
-    private Vector2     _scroll;
+    private Vector2     _modelScroll;
     private int         _activeDownloads;
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -144,32 +141,33 @@ public class AISystemSetupWindow : EditorWindow
     // ─────────────────────────────────────────────────────────────────────────
 
     [MenuItem("Tools/AI Packages/AI System Setup")]
-    public static void ShowWindow()
-    {
-        Open(WindowPhase.PackageInstall);
-    }
+    public static void ShowWindow() => EnsureWindow(WindowPhase.PackageInstall);
 
     [MenuItem("Tools/AI Packages/Download Model Files")]
-    public static void ShowModelDownloaderWindow()
+    public static void ShowModelDownloaderWindow() => EnsureWindow(WindowPhase.ModelDownload);
+
+    /// <summary>
+    /// Shows a yes/no consent dialog on first package import.
+    /// Returns true if the user agreed to proceed.
+    /// </summary>
+    public static bool ShowConsentDialog()
     {
-        Open(WindowPhase.ModelDownload);
+        return EditorUtility.DisplayDialog(
+            "AI Driven NPCs — Setup Required",
+            "This package needs to install several Unity packages and download AI model files (~265 MB):\n\n" +
+            "  • LLMUnity (language model runtime)\n" +
+            "  • Piper TTS (text-to-speech)\n" +
+            "  • Whisper Unity (speech recognition)\n" +
+            "  • ONNX Runtime 0.4.4 (via NPM registry)\n\n" +
+            "A setup window will open to track progress.\n" +
+            "You can also run this later via Tools → AI Packages → AI System Setup.",
+            "Yes, Set Up Now",
+            "Skip for Now");
     }
 
-    private static AISystemSetupWindow Open(WindowPhase phase)
-    {
-        if (_instance == null)
-        {
-            _instance = GetWindow<AISystemSetupWindow>(false, "AI System Setup", true);
-            _instance.minSize = new Vector2(500, 440);
-        }
-        _instance._phase = phase;
-        if (phase == WindowPhase.ModelDownload)
-            _instance.RefreshModelStatus();
-        _instance.Focus();
-        return _instance;
-    }
-
-    // ── Package-install phase helpers ─────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Package-install phase helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     public static void InitPackageSteps(List<InstallStep> steps)
     {
@@ -183,7 +181,7 @@ public class AISystemSetupWindow : EditorWindow
         var step = Steps.Find(s => s.Name == name);
         if (step != null)
         {
-            step.Status      = status;
+            step.Status       = status;
             step.ErrorMessage = error;
         }
         else
@@ -193,26 +191,14 @@ public class AISystemSetupWindow : EditorWindow
         _instance?.Repaint();
     }
 
-    /// <summary>Switches window to the Model Download phase (called by AIPackageInstaller).</summary>
-    public static void TransitionToModelDownload()
-    {
-        if (_instance == null)
-            _instance = Open(WindowPhase.ModelDownload);
-        else
-        {
-            _instance._phase = WindowPhase.ModelDownload;
-            _instance.RefreshModelStatus();
-            _instance.Focus();
-            _instance.Repaint();
-        }
-    }
-
-    // ── Model-download phase helpers ──────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Model-download phase helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Called by AIPackageInstaller after all packages are installed.
-    /// Transitions the window to the model-download phase and starts downloading.
-    /// Does nothing if all models are already present.
+    /// Transitions the existing window to the Model Download phase and starts
+    /// downloading missing files. Called by AIPackageInstaller when packages are done.
+    /// If all models are already present, closes the window silently.
     /// </summary>
     public static void AutoStartDownloads()
     {
@@ -222,15 +208,43 @@ public class AISystemSetupWindow : EditorWindow
         if (!anyMissing)
         {
             Debug.Log("<b>[AI System Setup]</b> All model files already present. ✅");
-            // If window was open for packages only, no need to keep it around
             _instance?.Close();
             return;
         }
 
-        TransitionToModelDownload();
+        // Switch phase inside the already-open window (no new window!)
+        var win = EnsureWindow(WindowPhase.ModelDownload);
+        win.RefreshModelStatus();
 
         Debug.Log("<b>[AI System Setup]</b> Auto-starting download of missing model files…");
-        _instance?.DownloadAllModels();
+        win.DownloadAllModels();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the one setup window, creating it if needed. Never creates a second one.
+    /// </summary>
+    private static AISystemSetupWindow EnsureWindow(WindowPhase phase)
+    {
+        if (_instance == null)
+        {
+            // CreateInstance + ShowUtility keeps the window floating and prevents
+            // it from being merged with other dockable windows (no duplicate docking).
+            _instance = CreateInstance<AISystemSetupWindow>();
+            _instance.titleContent = new GUIContent("AI System Setup");
+            _instance.minSize      = new Vector2(500, 460);
+            _instance.ShowUtility();
+        }
+
+        _instance._phase = phase;
+        if (phase == WindowPhase.ModelDownload)
+            _instance.RefreshModelStatus();
+
+        _instance.Focus();
+        return _instance;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -259,7 +273,7 @@ public class AISystemSetupWindow : EditorWindow
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // OnGUI — dispatches to the active phase
+    // OnGUI
     // ─────────────────────────────────────────────────────────────────────────
 
     private void OnGUI()
@@ -273,7 +287,7 @@ public class AISystemSetupWindow : EditorWindow
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Shared header
+    // Header
     // ─────────────────────────────────────────────────────────────────────────
 
     private void DrawHeader()
@@ -286,73 +300,79 @@ public class AISystemSetupWindow : EditorWindow
             alignment = TextAnchor.MiddleCenter
         };
         EditorGUILayout.LabelField("AI Driven NPCs — System Setup", titleStyle);
-        EditorGUILayout.Space(2);
+        EditorGUILayout.Space(3);
 
         // Phase breadcrumbs
         using (new EditorGUILayout.HorizontalScope())
         {
-            GUIStyle crumb = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleCenter };
-            GUIStyle crumbActive = new GUIStyle(crumb) { fontStyle = FontStyle.Bold };
+            GUIStyle normal = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleCenter };
+            GUIStyle active = new GUIStyle(normal)
+            {
+                fontStyle = FontStyle.Bold,
+                normal    = { textColor = new Color(0.3f, 0.8f, 0.4f) }
+            };
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.LabelField("① Package Install",
-                _phase == WindowPhase.PackageInstall ? crumbActive : crumb,
-                GUILayout.Width(130));
-            EditorGUILayout.LabelField("→", crumb, GUILayout.Width(20));
+                _phase == WindowPhase.PackageInstall ? active : normal, GUILayout.Width(130));
+            EditorGUILayout.LabelField("→", normal, GUILayout.Width(20));
             EditorGUILayout.LabelField("② Model Download",
-                _phase == WindowPhase.ModelDownload ? crumbActive : crumb,
-                GUILayout.Width(130));
+                _phase == WindowPhase.ModelDownload ? active : normal, GUILayout.Width(130));
             GUILayout.FlexibleSpace();
         }
 
-        EditorGUILayout.Space(8);
-        DrawHorizontalLine();
+        EditorGUILayout.Space(6);
+        DrawLine();
         EditorGUILayout.Space(6);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Phase 1 — Package Installation
+    // Phase 1 — Package Install
     // ─────────────────────────────────────────────────────────────────────────
 
     private void DrawPackagePhase()
     {
         EditorGUILayout.LabelField(
-            "Installing required Unity packages. Please wait — Unity may reload the domain between steps.",
+            "Installing required Unity packages. Unity may reload between steps — the window will restore automatically.",
             EditorStyles.wordWrappedMiniLabel);
         EditorGUILayout.Space(8);
 
+        // Overall progress bar
         int completed = 0;
         foreach (var s in Steps)
             if (s.Status == StepStatus.Completed) completed++;
 
         float progress = Steps.Count > 0 ? (float)completed / Steps.Count : 0f;
-        Rect progressRect = EditorGUILayout.GetControlRect(false, 22);
-        EditorGUI.ProgressBar(progressRect, progress, $"Packages  {completed} / {Steps.Count}");
+        Rect pRect = EditorGUILayout.GetControlRect(false, 22);
+        EditorGUI.ProgressBar(pRect, progress, $"Packages  {completed} / {Steps.Count}");
         EditorGUILayout.Space(10);
 
         foreach (var step in Steps)
-            DrawPackageStepRow(step);
+            DrawPackageRow(step);
 
-        EditorGUILayout.Space(8);
+        GUILayout.FlexibleSpace();
+        DrawLine();
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Keep Unity open. This window will automatically advance to model downloads when done.",
+            EditorStyles.centeredGreyMiniLabel);
+        EditorGUILayout.Space(6);
     }
 
-    private void DrawPackageStepRow(InstallStep step)
+    private void DrawPackageRow(InstallStep step)
     {
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
-            string icon = step.Status switch
+            // Icon
+            string icon;
+            switch (step.Status)
             {
-                StepStatus.InProgress => "⏳",
-                StepStatus.Completed  => "✅",
-                StepStatus.Failed     => "❌",
-                _                     => "⚪"
-            };
-
-            // Animate dots for in-progress
-            if (step.Status == StepStatus.InProgress)
-            {
-                int dots = (int)(EditorApplication.timeSinceStartup * 3) % 4;
-                icon += new string('.', dots);
+                case StepStatus.InProgress:
+                    int dots = (int)(EditorApplication.timeSinceStartup * 3) % 4;
+                    icon = "⏳" + new string('.', dots);
+                    break;
+                case StepStatus.Completed: icon = "✅"; break;
+                case StepStatus.Failed:    icon = "❌"; break;
+                default:                   icon = "⚪"; break;
             }
 
             EditorGUILayout.LabelField(icon, GUILayout.Width(42));
@@ -382,49 +402,51 @@ public class AISystemSetupWindow : EditorWindow
     {
         EditorGUILayout.HelpBox(
             "LLM models are managed by LLMUnity directly.\n" +
-            "Open the LLM component in your scene → click 'Download Model' in the Inspector.",
+            "Open the LLM component in your scene → Inspector → 'Download Model'.",
             MessageType.Info);
-        EditorGUILayout.Space(6);
+        EditorGUILayout.Space(4);
 
         bool anyMissing = Models.Exists(m => !m.IsDownloaded && !m.IsDownloading);
         using (new EditorGUI.DisabledGroupScope(_activeDownloads > 0 || !anyMissing))
         {
-            string btnLabel = _activeDownloads > 0
+            string label = _activeDownloads > 0
                 ? $"Downloading… ({_activeDownloads} active)"
                 : "⬇  Download All Missing Models";
-            if (GUILayout.Button(btnLabel, GUILayout.Height(32)))
+            if (GUILayout.Button(label, GUILayout.Height(32)))
                 DownloadAllModels();
         }
         EditorGUILayout.Space(6);
 
-        _scroll = EditorGUILayout.BeginScrollView(_scroll);
+        _modelScroll = EditorGUILayout.BeginScrollView(_modelScroll);
 
-        string currentGroup = null;
-        foreach (var model in Models)
+        string curGroup = null;
+        foreach (var m in Models)
         {
-            if (model.Group != currentGroup)
+            if (m.Group != curGroup)
             {
-                currentGroup = model.Group;
+                curGroup = m.Group;
                 EditorGUILayout.Space(4);
-                EditorGUILayout.LabelField(currentGroup, EditorStyles.boldLabel);
+                EditorGUILayout.LabelField(curGroup, EditorStyles.boldLabel);
             }
-            DrawModelRow(model);
+            DrawModelRow(m);
         }
 
         EditorGUILayout.EndScrollView();
 
-        EditorGUILayout.Space(6);
+        GUILayout.FlexibleSpace();
+        DrawLine();
+        EditorGUILayout.Space(4);
 
         using (new EditorGUILayout.HorizontalScope())
         {
             if (GUILayout.Button("Refresh Status"))
                 RefreshModelStatus();
-
-            if (GUILayout.Button("← Back to Package Log"))
+            if (GUILayout.Button("← Package Log"))
                 _phase = WindowPhase.PackageInstall;
         }
+        EditorGUILayout.Space(6);
 
-        // Keep UI updating while downloads are active
+        // Keep repainting while downloading
         if (_activeDownloads > 0)
             EditorApplication.update += Repaint;
         else
@@ -437,7 +459,6 @@ public class AISystemSetupWindow : EditorWindow
         {
             string icon = model.IsDownloading ? "⬇" : (model.IsDownloaded ? "✅" : "○");
             EditorGUILayout.LabelField(icon, GUILayout.Width(22));
-
             EditorGUILayout.LabelField($"{model.DisplayName}  ({model.SizeMB} MB)", GUILayout.MinWidth(200));
 
             if (model.IsDownloading)
@@ -492,20 +513,18 @@ public class AISystemSetupWindow : EditorWindow
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            string tempPath = model.FullPath + ".tmp";
+            string temp = model.FullPath + ".tmp";
 
             using (var client = new WebClient())
             {
                 client.DownloadProgressChanged += (_, e) =>
-                {
                     model.Progress = e.ProgressPercentage / 100f;
-                };
-                await client.DownloadFileTaskAsync(new System.Uri(model.Url), tempPath);
+
+                await client.DownloadFileTaskAsync(new System.Uri(model.Url), temp);
             }
 
-            if (File.Exists(model.FullPath))
-                File.Delete(model.FullPath);
-            File.Move(tempPath, model.FullPath);
+            if (File.Exists(model.FullPath)) File.Delete(model.FullPath);
+            File.Move(temp, model.FullPath);
 
             model.IsDownloaded = true;
             Debug.Log($"<b>[AI System Setup]</b> ✅ Downloaded: {model.DestRelPath}");
@@ -515,8 +534,8 @@ public class AISystemSetupWindow : EditorWindow
             model.Error = "Failed";
             Debug.LogError($"<b>[AI System Setup]</b> ❌ {model.DisplayName}: {ex.Message}");
 
-            string tempPath = model.FullPath + ".tmp";
-            if (File.Exists(tempPath)) File.Delete(tempPath);
+            string temp = model.FullPath + ".tmp";
+            if (File.Exists(temp)) File.Delete(temp);
         }
         finally
         {
@@ -533,12 +552,12 @@ public class AISystemSetupWindow : EditorWindow
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
+    // Utility
     // ─────────────────────────────────────────────────────────────────────────
 
-    private static void DrawHorizontalLine()
+    private static void DrawLine()
     {
-        Rect rect = EditorGUILayout.GetControlRect(false, 1);
-        EditorGUI.DrawRect(rect, new Color(0.4f, 0.4f, 0.4f, 0.6f));
+        Rect r = EditorGUILayout.GetControlRect(false, 1);
+        EditorGUI.DrawRect(r, new Color(0.4f, 0.4f, 0.4f, 0.5f));
     }
 }

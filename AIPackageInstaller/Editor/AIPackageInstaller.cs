@@ -61,6 +61,7 @@ public class AIPackageInstaller
     {
         Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
         SessionState.SetBool("AIPackageInstaller.Done", false);
+        SessionState.SetBool("AIPackageInstaller.ConsentGiven", true); // user explicitly triggered — skip dialog
 
         InitUI();
         AISystemSetupWindow.ShowWindow();
@@ -94,10 +95,24 @@ public class AIPackageInstaller
     // ─────────────────────────────────────────────────────────────────────────
     private static void Initialize()
     {
+        // Already fully installed this session — just trigger model check.
         if (SessionState.GetBool("AIPackageInstaller.Done", false))
         {
             EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
             return;
+        }
+
+        // User already answered the consent dialog this session — skip it.
+        bool consentGiven = SessionState.GetBool("AIPackageInstaller.ConsentGiven", false);
+        if (!consentGiven)
+        {
+            bool proceed = AISystemSetupWindow.ShowConsentDialog();
+            if (!proceed)
+            {
+                Debug.Log("<b>[AI Package Installer]</b> Setup skipped by user. Run Tools → AI Packages → AI System Setup to install later.");
+                return;
+            }
+            SessionState.SetBool("AIPackageInstaller.ConsentGiven", true);
         }
 
         Debug.Log("<b>[AI Package Installer]</b> Initializing…");
@@ -118,6 +133,7 @@ public class AIPackageInstaller
         Debug.Log("<b>[AI Package Installer]</b> npm packages already present. Checking git packages…");
         EnqueueAndInstallGitPackages(checkFirst: true);
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     /// <summary>
