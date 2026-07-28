@@ -1,12 +1,12 @@
-<Solution>
+﻿<Solution>
   <Project Path="Unity.Cinemachine.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="com.whisper.unity.csproj" />
   <Project Path="Unity.Cinemachine.csproj" />
-  <Project Path="PiperTTSHelper.csproj" />
   <Project Path="com.whisper.unity.tests.csproj" />
   <Project Path="Unity.StarterAssets.Editor.csproj" />
   <Project Path="Unity.StarterAssets.csproj" />
+  <Project Path="PiperTTSHelper.csproj" />
   <Project Path="com.whisper.unity.editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="URPWizard.csproj" />
