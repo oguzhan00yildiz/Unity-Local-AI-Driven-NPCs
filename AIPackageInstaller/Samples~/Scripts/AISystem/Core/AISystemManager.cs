@@ -57,11 +57,7 @@ namespace AISystem
                 voiceOutput.OnSpeechFinished += HandleSpeechFinished;
             }
 
-            if (chatUI != null)
-            {
-                chatUI.OnSendMessage += HandleUserMessage;
-                chatUI.OnCloseChat   += CloseChat;
-            }
+            // Voice-only — ChatUIController is a status display, no text input events to wire.
         }
 
         void OnDestroy()
@@ -71,11 +67,6 @@ namespace AISystem
             {
                 voiceOutput.OnSpeechStarted  -= HandleSpeechStarted;
                 voiceOutput.OnSpeechFinished -= HandleSpeechFinished;
-            }
-            if (chatUI != null)
-            {
-                chatUI.OnSendMessage -= HandleUserMessage;
-                chatUI.OnCloseChat   -= CloseChat;
             }
 
             if (Instance == this) Instance = null;
