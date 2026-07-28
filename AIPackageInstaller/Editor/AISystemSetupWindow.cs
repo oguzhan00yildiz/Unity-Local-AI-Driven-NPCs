@@ -572,8 +572,8 @@ public class AISystemSetupWindow : EditorWindow
     }
 
     /// <summary>
-    /// After all models are downloaded, find and configure the LLM component
-    /// in the LLM.prefab asset and in any open scenes to use the downloaded model.
+    /// After all models are downloaded, find ALL prefab assets and open scenes
+    /// that contain an LLM component and call SetModel() on each one.
     /// Uses reflection to avoid hard dependency on LLMUnity types (which may
     /// still be installing when this script first compiles).
     /// </summary>
@@ -588,18 +588,37 @@ public class AISystemSetupWindow : EditorWindow
 
         try
         {
-            // Ensure the model is registered with LLMUnity's model manager
+            // Step 1: Register the model file with LLMUnity's LLMManager
             string registeredName = RegisterWithLLMManager(llmModel.FullPath, llmModel.DisplayName);
 
-            // ── 1. Update LLM.prefab asset ──────────────────────────────────
-            string prefabAssetPath = "Assets/Prefabs/LLM.prefab";
-            GameObject llmPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabAssetPath);
-            if (llmPrefab != null)
+            // Step 2: Search ALL prefab assets in the project for LLM components
+            // (not just a hardcoded path — prefab may be anywhere, especially in
+            //  testing projects where samples are imported to a different location)
+            var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
+            int prefabsUpdated = 0;
+
+            if (llmType != null)
             {
-                SetLLMModelOnGameObject(llmPrefab, registeredName, "LLM.prefab");
+                var prefabGuids = AssetDatabase.FindAssets("t:Prefab");
+                foreach (string guid in prefabGuids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (prefab == null) continue;
+
+                    // Check for LLM component via reflection
+                    var comp = prefab.GetComponent(llmType);
+                    if (comp != null)
+                    {
+                        CallSetModelOnComponent(comp, llmType, registeredName);
+                        EditorUtility.SetDirty(prefab);
+                        prefabsUpdated++;
+                        Debug.Log($"<b>[AI System Setup]</b> ✅ Set model '{registeredName}' on LLM in: {path}");
+                    }
+                }
             }
 
-            // ── 2. Update any LLM components in currently open scenes ───────
+            // Step 3: Update any LLM components in currently open scenes
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
             {
                 var scene = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
@@ -612,11 +631,52 @@ public class AISystemSetupWindow : EditorWindow
             }
 
             AssetDatabase.SaveAssets();
+
+            if (prefabsUpdated > 0)
+            {
+                Debug.Log($"<b>[AI System Setup]</b> ✅ Auto-configured {prefabsUpdated} LLM prefab(s) with model '{registeredName}'");
+            }
+            else
+            {
+                // No LLM prefab found yet — model is registered in LLMManager.
+                // It will auto-select when the user imports samples or instantiates
+                // a prefab that references this model name.
+                Debug.Log($"<b>[AI System Setup]</b> ✅ LLM model '{registeredName}' registered. " +
+                    "No LLM prefab found yet — it will be selected automatically when samples are imported.");
+            }
         }
         catch (System.Exception ex)
         {
             Debug.LogWarning($"<b>[AI System Setup]</b> LLM auto-configuration skipped " +
                 $"(LLMUnity may still be installing): {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Calls SetModel() on an LLM component via reflection.
+    /// </summary>
+    private static void CallSetModelOnComponent(object component, System.Type llmType, string modelName)
+    {
+        try
+        {
+            var modelProp = llmType.GetProperty("model",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (modelProp == null) return;
+
+            string currentModel = modelProp.GetValue(component) as string ?? "";
+            if (currentModel == modelName) return;
+
+            var setModelMethod = llmType.GetMethod("SetModel",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (setModelMethod != null)
+            {
+                setModelMethod.Invoke(component, new object[] { modelName });
+            }
+        }
+        catch
+        {
+            // Silently skip — will be handled by the caller's catch
+            throw;
         }
     }
 
@@ -657,50 +717,6 @@ public class AISystemSetupWindow : EditorWindow
     }
 
     /// <summary>
-    /// Calls LLM.SetModel(modelName) via reflection on a specific GameObject.
-    /// This properly reads GGUF metadata, sets context size, and initializes the model
-    /// — unlike directly setting _model via SerializedProperty.
-    /// </summary>
-    private static void SetLLMModelOnGameObject(GameObject go, string modelName, string contextName)
-    {
-        var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
-        if (llmType == null) return;
-
-        var llmComponent = go.GetComponent(llmType);
-        if (llmComponent == null) return;
-
-        // Read current model via the "model" property (getter)
-        var modelProp = llmType.GetProperty("model",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (modelProp == null) return;
-
-        string currentModel = modelProp.GetValue(llmComponent) as string ?? "";
-        if (currentModel == modelName) return;
-
-        // Call SetModel() which handles GGUF metadata reading, context size, etc.
-        var setModelMethod = llmType.GetMethod("SetModel",
-            BindingFlags.Public | BindingFlags.Instance);
-        if (setModelMethod != null)
-        {
-            setModelMethod.Invoke(llmComponent, new object[] { modelName });
-            EditorUtility.SetDirty(llmComponent);
-            Debug.Log($"<b>[AI System Setup]</b> ✅ {contextName} model set to: {modelName}");
-        }
-        else
-        {
-            // Fallback: set via SerializedProperty (less ideal but works if SetModel unavailable)
-            SerializedObject so = new SerializedObject(llmComponent);
-            SerializedProperty sp = so.FindProperty("_model");
-            if (sp != null)
-            {
-                sp.stringValue = modelName;
-                so.ApplyModifiedProperties();
-                Debug.Log($"<b>[AI System Setup]</b> ✅ {contextName} model set to: {modelName} (fallback)");
-            }
-        }
-    }
-
-    /// <summary>
     /// Recursively searches for LLM components on a GameObject and its children,
     /// calling SetModel() via reflection to properly initialize each one.
     /// </summary>
@@ -709,33 +725,10 @@ public class AISystemSetupWindow : EditorWindow
         var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
         if (llmType == null) return;
 
-        var setModelMethod = llmType.GetMethod("SetModel",
-            BindingFlags.Public | BindingFlags.Instance);
-        var modelProp = llmType.GetProperty("model",
-            BindingFlags.Public | BindingFlags.Instance);
-
         var components = go.GetComponentsInChildren(llmType, true);
         foreach (var comp in components)
         {
-            string currentModel = modelProp?.GetValue(comp) as string ?? "";
-            if (currentModel == modelName) continue;
-
-            if (setModelMethod != null)
-            {
-                setModelMethod.Invoke(comp, new object[] { modelName });
-                EditorUtility.SetDirty(comp);
-            }
-            else
-            {
-                SerializedObject so = new SerializedObject(comp);
-                SerializedProperty sp = so.FindProperty("_model");
-                if (sp != null && sp.stringValue != modelName)
-                {
-                    sp.stringValue = modelName;
-                    so.ApplyModifiedProperties();
-                }
-            }
-
+            CallSetModelOnComponent(comp, llmType, modelName);
             Debug.Log($"<b>[AI System Setup]</b> ✅ LLM '{comp.name}' in scene set to: {modelName}");
         }
     }
