@@ -1,0 +1,19 @@
+{
+  "name": "com.pipertts",
+  "version": "1.0.0",
+  "displayName": "Piper TTS",
+  "scopedRegistries": [
+    {
+      "name": "npm",
+      "url": "https://registry.npmjs.com",
+      "scopes": [
+        "com.github.asus4"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.github.asus4.onnxruntime": "0.4.2",
+    "com.github.asus4.onnxruntime.unity": "0.4.2",
+    "com.unity.modules.ui": "1.0.0"
+  }
+}

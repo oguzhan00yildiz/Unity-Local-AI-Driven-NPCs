@@ -23,23 +23,14 @@
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       },
-      "hash": "3d478a6b17054f4578de0846091cbee3f9b7449f"
+      "hash": "180b57d2f7f6a33f7729171cf3e32469a1be6451"
     },
     "com.github.asus4.onnxruntime": {
       "version": "0.4.4",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
-      "url": "https://registry.npmjs.com"
-    },
-    "com.github.asus4.onnxruntime-extensions": {
-      "version": "0.4.4",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.github.asus4.onnxruntime": "0.4.4"
-      },
-      "url": "https://registry.npmjs.com"
+      "url": "https://registry.npmjs.org"
     },
     "com.github.asus4.onnxruntime.unity": {
       "version": "0.4.4",
@@ -48,7 +39,7 @@
       "dependencies": {
         "com.github.asus4.onnxruntime": "0.4.4"
       },
-      "url": "https://registry.npmjs.com"
+      "url": "https://registry.npmjs.org"
     },
     "com.mopsicus.umi": {
       "version": "https://github.com/mopsicus/umi.git",
@@ -57,8 +48,8 @@
       "dependencies": {},
       "hash": "ba206bad1ca37892dadebc89dc9274135771f8c2"
     },
-    "com.oguztts": {
-      "version": "file:com.oguztts",
+    "com.pipertts": {
+      "version": "file:com.pipertts",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
