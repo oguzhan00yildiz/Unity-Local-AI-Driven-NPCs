@@ -38,7 +38,7 @@ Installation takes **2–5 minutes** depending on connection speed.
 
 ## Step 2 — Model Files (automatic)
 
-After all packages finish installing, the **AI Model Downloader** window opens automatically and begins downloading all missing model files (~265 MB total).
+After all packages finish installing, the **AI Model Downloader** window opens automatically and begins downloading all missing model files (~765 MB total).
 
 | File | Size | Purpose |
 |------|------|---------|
@@ -48,12 +48,12 @@ After all packages finish installing, the **AI Model Downloader** window opens a
 | `PiperTTS/tokenizer.json` | ~1 MB | TTS tokenizer |
 | `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice |
 | `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice |
+| `Qwen3.5-0.8B-Q4_K_M.gguf` | ~500 MB | LLM language model (Qwen3.5 0.8B) |
 
 All files save to `Assets/StreamingAssets/` automatically.  
 If the window doesn't open, trigger it manually: **Tools → AI Packages → Download Model Files**
 
-> **LLM model** is handled separately by LLMUnity.  
-> Select the **LLM** GameObject in your scene → click **Download Model** in the Inspector.
+> The LLM model is automatically registered with LLMUnity's model manager and configured on the `LLM.prefab` — no manual setup needed.
 
 ---
 
