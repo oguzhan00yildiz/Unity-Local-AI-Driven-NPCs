@@ -29,9 +29,7 @@ namespace AISystem
                         if (agent.llmAgent != null)
                         {
                             Undo.RecordObject(agent.llmAgent, "Apply Personality Preset (LLM)");
-                            agent.llmAgent.prompt = preset.systemPrompt;
-                            agent.llmAgent.playerName = "Player";
-                            agent.llmAgent.AIName = preset.npcName;
+                            agent.llmAgent.systemPrompt = preset.systemPrompt;
                             EditorUtility.SetDirty(agent.llmAgent);
                         }
                         
