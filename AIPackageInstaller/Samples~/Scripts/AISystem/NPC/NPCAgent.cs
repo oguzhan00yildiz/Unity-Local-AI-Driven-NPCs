@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -30,6 +30,10 @@ namespace AISystem
         [Header("Interaction")]
         public float   interactionRange = 3f;
         public KeyCode interactionKey   = KeyCode.E;
+        
+        [Header("Voice")]
+        [Tooltip("Name of the PiperTTS model (e.g., en_US-amy-low)")]
+        public string voiceModelName = "en_US-amy-low";
 
         [Header("Interaction Prompt")]
         [Tooltip("TextMesh (3D Text) shown above NPC. Auto-found in children if left null.")]
