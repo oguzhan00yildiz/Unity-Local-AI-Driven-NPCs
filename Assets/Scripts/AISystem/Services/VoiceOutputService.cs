@@ -6,11 +6,14 @@ using PiperTTS;
 namespace AISystem
 {
     /// <summary>
-    /// PiperTTS wrapper  splits text into sentences and speaks them in sequence.
+    /// PiperTTS wrapper — splits text into sentences and speaks them in sequence.
     /// </summary>
     public class VoiceOutputService : MonoBehaviour
     {
-        //  Inspector 
+        // ── Inspector ─────────────────────────────────────────────────────────────
+        [Header("PiperTTS")]
+        public PiperTTS.PiperTTS piperTts;
+
         [Header("Settings")]
         public bool voiceEnabled = true;
         public bool initOnStart  = true;
@@ -18,103 +21,78 @@ namespace AISystem
         [Header("Optional status label")]
         public UnityEngine.UI.Text statusLabel;
 
-        //  Events 
+        // ── Events ────────────────────────────────────────────────────────────────
         public event Action OnSpeechStarted;
         public event Action OnSpeechFinished;
 
-        //  Internal 
-        private Dictionary<string, PiperTTS.PiperTTS> _piperInstances = new Dictionary<string, PiperTTS.PiperTTS>();
-        private PiperTTS.PiperTTS _activePiper;
-        
+        // ── Internal ──────────────────────────────────────────────────────────────
         private Queue<string> _sentenceQueue = new Queue<string>();
         private bool   _isSpeaking;
         private string _pendingSpeech;
 
         public bool IsSpeaking => _isSpeaking;
 
-        //  Lifecycle 
+        // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-        // Awake runs before OnEnable.
         void Awake()
         {
+            if (piperTts == null)
+                piperTts = GetComponentInChildren<PiperTTS.PiperTTS>();
         }
 
         void Start()
         {
+            if (!voiceEnabled) return;
+            if (initOnStart && piperTts != null && piperTts.status == ModelStatus.Init)
+                piperTts.InitModel();
+
             SetStatus("Idle");
         }
 
         void OnEnable()
         {
+            if (piperTts != null)
+                piperTts.OnStatusChanged += OnPiperStatusChanged;
         }
 
         void OnDisable()
         {
-            foreach (var piper in _piperInstances.Values)
-            {
-                piper.OnStatusChanged -= OnPiperStatusChanged;
-            }
+            if (piperTts != null)
+                piperTts.OnStatusChanged -= OnPiperStatusChanged;
         }
 
         void OnDestroy()
         {
-            foreach (var piper in _piperInstances.Values)
-            {
-                piper.OnStatusChanged -= OnPiperStatusChanged;
-            }
+            if (piperTts != null)
+                piperTts.OnStatusChanged -= OnPiperStatusChanged;
         }
 
-        private PiperTTS.PiperTTS GetOrCreatePiper(string voiceName)
-        {
-            if (string.IsNullOrEmpty(voiceName)) voiceName = "en_US-amy-low";
-            
-            if (_piperInstances.TryGetValue(voiceName, out var existing))
-            {
-                return existing;
-            }
+        // ── Public API ────────────────────────────────────────────────────────────
 
-            // Create new PiperTTS instance
-            GameObject go = new GameObject($"PiperTTS_{voiceName}");
-            go.transform.SetParent(transform);
-            
-            var newPiper = go.AddComponent<PiperTTS.PiperTTS>();
-            newPiper.piperModelPath = System.IO.Path.Combine(Application.streamingAssetsPath, "PiperTTS", voiceName, $"{voiceName}.onnx");
-            newPiper.piperConfigPath = System.IO.Path.Combine(Application.streamingAssetsPath, "PiperTTS", voiceName, $"{voiceName}.onnx.json");
-            
-            // Phonemizer uses the shared model
-            newPiper.phonemizerModelPath = System.IO.Path.Combine(Application.streamingAssetsPath, "PiperTTS", "model.onnx");
-            newPiper.phonemizerConfigPath = System.IO.Path.Combine(Application.streamingAssetsPath, "PiperTTS", "model.onnx.json"); // fallback
-            newPiper.phonemizerDictPath = System.IO.Path.Combine(Application.streamingAssetsPath, "PiperTTS", "phoneme_dict.json");
-            
-            newPiper.OnStatusChanged += OnPiperStatusChanged;
-            _piperInstances[voiceName] = newPiper;
-            
-            if (initOnStart)
-            {
-                newPiper.InitModel();
-            }
-
-            return newPiper;
-        }
-
-        //  Public API 
-
-        public void Speak(string text, string voiceModelName = "en_US-amy-low")
+        public void Speak(string text, string voiceModelName = null)
         {
             if (!voiceEnabled || string.IsNullOrWhiteSpace(text)) return;
 
-            _activePiper = GetOrCreatePiper(voiceModelName);
+            if (piperTts == null)
+            {
+                piperTts = GetComponentInChildren<PiperTTS.PiperTTS>();
+                if (piperTts == null)
+                {
+                    SetStatus("No PiperTTS");
+                    return;
+                }
+            }
 
-            // Model not ready yet  queue and initialize
-            if (_activePiper.status == PiperTTS.ModelStatus.Init || _activePiper.status == PiperTTS.ModelStatus.Loading)
+            // Model not ready yet — queue and initialize
+            if (piperTts.status == ModelStatus.Init || piperTts.status == ModelStatus.Loading)
             {
                 _pendingSpeech = text;
-                if (_activePiper.status == PiperTTS.ModelStatus.Init)
-                    _activePiper.InitModel();
+                if (piperTts.status == ModelStatus.Init)
+                    piperTts.InitModel();
                 return;
             }
 
-            if (_activePiper.status == PiperTTS.ModelStatus.Error)
+            if (piperTts.status == ModelStatus.Error)
             {
                 SetStatus("Voice error");
                 return;
@@ -130,7 +108,7 @@ namespace AISystem
             if (_sentenceQueue.Count > 0)
             {
                 var firstSentence = _sentenceQueue.Dequeue();
-                _activePiper.Prompt(firstSentence);
+                piperTts.Prompt(firstSentence);
             }
         }
 
@@ -140,36 +118,36 @@ namespace AISystem
             _isSpeaking    = false;
             _pendingSpeech = string.Empty;
 
-            if (_activePiper != null)
+            if (piperTts != null)
             {
-                var audio = _activePiper.GetComponent<AudioSource>();
+                var audio = piperTts.GetComponent<AudioSource>();
                 audio?.Stop();
             }
             SetStatus("Idle");
         }
 
-        //  Internal 
+        // ── Internal ──────────────────────────────────────────────────────────────
 
-        private void OnPiperStatusChanged(PiperTTS.ModelStatus status)
+        private void OnPiperStatusChanged(ModelStatus status)
         {
             if (!voiceEnabled) return;
 
             switch (status)
             {
-                case PiperTTS.ModelStatus.Loading:
+                case ModelStatus.Loading:
                     SetStatus("Loading voice model...");
                     break;
 
-                case PiperTTS.ModelStatus.Ready:
+                case ModelStatus.Ready:
                     if (_isSpeaking)
                     {
                         _isSpeaking = false;
 
                         // Speak next sentence in queue if available
-                        if (_sentenceQueue.Count > 0 && _activePiper != null)
+                        if (_sentenceQueue.Count > 0)
                         {
                             var nextSentence = _sentenceQueue.Dequeue();
-                            _activePiper.Prompt(nextSentence);
+                            piperTts.Prompt(nextSentence);
                             _isSpeaking = true;
                         }
                         else
@@ -188,12 +166,11 @@ namespace AISystem
                     {
                         var txt = _pendingSpeech;
                         _pendingSpeech = string.Empty;
-                        // Use the last active model name
-                        Speak(txt, _activePiper?.gameObject.name.Replace("PiperTTS_", ""));
+                        Speak(txt);
                     }
                     break;
 
-                case PiperTTS.ModelStatus.Generate:
+                case ModelStatus.Generate:
                     if (!_isSpeaking)
                     {
                         _isSpeaking = true;
@@ -202,7 +179,7 @@ namespace AISystem
                     SetStatus("Speaking...");
                     break;
 
-                case PiperTTS.ModelStatus.Error:
+                case ModelStatus.Error:
                     _isSpeaking = false;
                     _sentenceQueue.Clear();
                     SetStatus("Voice model error");

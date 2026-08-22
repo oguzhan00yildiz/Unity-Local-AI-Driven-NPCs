@@ -19,7 +19,10 @@ namespace AISystem
     [RequireComponent(typeof(Collider))]
     public class NPCAgent : MonoBehaviour
     {
-        //  Inspector 
+        [Header("Personality Template")]
+        [Tooltip("Optional preset template for personality and voice settings.")]
+        public NPCPersonalityPreset personalityPreset;
+
         [Header("NPC Identity")]
         public string npcName = "NPC";
 
@@ -53,6 +56,11 @@ namespace AISystem
             // Fall back to same-object LLMAgent if not assigned in Inspector
             if (llmAgent == null)
                 llmAgent = GetComponent<LLMAgent>();
+
+            if (personalityPreset != null)
+            {
+                ApplyPreset(personalityPreset);
+            }
 
             // Sync trigger collider radius to interactionRange
             var col = GetComponent<Collider>();
@@ -157,7 +165,22 @@ namespace AISystem
                 promptText.text = $"Press {interactionKey} to interact";
         }
 
-        //  Internal 
+        /// <summary>Applies personality template settings to this NPC and its LLMAgent.</summary>
+        public void ApplyPreset(NPCPersonalityPreset preset)
+        {
+            if (preset == null) return;
+            personalityPreset = preset;
+            npcName = preset.npcName;
+            voiceModelName = preset.voiceModelName;
+
+            if (llmAgent == null)
+                llmAgent = GetComponent<LLMAgent>();
+
+            if (llmAgent != null)
+            {
+                llmAgent.systemPrompt = preset.systemPrompt;
+            }
+        }
 
         private void TriggerChat()
         {

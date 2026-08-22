@@ -6,42 +6,63 @@ namespace AISystem
     [CustomEditor(typeof(NPCAgent))]
     public class NPCAgentEditor : Editor
     {
-        private NPCPersonalityPreset preset;
-
         public override void OnInspectorGUI()
         {
             NPCAgent agent = (NPCAgent)target;
 
-            GUILayout.Space(10);
-            GUILayout.Label("Personality Templates", EditorStyles.boldLabel);
+            GUILayout.Space(5);
+            GUILayout.Label("Personality Template", EditorStyles.boldLabel);
             
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                preset = (NPCPersonalityPreset)EditorGUILayout.ObjectField("Load Preset", preset, typeof(NPCPersonalityPreset), false);
-                if (GUILayout.Button("Apply", GUILayout.Width(60)))
+                EditorGUI.BeginChangeCheck();
+                var newPreset = (NPCPersonalityPreset)EditorGUILayout.ObjectField("Template", agent.personalityPreset, typeof(NPCPersonalityPreset), false);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    if (preset != null)
+                    if (newPreset != null)
                     {
-                        Undo.RecordObject(agent, "Apply Personality Preset");
-                        agent.npcName = preset.npcName;
-                        agent.voiceModelName = preset.voiceModelName;
-
+                        Undo.RecordObject(agent, "Apply Personality Template");
                         if (agent.llmAgent != null)
-                        {
-                            Undo.RecordObject(agent.llmAgent, "Apply Personality Preset (LLM)");
-                            agent.llmAgent.systemPrompt = preset.systemPrompt;
-                            EditorUtility.SetDirty(agent.llmAgent);
-                        }
+                            Undo.RecordObject(agent.llmAgent, "Apply Personality Template (LLM)");
+
+                        agent.ApplyPreset(newPreset);
                         
                         EditorUtility.SetDirty(agent);
-                        Debug.Log($"[NPCAgentEditor] Applied preset '{preset.name}' to {agent.gameObject.name}");
+                        if (agent.llmAgent != null)
+                            EditorUtility.SetDirty(agent.llmAgent);
+
+                        Debug.Log($"[NPCAgentEditor] ✅ Applied template '{newPreset.name}' to {agent.gameObject.name}");
+                    }
+                    else
+                    {
+                        Undo.RecordObject(agent, "Clear Personality Template");
+                        agent.personalityPreset = null;
+                        EditorUtility.SetDirty(agent);
+                    }
+                }
+
+                if (agent.personalityPreset != null)
+                {
+                    if (GUILayout.Button("Re-apply Current Template", GUILayout.Height(22)))
+                    {
+                        Undo.RecordObject(agent, "Apply Personality Template");
+                        if (agent.llmAgent != null)
+                            Undo.RecordObject(agent.llmAgent, "Apply Personality Template (LLM)");
+
+                        agent.ApplyPreset(agent.personalityPreset);
+
+                        EditorUtility.SetDirty(agent);
+                        if (agent.llmAgent != null)
+                            EditorUtility.SetDirty(agent.llmAgent);
+
+                        Debug.Log($"[NPCAgentEditor] ✅ Re-applied template '{agent.personalityPreset.name}' to {agent.gameObject.name}");
                     }
                 }
             }
 
             GUILayout.Space(10);
             
-            // Draw default inspector
+            // Draw default inspector for remaining fields
             DrawDefaultInspector();
         }
     }
