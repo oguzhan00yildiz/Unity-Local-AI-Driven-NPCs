@@ -520,34 +520,47 @@ public class AISystemSetupWindow : EditorWindow
         }
     }
 
+    private static bool _isDownloadingAll;
+
     private async void DownloadAllModels()
     {
-        foreach (var m in Models)
+        if (_isDownloadingAll) return;
+        _isDownloadingAll = true;
+
+        try
         {
-            if (!m.IsDownloaded && !m.IsDownloading)
+            foreach (var m in Models)
             {
-                await DownloadModel(m);
+                m.Refresh();
+                if (!m.IsDownloaded && !m.IsDownloading)
+                {
+                    await DownloadModel(m);
+                }
             }
+        }
+        finally
+        {
+            _isDownloadingAll = false;
         }
     }
 
     private async Task DownloadModel(ModelEntry model)
     {
+        if (model.IsDownloading) return;
+        model.Refresh();
+        if (model.IsDownloaded) return;
+
         model.IsDownloading = true;
         model.Error         = null;
         model.Progress      = 0f;
         _activeDownloads++;
         Repaint();
 
-        string temp = model.FullPath + ".tmp";
-
         try
         {
             string dir = Path.GetDirectoryName(model.FullPath);
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
-
-            if (File.Exists(temp)) File.Delete(temp);
 
             bool downloadedWithCurl = false;
 
@@ -557,7 +570,7 @@ public class AISystemSetupWindow : EditorWindow
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "curl.exe",
-                    Arguments = $"-L --fail --retry 3 -s -S -o \"{temp}\" \"{model.Url}\"",
+                    Arguments = $"-L --fail --retry 3 -s -S -o \"{model.FullPath}\" \"{model.Url}\"",
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     RedirectStandardError = true
@@ -570,16 +583,22 @@ public class AISystemSetupWindow : EditorWindow
                         long targetBytes = (long)model.SizeMB * 1024 * 1024;
                         while (!process.HasExited)
                         {
-                            await Task.Delay(100);
-                            if (File.Exists(temp) && targetBytes > 0)
+                            await Task.Delay(150);
+                            if (File.Exists(model.FullPath) && targetBytes > 0)
                             {
-                                long curBytes = new FileInfo(temp).Length;
-                                model.Progress = Mathf.Clamp01((float)curBytes / targetBytes);
-                                Repaint();
+                                try
+                                {
+                                    long curBytes = new FileInfo(model.FullPath).Length;
+                                    model.Progress = Mathf.Clamp01((float)curBytes / targetBytes);
+                                    Repaint();
+                                }
+                                catch { }
                             }
                         }
 
-                        if (process.ExitCode == 0 && File.Exists(temp))
+                        await Task.Run(() => process.WaitForExit());
+
+                        if (process.ExitCode == 0 && File.Exists(model.FullPath))
                         {
                             downloadedWithCurl = true;
                         }
@@ -594,7 +613,6 @@ public class AISystemSetupWindow : EditorWindow
             // 2. Fallback to WebClient if curl wasn't available
             if (!downloadedWithCurl)
             {
-                if (File.Exists(temp)) File.Delete(temp);
                 using (var client = new WebClient())
                 {
                     client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -603,19 +621,16 @@ public class AISystemSetupWindow : EditorWindow
                         model.Progress = e.ProgressPercentage / 100f;
                         Repaint();
                     };
-                    await client.DownloadFileTaskAsync(new System.Uri(model.Url), temp);
+                    await client.DownloadFileTaskAsync(new System.Uri(model.Url), model.FullPath);
                 }
             }
 
             // 3. Verify downloaded file size
-            var fi = new FileInfo(temp);
+            var fi = new FileInfo(model.FullPath);
             if (model.SizeMB > 1 && fi.Length < (long)(model.SizeMB * 0.5f * 1024 * 1024))
             {
                 throw new System.Exception($"Downloaded file size ({fi.Length / (1024 * 1024)}MB) was smaller than expected ({model.SizeMB}MB).");
             }
-
-            if (File.Exists(model.FullPath)) File.Delete(model.FullPath);
-            File.Move(temp, model.FullPath);
 
             model.IsDownloaded = true;
             model.Progress = 1f;
@@ -632,7 +647,14 @@ public class AISystemSetupWindow : EditorWindow
             model.Error = "Failed";
             Debug.LogError($"<b>[AI System Setup]</b> ❌ {model.DisplayName}: {ex.Message}");
 
-            if (File.Exists(temp)) File.Delete(temp);
+            try
+            {
+                if (File.Exists(model.FullPath) && !model.IsDownloaded)
+                {
+                    File.Delete(model.FullPath);
+                }
+            }
+            catch { }
         }
         finally
         {

@@ -135,14 +135,13 @@ public class VoiceBrowserWindow : EditorWindow
 
     private async Task DownloadVoice(VoiceEntry voice)
     {
+        if (voice.IsDownloading || voice.IsDownloaded) return;
         voice.IsDownloading = true;
         voice.Progress = 0f;
         activeDownloads++;
 
         string onnxPath = voice.GetOnnxPath();
         string jsonPath = voice.GetJsonPath();
-        string tempOnnx = onnxPath + ".tmp";
-        string tempJson = jsonPath + ".tmp";
 
         try
         {
@@ -152,9 +151,6 @@ public class VoiceBrowserWindow : EditorWindow
                 Directory.CreateDirectory(dir);
             }
 
-            if (File.Exists(tempOnnx)) File.Delete(tempOnnx);
-            if (File.Exists(tempJson)) File.Delete(tempJson);
-
             bool downloadedWithCurl = false;
 
             // 1. Try native high-speed curl first
@@ -163,7 +159,7 @@ public class VoiceBrowserWindow : EditorWindow
                 var psiOnnx = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "curl.exe",
-                    Arguments = $"-L --fail --retry 3 -s -S -o \"{tempOnnx}\" \"{voice.UrlOnnx}\"",
+                    Arguments = $"-L --fail --retry 3 -s -S -o \"{onnxPath}\" \"{voice.UrlOnnx}\"",
                     CreateNoWindow = true,
                     UseShellExecute = false,
                     RedirectStandardError = true
@@ -176,22 +172,28 @@ public class VoiceBrowserWindow : EditorWindow
                         long targetBytes = 60L * 1024 * 1024; // ~60MB estimate
                         while (!process.HasExited)
                         {
-                            await Task.Delay(100);
-                            if (File.Exists(tempOnnx) && targetBytes > 0)
+                            await Task.Delay(150);
+                            if (File.Exists(onnxPath) && targetBytes > 0)
                             {
-                                long curBytes = new FileInfo(tempOnnx).Length;
-                                voice.Progress = Mathf.Clamp01((float)curBytes / targetBytes) * 0.9f;
-                                Repaint();
+                                try
+                                {
+                                    long curBytes = new FileInfo(onnxPath).Length;
+                                    voice.Progress = Mathf.Clamp01((float)curBytes / targetBytes) * 0.9f;
+                                    Repaint();
+                                }
+                                catch { }
                             }
                         }
 
-                        if (process.ExitCode == 0 && File.Exists(tempOnnx))
+                        await Task.Run(() => process.WaitForExit());
+
+                        if (process.ExitCode == 0 && File.Exists(onnxPath))
                         {
                             // Download JSON with curl
                             var psiJson = new System.Diagnostics.ProcessStartInfo
                             {
                                 FileName = "curl.exe",
-                                Arguments = $"-L --fail --retry 3 -s -S -o \"{tempJson}\" \"{voice.UrlJson}\"",
+                                Arguments = $"-L --fail --retry 3 -s -S -o \"{jsonPath}\" \"{voice.UrlJson}\"",
                                 CreateNoWindow = true,
                                 UseShellExecute = false
                             };
@@ -200,7 +202,7 @@ public class VoiceBrowserWindow : EditorWindow
                                 if (pJson != null) await Task.Run(() => pJson.WaitForExit());
                             }
 
-                            if (File.Exists(tempJson)) downloadedWithCurl = true;
+                            if (File.Exists(jsonPath)) downloadedWithCurl = true;
                         }
                     }
                 }
@@ -221,24 +223,22 @@ public class VoiceBrowserWindow : EditorWindow
                         voice.Progress = (e.ProgressPercentage / 100f) * 0.9f;
                         Repaint();
                     };
-                    await client.DownloadFileTaskAsync(new System.Uri(voice.UrlOnnx), tempOnnx);
-                    await client.DownloadFileTaskAsync(new System.Uri(voice.UrlJson), tempJson);
+                    await client.DownloadFileTaskAsync(new System.Uri(voice.UrlOnnx), onnxPath);
+                    await client.DownloadFileTaskAsync(new System.Uri(voice.UrlJson), jsonPath);
                 }
             }
-
-            if (File.Exists(onnxPath)) File.Delete(onnxPath);
-            if (File.Exists(jsonPath)) File.Delete(jsonPath);
-
-            File.Move(tempOnnx, onnxPath);
-            File.Move(tempJson, jsonPath);
 
             voice.Progress = 1f;
         }
         catch (System.Exception ex)
         {
             Debug.LogError($"[VoiceBrowser] Failed to download {voice.Name}: {ex.Message}");
-            if (File.Exists(tempOnnx)) File.Delete(tempOnnx);
-            if (File.Exists(tempJson)) File.Delete(tempJson);
+            try
+            {
+                if (File.Exists(onnxPath) && !voice.IsDownloaded) File.Delete(onnxPath);
+                if (File.Exists(jsonPath) && !voice.IsDownloaded) File.Delete(jsonPath);
+            }
+            catch { }
         }
         finally
         {
