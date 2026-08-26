@@ -59,9 +59,9 @@ If the window doesn't open, trigger it manually: **Tools → AI Packages → Dow
 
 ## Step 3 — Import the Ready Scene (Optional)
 
-1. **Window → Package Manager** → select **AI NPC Package** → **Samples** tab
-2. Click **Import** next to **NPC AI Setup**
-3. Open `Assets/Samples/AI NPC Package/…/Scenes/ReadyScene.unity`
+1. **Window → Package Manager** → select **AI Driven NPCs System** → **Samples** tab
+2. Click **Import** next to **AI Driven NPCs System**
+3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOTest.unity`
 4. Press **Play**
 
 ---
@@ -105,6 +105,6 @@ If automatic installation fails entirely, add this to `Packages/manifest.json` b
 
 ---
 
-**Version**: 2.2.0  
-**Last Updated**: February 24, 2026
+**Version**: 2.4.2  
+**Last Updated**: 2026
 
