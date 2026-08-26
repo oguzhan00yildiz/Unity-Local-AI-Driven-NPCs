@@ -520,23 +520,6 @@ public class AISystemSetupWindow : EditorWindow
         }
     }
 
-    private static readonly HttpClient _httpClient = CreateHttpClient();
-
-    private static HttpClient CreateHttpClient()
-    {
-        var handler = new HttpClientHandler
-        {
-            AllowAutoRedirect = true,
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-        };
-        var client = new HttpClient(handler)
-        {
-            Timeout = System.TimeSpan.FromMinutes(15)
-        };
-        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        return client;
-    }
-
     private async void DownloadAllModels()
     {
         foreach (var m in Models)
@@ -608,33 +591,19 @@ public class AISystemSetupWindow : EditorWindow
                 downloadedWithCurl = false;
             }
 
-            // 2. Fallback to HttpClient streaming if curl wasn't used
+            // 2. Fallback to WebClient if curl wasn't available
             if (!downloadedWithCurl)
             {
                 if (File.Exists(temp)) File.Delete(temp);
-                using (var response = await _httpClient.GetAsync(model.Url, HttpCompletionOption.ResponseHeadersRead))
+                using (var client = new WebClient())
                 {
-                    response.EnsureSuccessStatusCode();
-
-                    long? totalBytes = response.Content.Headers.ContentLength;
-                    using (var contentStream = await response.Content.ReadAsStreamAsync())
-                    using (var fileStream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 131072, true))
+                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                    client.DownloadProgressChanged += (_, e) =>
                     {
-                        var buffer = new byte[131072];
-                        long totalRead = 0;
-                        int bytesRead;
-
-                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                        {
-                            await fileStream.WriteAsync(buffer, 0, bytesRead);
-                            totalRead += bytesRead;
-
-                            if (totalBytes.HasValue && totalBytes.Value > 0)
-                            {
-                                model.Progress = (float)totalRead / totalBytes.Value;
-                            }
-                        }
-                    }
+                        model.Progress = e.ProgressPercentage / 100f;
+                        Repaint();
+                    };
+                    await client.DownloadFileTaskAsync(new System.Uri(model.Url), temp);
                 }
             }
 

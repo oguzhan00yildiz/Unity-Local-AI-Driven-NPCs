@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Net;
-using System.Net.Http;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -63,23 +62,6 @@ public class VoiceBrowserWindow : EditorWindow
                 return fi.Length > 1024 * 1024; // must be at least 1MB
             }
         }
-    }
-
-    private static readonly HttpClient _httpClient = CreateHttpClient();
-
-    private static HttpClient CreateHttpClient()
-    {
-        var handler = new HttpClientHandler
-        {
-            AllowAutoRedirect = true,
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-        };
-        var client = new HttpClient(handler)
-        {
-            Timeout = System.TimeSpan.FromMinutes(15)
-        };
-        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        return client;
     }
 
     private List<VoiceEntry> voices = new List<VoiceEntry>
@@ -228,43 +210,19 @@ public class VoiceBrowserWindow : EditorWindow
                 downloadedWithCurl = false;
             }
 
-            // 2. Fallback to HttpClient streaming
+            // 2. Fallback to WebClient if curl wasn't used
             if (!downloadedWithCurl)
             {
-                using (var response = await _httpClient.GetAsync(voice.UrlOnnx, HttpCompletionOption.ResponseHeadersRead))
+                using (var client = new WebClient())
                 {
-                    response.EnsureSuccessStatusCode();
-                    long? totalBytes = response.Content.Headers.ContentLength;
-
-                    using (var contentStream = await response.Content.ReadAsStreamAsync())
-                    using (var fileStream = new FileStream(tempOnnx, FileMode.Create, FileAccess.Write, FileShare.None, 131072, true))
+                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                    client.DownloadProgressChanged += (s, e) =>
                     {
-                        var buffer = new byte[131072];
-                        long totalRead = 0;
-                        int bytesRead;
-
-                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                        {
-                            await fileStream.WriteAsync(buffer, 0, bytesRead);
-                            totalRead += bytesRead;
-
-                            if (totalBytes.HasValue && totalBytes.Value > 0)
-                            {
-                                voice.Progress = ((float)totalRead / totalBytes.Value) * 0.9f;
-                            }
-                        }
-                    }
-                }
-
-                // Download JSON config
-                using (var response = await _httpClient.GetAsync(voice.UrlJson, HttpCompletionOption.ResponseHeadersRead))
-                {
-                    response.EnsureSuccessStatusCode();
-                    using (var contentStream = await response.Content.ReadAsStreamAsync())
-                    using (var fileStream = new FileStream(tempJson, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
-                    {
-                        await contentStream.CopyToAsync(fileStream);
-                    }
+                        voice.Progress = (e.ProgressPercentage / 100f) * 0.9f;
+                        Repaint();
+                    };
+                    await client.DownloadFileTaskAsync(new System.Uri(voice.UrlOnnx), tempOnnx);
+                    await client.DownloadFileTaskAsync(new System.Uri(voice.UrlJson), tempJson);
                 }
             }
 
