@@ -73,6 +73,9 @@ namespace AISystem
         {
             if (!voiceEnabled || string.IsNullOrWhiteSpace(text)) return;
 
+            string cleanedText = CleanTextForSpeech(text);
+            if (string.IsNullOrWhiteSpace(cleanedText)) return;
+
             if (piperTts == null)
             {
                 piperTts = GetComponentInChildren<PiperTTS.PiperTTS>();
@@ -86,7 +89,7 @@ namespace AISystem
             // Model not ready yet — queue and initialize
             if (piperTts.status == ModelStatus.Init || piperTts.status == ModelStatus.Loading)
             {
-                _pendingSpeech = text;
+                _pendingSpeech = cleanedText;
                 if (piperTts.status == ModelStatus.Init)
                     piperTts.InitModel();
                 return;
@@ -100,7 +103,7 @@ namespace AISystem
 
             // Clear previous speech and enqueue new sentences
             _sentenceQueue.Clear();
-            var sentences = SplitIntoSentences(text);
+            var sentences = SplitIntoSentences(cleanedText);
             foreach (var s in sentences)
                 if (!string.IsNullOrWhiteSpace(s))
                     _sentenceQueue.Enqueue(s.Trim());
@@ -124,6 +127,28 @@ namespace AISystem
                 audio?.Stop();
             }
             SetStatus("Idle");
+        }
+
+        /// <summary>
+        /// Cleans Markdown, asterisks/actions (*smiles*), contractions (I'm -> I am), and unusual symbols for TTS.
+        /// </summary>
+        public static string CleanTextForSpeech(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+
+            // Remove text inside asterisks (roleplay cues like *laughs*, *sighs*)
+            string result = System.Text.RegularExpressions.Regex.Replace(text, @"\*.*?\*", "");
+
+            // Remove markdown symbols (#, _, ~, `, [, ])
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"[#_`~\[\]]", "");
+
+            // Expand contractions (I'm -> I am, don't -> do not)
+            result = PiperTTS.PiperTTS.NormalizeContractions(result);
+
+            // Normalize multiple whitespace to single space
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\s+", " ").Trim();
+
+            return result;
         }
 
         // ── Internal ──────────────────────────────────────────────────────────────
@@ -199,18 +224,24 @@ namespace AISystem
                 current.Append(c);
 
                 bool isSentenceEnd = (c == '.' || c == '!' || c == '?');
-                bool hasSpaceAfter  = i + 1 < text.Length && text[i + 1] == ' ';
+                bool hasSpaceAfter  = i + 1 < text.Length && (text[i + 1] == ' ' || text[i + 1] == '\n');
 
                 if (isSentenceEnd && hasSpaceAfter)
                 {
-                    result.Add(current.ToString());
+                    string sentence = current.ToString().Trim();
+                    if (!string.IsNullOrEmpty(sentence))
+                        result.Add(sentence);
                     current.Clear();
-                    i++; // skip the trailing space
+                    i++; // skip the whitespace
                 }
             }
 
             if (current.Length > 0)
-                result.Add(current.ToString());
+            {
+                string sentence = current.ToString().Trim();
+                if (!string.IsNullOrEmpty(sentence))
+                    result.Add(sentence);
+            }
 
             return result;
         }

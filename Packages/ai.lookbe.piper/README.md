@@ -1,0 +1,141 @@
+# piper-unity
+
+A Fast, Local Neural Text-to-Speech System: Piper in Unity for Multi-Platform.
+
+## Overview
+
+**piper-unity** is a high-performance, on-device text-to-speech (TTS) integration for Unity. This version is a specialized fork/port of the [Piper](https://github.com/rhasspy/piper) project, optimized for real-time applications and game development.
+
+### ⚖️ Why this version?
+Unlike the original Piper implementation which relies on `espeak-ng` (GPL Licensed), this repository has been rewritten to be **commercial-friendly** and **performant**:
+- **Permissive Licensing**: Removed all GPL-licensed components. 
+- **Open Phonemizer**: Replaced `espeak-ng` with a permissive-license phonemizer backend.
+- **ONNX Runtime**: Replaced Unity Sentis with [onnxruntime-unity](https://github.com/asus4/onnxruntime-unity) for faster inference speeds and superior platform stability.
+
+---
+
+## Features
+
+* ✅ **Permissive Stack**: No GPL dependencies—suitable for commercial Unity projects.
+* ✅ **High Performance**: Real-time synthesis powered by ONNX Runtime.
+* ✅ **Multi-platform**: Native support for Windows, macOS, and Android.
+* ✅ **Fully Offline**: All processing happens on-device; no internet connection required.
+* ✅ **Lightweight**: Optimized neural models perfect for mobile deployment.
+
+---
+
+## Language Support
+
+> [!IMPORTANT]  
+> **Current Version Support:** The current implementation of the Open Phonemizer backend supports **English only**. 
+> 
+> While the Piper neural engine is capable of many languages, the phoneme conversion layer in this repository is currently optimized for English (`en-us` / `en-gb`). Support for additional languages is planned for future updates as more permissive phoneme dictionaries are integrated.
+
+---
+
+## Requirements
+
+* **Unity**: `6000.0.58f2` (Unity 6) or higher.
+* **Inference Engine**: [onnxruntime-unity](https://github.com/asus4/onnxruntime-unity) (v2.2.1+).
+* **Phonemizer Resources**: Open Phonemizer ONNX weights and dictionaries.
+
+---
+
+## Architecture
+
+### 1. Open Phonemizer
+The text-to-phoneme conversion is handled by a permissive-license implementation. By utilizing a dedicated ONNX-based tokenizer and phoneme dictionary, we eliminate the legal complexities of `espeak-ng` while maintaining high accuracy for Piper's neural models.
+
+### 2. ONNX Runtime Inference
+By using **ONNX Runtime**, this integration provides a highly optimized C++ backend for each platform, ensuring that voice synthesis does not bottleneck the Unity main thread.
+
+---
+
+## Getting Started
+
+### 1. Installation
+Open your project's `Packages/manifest.json` and update it to include the scoped registry and the Git dependencies.
+
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "npm",
+      "url": "https://registry.npmjs.com",
+      "scopes": [
+        "com.github.asus4"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.github.asus4.onnxruntime": "0.4.2",
+    "com.github.asus4.onnxruntime.unity": "0.4.2",
+    "ai.lookbe.piper": "https://github.com/lookbe/piper-no-espeak-unity.git",
+
+    ... other dependencies
+  }
+}
+```
+
+### 2. Required Model Assets
+To run the system, you need two sets of models: the **Phonemizer** (to convert text to phoneme IDs) and the **Piper Voice** (to synthesize audio).
+
+#### A. Phonemizer Assets
+Download from [lookbe/open-phonemizer-onnx](https://huggingface.co/lookbe/open-phonemizer-onnx/tree/main):
+* `model.onnx`
+* `tokenizer.json`
+* `phoneme_dict.json`
+
+#### B. Piper Voice Assets
+Choose a voice from the official [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main):
+1. Select your language and voice (e.g., `en/en_US/amy/low/`).
+2. Download **both** the `.onnx` file and the `.onnx.json` file.
+
+---
+
+## Testing
+
+1.  **Import Samples:** Go to the Package Manager, select **Piper TTS Unity**, and import the **BasicPiper** sample.
+2.  **Configure Paths:**
+    * Select the `PiperTTS` object in the Hierarchy.
+    * In the Inspector, locate the **Piper Model Path**, **Piper Config Path**, **Phonemizer Model Path**, **Phonemizer Config Path**, **Phonemizer Dict Path** fields.
+    * **Important:** Paste the **absolute path** (e.g., `C:\Models\model.onnx`) for both files.
+3.  **Run:** Press Play.
+
+> **Note:** You can extend the component script to use `Application.streamingAssetsPath` if you wish to bundle models with your build, but the core component requires absolute paths for the initial backend load.
+---
+
+## Platform Support
+
+| Platform | Status | Runtime Backend | License |
+| :--- | :--- | :--- | :--- |
+| **Windows** | ✅ | ONNX (DirectML/CPU) | Permissive |
+| **macOS** | ✅ | ONNX (CoreML/CPU) | Permissive |
+| **Android** | ✅ | ONNX (NNAPI/CPU) | Permissive |
+
+---
+
+## Links
+* [Open Phonemizer ONNX Models (Hugging Face)](https://huggingface.co/lookbe/open-phonemizer-onnx)
+* [Piper Official](https://github.com/rhasspy/piper)
+* [Piper Voices (Hugging Face)](https://huggingface.co/rhasspy/piper-voices)
+* [onnxruntime-unity Repository](https://github.com/asus4/onnxruntime-unity)
+
+---
+
+## Credits 
+This library contains code originally developed by [skykim](https://github.com/skykim/piper-unity), which has been significantly modified and expanded.
+
+---
+
+## License
+The integration code and phonemizer logic are provided under permissive licenses (MIT/Apache 2.0). Individual voice models and phonemizer weights are subject to the licenses provided on their respective repositories.
+
+---
+
+## ☕ Support the Developer
+
+If this helps you, consider supporting me:
+
+[<img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" width="200">](https://www.buymeacoffee.com/lookbe)
