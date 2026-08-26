@@ -4,7 +4,6 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -58,7 +57,6 @@ public class AISystemSetupWindow : EditorWindow
             }
 
             var fi = new FileInfo(FullPath);
-            // Verify file isn't empty or truncated (must be at least 50% of expected SizeMB)
             if (fi.Length == 0 || (SizeMB > 1 && fi.Length < (long)(SizeMB * 0.5f * 1024 * 1024)))
             {
                 IsDownloaded = false;
@@ -568,32 +566,79 @@ public class AISystemSetupWindow : EditorWindow
 
             if (File.Exists(temp)) File.Delete(temp);
 
-            using (var response = await _httpClient.GetAsync(model.Url, HttpCompletionOption.ResponseHeadersRead))
+            bool downloadedWithCurl = false;
+
+            // 1. Try native high-speed curl first (bypasses Mono single-thread TLS)
+            try
             {
-                response.EnsureSuccessStatusCode();
-
-                long? totalBytes = response.Content.Headers.ContentLength;
-                using (var contentStream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                var psi = new System.Diagnostics.ProcessStartInfo
                 {
-                    var buffer = new byte[81920];
-                    long totalRead = 0;
-                    int bytesRead;
+                    FileName = "curl.exe",
+                    Arguments = $"-L --fail --retry 3 -s -S -o \"{temp}\" \"{model.Url}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardError = true
+                };
 
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                using (var process = System.Diagnostics.Process.Start(psi))
+                {
+                    if (process != null)
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead);
-                        totalRead += bytesRead;
-
-                        if (totalBytes.HasValue && totalBytes.Value > 0)
+                        long targetBytes = (long)model.SizeMB * 1024 * 1024;
+                        while (!process.HasExited)
                         {
-                            model.Progress = (float)totalRead / totalBytes.Value;
+                            await Task.Delay(100);
+                            if (File.Exists(temp) && targetBytes > 0)
+                            {
+                                long curBytes = new FileInfo(temp).Length;
+                                model.Progress = Mathf.Clamp01((float)curBytes / targetBytes);
+                                Repaint();
+                            }
+                        }
+
+                        if (process.ExitCode == 0 && File.Exists(temp))
+                        {
+                            downloadedWithCurl = true;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+                downloadedWithCurl = false;
+            }
+
+            // 2. Fallback to HttpClient streaming if curl wasn't used
+            if (!downloadedWithCurl)
+            {
+                if (File.Exists(temp)) File.Delete(temp);
+                using (var response = await _httpClient.GetAsync(model.Url, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    response.EnsureSuccessStatusCode();
+
+                    long? totalBytes = response.Content.Headers.ContentLength;
+                    using (var contentStream = await response.Content.ReadAsStreamAsync())
+                    using (var fileStream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 131072, true))
+                    {
+                        var buffer = new byte[131072];
+                        long totalRead = 0;
+                        int bytesRead;
+
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            await fileStream.WriteAsync(buffer, 0, bytesRead);
+                            totalRead += bytesRead;
+
+                            if (totalBytes.HasValue && totalBytes.Value > 0)
+                            {
+                                model.Progress = (float)totalRead / totalBytes.Value;
+                            }
                         }
                     }
                 }
             }
 
-            // Verify file size
+            // 3. Verify downloaded file size
             var fi = new FileInfo(temp);
             if (model.SizeMB > 1 && fi.Length < (long)(model.SizeMB * 0.5f * 1024 * 1024))
             {
@@ -606,8 +651,6 @@ public class AISystemSetupWindow : EditorWindow
             model.IsDownloaded = true;
             model.Progress = 1f;
 
-            // Register LLM (.gguf) models with LLMUnity's model manager (via reflection
-            // to avoid hard dependency — LLMUnity package may still be installing)
             if (Path.GetExtension(model.FullPath).ToLower() == ".gguf")
             {
                 RegisterWithLLMManager(model.FullPath, model.DisplayName);

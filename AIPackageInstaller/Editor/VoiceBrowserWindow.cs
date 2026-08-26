@@ -170,40 +170,101 @@ public class VoiceBrowserWindow : EditorWindow
                 Directory.CreateDirectory(dir);
             }
 
-            // Download ONNX model (90% of progress bar)
-            using (var response = await _httpClient.GetAsync(voice.UrlOnnx, HttpCompletionOption.ResponseHeadersRead))
+            if (File.Exists(tempOnnx)) File.Delete(tempOnnx);
+            if (File.Exists(tempJson)) File.Delete(tempJson);
+
+            bool downloadedWithCurl = false;
+
+            // 1. Try native high-speed curl first
+            try
             {
-                response.EnsureSuccessStatusCode();
-                long? totalBytes = response.Content.Headers.ContentLength;
-
-                using (var contentStream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(tempOnnx, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                var psiOnnx = new System.Diagnostics.ProcessStartInfo
                 {
-                    var buffer = new byte[81920];
-                    long totalRead = 0;
-                    int bytesRead;
+                    FileName = "curl.exe",
+                    Arguments = $"-L --fail --retry 3 -s -S -o \"{tempOnnx}\" \"{voice.UrlOnnx}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardError = true
+                };
 
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                using (var process = System.Diagnostics.Process.Start(psiOnnx))
+                {
+                    if (process != null)
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead);
-                        totalRead += bytesRead;
-
-                        if (totalBytes.HasValue && totalBytes.Value > 0)
+                        long targetBytes = 60L * 1024 * 1024; // ~60MB estimate
+                        while (!process.HasExited)
                         {
-                            voice.Progress = ((float)totalRead / totalBytes.Value) * 0.9f;
+                            await Task.Delay(100);
+                            if (File.Exists(tempOnnx) && targetBytes > 0)
+                            {
+                                long curBytes = new FileInfo(tempOnnx).Length;
+                                voice.Progress = Mathf.Clamp01((float)curBytes / targetBytes) * 0.9f;
+                                Repaint();
+                            }
+                        }
+
+                        if (process.ExitCode == 0 && File.Exists(tempOnnx))
+                        {
+                            // Download JSON with curl
+                            var psiJson = new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = "curl.exe",
+                                Arguments = $"-L --fail --retry 3 -s -S -o \"{tempJson}\" \"{voice.UrlJson}\"",
+                                CreateNoWindow = true,
+                                UseShellExecute = false
+                            };
+                            using (var pJson = System.Diagnostics.Process.Start(psiJson))
+                            {
+                                if (pJson != null) await Task.Run(() => pJson.WaitForExit());
+                            }
+
+                            if (File.Exists(tempJson)) downloadedWithCurl = true;
                         }
                     }
                 }
             }
-
-            // Download JSON config (remaining 10%)
-            using (var response = await _httpClient.GetAsync(voice.UrlJson, HttpCompletionOption.ResponseHeadersRead))
+            catch (System.Exception)
             {
-                response.EnsureSuccessStatusCode();
-                using (var contentStream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(tempJson, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                downloadedWithCurl = false;
+            }
+
+            // 2. Fallback to HttpClient streaming
+            if (!downloadedWithCurl)
+            {
+                using (var response = await _httpClient.GetAsync(voice.UrlOnnx, HttpCompletionOption.ResponseHeadersRead))
                 {
-                    await contentStream.CopyToAsync(fileStream);
+                    response.EnsureSuccessStatusCode();
+                    long? totalBytes = response.Content.Headers.ContentLength;
+
+                    using (var contentStream = await response.Content.ReadAsStreamAsync())
+                    using (var fileStream = new FileStream(tempOnnx, FileMode.Create, FileAccess.Write, FileShare.None, 131072, true))
+                    {
+                        var buffer = new byte[131072];
+                        long totalRead = 0;
+                        int bytesRead;
+
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            await fileStream.WriteAsync(buffer, 0, bytesRead);
+                            totalRead += bytesRead;
+
+                            if (totalBytes.HasValue && totalBytes.Value > 0)
+                            {
+                                voice.Progress = ((float)totalRead / totalBytes.Value) * 0.9f;
+                            }
+                        }
+                    }
+                }
+
+                // Download JSON config
+                using (var response = await _httpClient.GetAsync(voice.UrlJson, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    response.EnsureSuccessStatusCode();
+                    using (var contentStream = await response.Content.ReadAsStreamAsync())
+                    using (var fileStream = new FileStream(tempJson, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                    {
+                        await contentStream.CopyToAsync(fileStream);
+                    }
                 }
             }
 
