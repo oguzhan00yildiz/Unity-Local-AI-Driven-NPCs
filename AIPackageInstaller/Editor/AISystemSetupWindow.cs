@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -48,7 +49,25 @@ public class AISystemSetupWindow : EditorWindow
             Application.streamingAssetsPath,
             DestRelPath.Replace('/', Path.DirectorySeparatorChar));
 
-        public void Refresh() => IsDownloaded = File.Exists(FullPath);
+        public void Refresh()
+        {
+            if (!File.Exists(FullPath))
+            {
+                IsDownloaded = false;
+                return;
+            }
+
+            var fi = new FileInfo(FullPath);
+            // Verify file isn't empty or truncated (must be at least 50% of expected SizeMB)
+            if (fi.Length == 0 || (SizeMB > 1 && fi.Length < (long)(SizeMB * 0.5f * 1024 * 1024)))
+            {
+                IsDownloaded = false;
+            }
+            else
+            {
+                IsDownloaded = true;
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -503,11 +522,32 @@ public class AISystemSetupWindow : EditorWindow
         }
     }
 
-    private void DownloadAllModels()
+    private static readonly HttpClient _httpClient = CreateHttpClient();
+
+    private static HttpClient CreateHttpClient()
+    {
+        var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+        };
+        var client = new HttpClient(handler)
+        {
+            Timeout = System.TimeSpan.FromMinutes(15)
+        };
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        return client;
+    }
+
+    private async void DownloadAllModels()
     {
         foreach (var m in Models)
+        {
             if (!m.IsDownloaded && !m.IsDownloading)
-                _ = DownloadModel(m);
+            {
+                await DownloadModel(m);
+            }
+        }
     }
 
     private async Task DownloadModel(ModelEntry model)
@@ -518,26 +558,53 @@ public class AISystemSetupWindow : EditorWindow
         _activeDownloads++;
         Repaint();
 
+        string temp = model.FullPath + ".tmp";
+
         try
         {
             string dir = Path.GetDirectoryName(model.FullPath);
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            string temp = model.FullPath + ".tmp";
+            if (File.Exists(temp)) File.Delete(temp);
 
-            using (var client = new WebClient())
+            using (var response = await _httpClient.GetAsync(model.Url, HttpCompletionOption.ResponseHeadersRead))
             {
-                client.DownloadProgressChanged += (_, e) =>
-                    model.Progress = e.ProgressPercentage / 100f;
+                response.EnsureSuccessStatusCode();
 
-                await client.DownloadFileTaskAsync(new System.Uri(model.Url), temp);
+                long? totalBytes = response.Content.Headers.ContentLength;
+                using (var contentStream = await response.Content.ReadAsStreamAsync())
+                using (var fileStream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                {
+                    var buffer = new byte[81920];
+                    long totalRead = 0;
+                    int bytesRead;
+
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, bytesRead);
+                        totalRead += bytesRead;
+
+                        if (totalBytes.HasValue && totalBytes.Value > 0)
+                        {
+                            model.Progress = (float)totalRead / totalBytes.Value;
+                        }
+                    }
+                }
+            }
+
+            // Verify file size
+            var fi = new FileInfo(temp);
+            if (model.SizeMB > 1 && fi.Length < (long)(model.SizeMB * 0.5f * 1024 * 1024))
+            {
+                throw new System.Exception($"Downloaded file size ({fi.Length / (1024 * 1024)}MB) was smaller than expected ({model.SizeMB}MB).");
             }
 
             if (File.Exists(model.FullPath)) File.Delete(model.FullPath);
             File.Move(temp, model.FullPath);
 
             model.IsDownloaded = true;
+            model.Progress = 1f;
 
             // Register LLM (.gguf) models with LLMUnity's model manager (via reflection
             // to avoid hard dependency — LLMUnity package may still be installing)
@@ -553,7 +620,6 @@ public class AISystemSetupWindow : EditorWindow
             model.Error = "Failed";
             Debug.LogError($"<b>[AI System Setup]</b> ❌ {model.DisplayName}: {ex.Message}");
 
-            string temp = model.FullPath + ".tmp";
             if (File.Exists(temp)) File.Delete(temp);
         }
         finally
