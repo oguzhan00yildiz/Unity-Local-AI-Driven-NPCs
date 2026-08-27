@@ -51,14 +51,29 @@ public class AISystemSetupWindow : EditorWindow
 
         public void Refresh()
         {
+            if (IsOptionalLlm)
+            {
+                if (File.Exists(FullPath))
+                {
+                    var fi = new FileInfo(FullPath);
+                    IsDownloaded = fi.Length >= (long)(SizeMB * 0.5f * 1024 * 1024);
+                }
+                else
+                {
+                    // If another valid LLM model is already available in the project/LLMUnity, consider LLM requirement satisfied
+                    IsDownloaded = HasAnyLLMModelInstalled();
+                }
+                return;
+            }
+
             if (!File.Exists(FullPath))
             {
                 IsDownloaded = false;
                 return;
             }
 
-            var fi = new FileInfo(FullPath);
-            if (fi.Length == 0 || (SizeMB > 1 && fi.Length < (long)(SizeMB * 0.5f * 1024 * 1024)))
+            var fileInfo = new FileInfo(FullPath);
+            if (fileInfo.Length == 0 || (SizeMB > 1 && fileInfo.Length < (long)(SizeMB * 0.5f * 1024 * 1024)))
             {
                 IsDownloaded = false;
             }
@@ -67,6 +82,83 @@ public class AISystemSetupWindow : EditorWindow
                 IsDownloaded = true;
             }
         }
+    }
+
+    /// <summary>
+    /// Checks if any LLM model (.gguf file or LLMUnity configured model) is already present in the project.
+    /// </summary>
+    public static bool HasAnyLLMModelInstalled()
+    {
+        try
+        {
+            // 1. Check StreamingAssets for any .gguf file (> 10MB)
+            if (Directory.Exists(Application.streamingAssetsPath))
+            {
+                var streamingGgufs = Directory.GetFiles(Application.streamingAssetsPath, "*.gguf", SearchOption.AllDirectories);
+                foreach (var path in streamingGgufs)
+                {
+                    try
+                    {
+                        if (new FileInfo(path).Length > 10 * 1024 * 1024)
+                            return true;
+                    }
+                    catch { }
+                }
+            }
+
+            // 2. Check entire Assets folder for any .gguf file
+            if (Directory.Exists(Application.dataPath))
+            {
+                var assetGgufs = Directory.GetFiles(Application.dataPath, "*.gguf", SearchOption.AllDirectories);
+                foreach (var path in assetGgufs)
+                {
+                    try
+                    {
+                        if (new FileInfo(path).Length > 10 * 1024 * 1024)
+                            return true;
+                    }
+                    catch { }
+                }
+            }
+
+            // 3. Check LLMUnity LLMManager registered models via reflection
+            var llmManagerType = System.Type.GetType("LLMUnity.LLMManager, undream.llmunity.Runtime");
+            if (llmManagerType != null)
+            {
+                var modelEntriesField = llmManagerType.GetField("modelEntries", BindingFlags.Public | BindingFlags.Static);
+                if (modelEntriesField != null)
+                {
+                    var entries = modelEntriesField.GetValue(null) as System.Collections.IList;
+                    if (entries != null && entries.Count > 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // 4. Check LLM components in open scenes / prefabs
+            var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
+            if (llmType != null)
+            {
+                var llmInScene = UnityEngine.Object.FindAnyObjectByType(llmType);
+                if (llmInScene != null)
+                {
+                    var modelProp = llmType.GetProperty("model", BindingFlags.Public | BindingFlags.Instance);
+                    if (modelProp != null)
+                    {
+                        string assignedModel = modelProp.GetValue(llmInScene) as string;
+                        if (!string.IsNullOrEmpty(assignedModel))
+                            return true;
+                    }
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[AI System Setup] Error checking for installed LLM models: {ex.Message}");
+        }
+
+        return false;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -246,8 +338,8 @@ public class AISystemSetupWindow : EditorWindow
         var win = EnsureWindow(WindowPhase.ModelDownload);
         win.RefreshModelStatus();
 
-        Debug.Log("<b>[AI System Setup]</b> Auto-starting download of missing model files…");
-        win.DownloadAllModels();
+        Debug.Log("<b>[AI System Setup]</b> Starting download of missing model files…");
+        win.DownloadAllModels(isAutomatic: true);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -506,12 +598,21 @@ public class AISystemSetupWindow : EditorWindow
             }
             else if (model.IsDownloaded)
             {
-                EditorGUILayout.LabelField("Ready", EditorStyles.miniLabel, GUILayout.Width(80));
-                if (GUILayout.Button("Delete", GUILayout.Width(55)))
+                string statusLabel = (model.IsOptionalLlm && !File.Exists(model.FullPath)) ? "LLM Ready" : "Ready";
+                EditorGUILayout.LabelField(statusLabel, EditorStyles.miniLabel, GUILayout.Width(80));
+                if (File.Exists(model.FullPath))
                 {
-                    File.Delete(model.FullPath);
-                    model.Refresh();
-                    AssetDatabase.Refresh();
+                    if (GUILayout.Button("Delete", GUILayout.Width(55)))
+                    {
+                        File.Delete(model.FullPath);
+                        model.Refresh();
+                        AssetDatabase.Refresh();
+                    }
+                }
+                else if (model.IsOptionalLlm)
+                {
+                    if (GUILayout.Button("Download", GUILayout.Width(80)))
+                        _ = DownloadModel(model);
                 }
             }
             else
@@ -522,26 +623,36 @@ public class AISystemSetupWindow : EditorWindow
         }
     }
 
+    private const string LlmPromptSessionKey = "AISystemSetupWindow.LlmPromptAnswered";
     private static bool _isDownloadingAll;
 
-    private async void DownloadAllModels()
+    private async void DownloadAllModels(bool isAutomatic = false)
     {
         if (_isDownloadingAll) return;
         _isDownloadingAll = true;
 
         try
         {
+            bool hasLlmInstalled = HasAnyLLMModelInstalled();
+            bool alreadyPrompted = SessionState.GetBool(LlmPromptSessionKey, false);
             bool downloadOptionalLlm = false;
+
             var missingLlm = Models.Find(m => m.IsOptionalLlm && !m.IsDownloaded && !m.IsDownloading);
-            if (missingLlm != null)
+
+            // Only prompt if NO LLM is installed at all, and (if automatic) hasn't been prompted already this session
+            if (missingLlm != null && !hasLlmInstalled)
             {
-                downloadOptionalLlm = EditorUtility.DisplayDialog(
-                    "Download LLM Language Model?",
-                    $"Would you like to download the default LLM model ({missingLlm.DisplayName}, ~{missingLlm.SizeMB} MB)?\n\n" +
-                    $"• Download: Downloads {missingLlm.DisplayName} (~{missingLlm.SizeMB} MB) to StreamingAssets and configures it automatically for LLMUnity.\n\n" +
-                    "• Skip: Do not download. You can download it later from this window or use your own custom GGUF model in LLMUnity.",
-                    $"Download ({missingLlm.SizeMB} MB)",
-                    "Skip LLM Download");
+                if (!isAutomatic || !alreadyPrompted)
+                {
+                    SessionState.SetBool(LlmPromptSessionKey, true);
+                    downloadOptionalLlm = EditorUtility.DisplayDialog(
+                        "Download LLM Language Model?",
+                        $"Would you like to download the default LLM model ({missingLlm.DisplayName}, ~{missingLlm.SizeMB} MB)?\n\n" +
+                        $"• Download: Downloads {missingLlm.DisplayName} (~{missingLlm.SizeMB} MB) to StreamingAssets and configures it automatically for LLMUnity.\n\n" +
+                        "• Skip: Do not download. You can download it later from this window or use your own custom GGUF model in LLMUnity.",
+                        $"Download ({missingLlm.SizeMB} MB)",
+                        "Skip LLM Download");
+                }
             }
 
             foreach (var m in Models)
