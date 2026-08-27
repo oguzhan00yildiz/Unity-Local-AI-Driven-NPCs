@@ -38,6 +38,7 @@ public class AISystemSetupWindow : EditorWindow
         public string Url;
         public string DestRelPath;
         public int    SizeMB;
+        public bool   IsOptionalLlm;
 
         public bool   IsDownloaded;
         public bool   IsDownloading;
@@ -139,11 +140,12 @@ public class AISystemSetupWindow : EditorWindow
         },
         new ModelEntry
         {
-            Group = "LLM — Qwen3.5 0.8B (Language Model)",
+            Group = "LLM — Qwen3.5 0.8B (Language Model - Optional)",
             DisplayName = "Qwen3.5-0.8B-Q4_K_M.gguf",
             Url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_K_M.gguf",
             DestRelPath = "Qwen3.5-0.8B-Q4_K_M.gguf",
-            SizeMB = 500
+            SizeMB = 500,
+            IsOptionalLlm = true
         },
     };
 
@@ -181,12 +183,12 @@ public class AISystemSetupWindow : EditorWindow
     {
         return EditorUtility.DisplayDialog(
             "AI Driven NPCs — Setup Required",
-            "This package needs to install several Unity packages and download AI model files (~765 MB):\n\n" +
+            "This package needs to install several Unity packages and download required voice model files (~265 MB):\n\n" +
             "  • LLMUnity (language model runtime)\n" +
             "  • Piper TTS (text-to-speech)\n" +
             "  • Whisper Unity (speech recognition)\n" +
             "  • ONNX Runtime 0.4.4 (via NPM registry)\n\n" +
-            "  • Qwen3.5 0.8B LLM model (~500 MB)\n" +
+            "Note: The default LLM model (Qwen3.5 0.8B, ~500 MB) is optional and you will be prompted before downloading.\n\n" +
             "A setup window will open to track progress.\n" +
             "You can also run this later via Tools → AI Packages → AI System Setup.",
             "Yes, Set Up Now",
@@ -429,8 +431,8 @@ public class AISystemSetupWindow : EditorWindow
     private void DrawModelPhase()
     {
         EditorGUILayout.HelpBox(
-            "The LLM language model (Qwen3.5 0.8B) will be downloaded and\n" +
-            "automatically configured on the LLM prefab. Just hit Play when done!",
+            "Whisper (Speech Recognition) and Piper (Text-to-Speech) models are downloaded for voice.\n" +
+            "The LLM model (Qwen3.5 0.8B, ~500 MB) is optional — you can download it here or assign your own custom .gguf model in LLMUnity.",
             MessageType.Info);
         EditorGUILayout.Space(4);
 
@@ -529,11 +531,28 @@ public class AISystemSetupWindow : EditorWindow
 
         try
         {
+            bool downloadOptionalLlm = false;
+            var missingLlm = Models.Find(m => m.IsOptionalLlm && !m.IsDownloaded && !m.IsDownloading);
+            if (missingLlm != null)
+            {
+                downloadOptionalLlm = EditorUtility.DisplayDialog(
+                    "Download LLM Language Model?",
+                    $"Would you like to download the default LLM model ({missingLlm.DisplayName}, ~{missingLlm.SizeMB} MB)?\n\n" +
+                    $"• Download: Downloads {missingLlm.DisplayName} (~{missingLlm.SizeMB} MB) to StreamingAssets and configures it automatically for LLMUnity.\n\n" +
+                    "• Skip: Do not download. You can download it later from this window or use your own custom GGUF model in LLMUnity.",
+                    $"Download ({missingLlm.SizeMB} MB)",
+                    "Skip LLM Download");
+            }
+
             foreach (var m in Models)
             {
                 m.Refresh();
                 if (!m.IsDownloaded && !m.IsDownloading)
                 {
+                    if (m.IsOptionalLlm && !downloadOptionalLlm)
+                    {
+                        continue;
+                    }
                     await DownloadModel(m);
                 }
             }

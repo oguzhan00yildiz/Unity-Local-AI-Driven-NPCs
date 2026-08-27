@@ -36,24 +36,24 @@ Installation takes **2–5 minutes** depending on connection speed.
 
 ---
 
-## Step 2 — Model Files (automatic)
+## Step 2 — Model Files
 
-After all packages finish installing, the **AI Model Downloader** window opens automatically and begins downloading all missing model files (~765 MB total).
+After all packages finish installing, the **AI Model Downloader** window opens automatically to download required voice models (~265 MB). It will prompt you whether you want to download the default LLM model (`Qwen3.5-0.8B-Q4_K_M.gguf`, ~500 MB) or skip it to provide your own.
 
 | File | Size | Purpose |
 |------|------|---------|
-| `Whisper/ggml-tiny.bin` | 74 MB | Speech recognition (Whisper) |
-| `PiperTTS/model.onnx` | 59 MB | TTS phonemizer |
-| `PiperTTS/phoneme_dict.json` | 10 MB | TTS phonemizer dictionary |
-| `PiperTTS/tokenizer.json` | ~1 MB | TTS tokenizer |
-| `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice |
-| `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice |
-| `Qwen3.5-0.8B-Q4_K_M.gguf` | ~500 MB | LLM language model (Qwen3.5 0.8B) |
+| `Whisper/ggml-tiny.bin` | 74 MB | Speech recognition (Whisper - Required) |
+| `PiperTTS/model.onnx` | 59 MB | TTS phonemizer (Required) |
+| `PiperTTS/phoneme_dict.json` | 10 MB | TTS phonemizer dictionary (Required) |
+| `PiperTTS/tokenizer.json` | ~1 MB | TTS tokenizer (Required) |
+| `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice (Required) |
+| `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice (Required) |
+| `Qwen3.5-0.8B-Q4_K_M.gguf` | ~500 MB | LLM language model (Qwen3.5 0.8B - Optional) |
 
 All files save to `Assets/StreamingAssets/` automatically.  
 If the window doesn't open, trigger it manually: **Tools → AI Packages → Download Model Files**
 
-> The LLM model is automatically registered with LLMUnity's model manager and configured on the `LLM.prefab` — no manual setup needed.
+> When downloaded, the LLM model is automatically registered with LLMUnity's model manager and configured on the `LLM.prefab`. You can also assign any custom GGUF model in LLMUnity.
 
 ---
 
