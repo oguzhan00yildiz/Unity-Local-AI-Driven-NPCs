@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System;
 using System.Threading.Tasks;
 
@@ -180,7 +180,7 @@ namespace AISystem
                     if (_currentNPC == null) return;
 
                     if (!string.IsNullOrWhiteSpace(fullResponse))
-                        voiceOutput?.Speak(fullResponse);
+                        voiceOutput?.Speak(fullResponse, npcForCallback?.voiceModelName);
                     else
                     {
                         npcForCallback?.SetPromptText("Listening");

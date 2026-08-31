@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System;
 using System.Threading.Tasks;
 
@@ -57,7 +57,11 @@ namespace AISystem
                 voiceOutput.OnSpeechFinished += HandleSpeechFinished;
             }
 
-            // Voice-only — ChatUIController is a status display, no text input events to wire.
+            if (chatUI != null)
+            {
+                chatUI.OnSendMessage += HandleUserMessage;
+                chatUI.OnCloseChat   += CloseChat;
+            }
         }
 
         void OnDestroy()
@@ -67,6 +71,11 @@ namespace AISystem
             {
                 voiceOutput.OnSpeechStarted  -= HandleSpeechStarted;
                 voiceOutput.OnSpeechFinished -= HandleSpeechFinished;
+            }
+            if (chatUI != null)
+            {
+                chatUI.OnSendMessage -= HandleUserMessage;
+                chatUI.OnCloseChat   -= CloseChat;
             }
 
             if (Instance == this) Instance = null;
@@ -171,7 +180,7 @@ namespace AISystem
                     if (_currentNPC == null) return;
 
                     if (!string.IsNullOrWhiteSpace(fullResponse))
-                        voiceOutput?.Speak(fullResponse);
+                        voiceOutput?.Speak(fullResponse, npcForCallback?.voiceModelName);
                     else
                     {
                         npcForCallback?.SetPromptText("Listening");

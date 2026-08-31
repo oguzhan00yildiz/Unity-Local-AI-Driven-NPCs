@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -19,7 +19,10 @@ namespace AISystem
     [RequireComponent(typeof(Collider))]
     public class NPCAgent : MonoBehaviour
     {
-        //  Inspector 
+        [Header("Personality Template")]
+        [Tooltip("Optional preset template for personality and voice settings.")]
+        public NPCPersonalityPreset personalityPreset;
+
         [Header("NPC Identity")]
         public string npcName = "NPC";
 
@@ -30,6 +33,10 @@ namespace AISystem
         [Header("Interaction")]
         public float   interactionRange = 3f;
         public KeyCode interactionKey   = KeyCode.E;
+        
+        [Header("Voice")]
+        [Tooltip("Name of the PiperTTS model (e.g., en_US-amy-low)")]
+        public string voiceModelName = "en_US-amy-low";
 
         [Header("Interaction Prompt")]
         [Tooltip("TextMesh (3D Text) shown above NPC. Auto-found in children if left null.")]
@@ -49,6 +56,11 @@ namespace AISystem
             // Fall back to same-object LLMAgent if not assigned in Inspector
             if (llmAgent == null)
                 llmAgent = GetComponent<LLMAgent>();
+
+            if (personalityPreset != null)
+            {
+                ApplyPreset(personalityPreset);
+            }
 
             // Sync trigger collider radius to interactionRange
             var col = GetComponent<Collider>();
@@ -153,7 +165,22 @@ namespace AISystem
                 promptText.text = $"Press {interactionKey} to interact";
         }
 
-        //  Internal 
+        /// <summary>Applies personality template settings to this NPC and its LLMAgent.</summary>
+        public void ApplyPreset(NPCPersonalityPreset preset)
+        {
+            if (preset == null) return;
+            personalityPreset = preset;
+            npcName = preset.npcName;
+            voiceModelName = preset.voiceModelName;
+
+            if (llmAgent == null)
+                llmAgent = GetComponent<LLMAgent>();
+
+            if (llmAgent != null)
+            {
+                llmAgent.systemPrompt = preset.systemPrompt;
+            }
+        }
 
         private void TriggerChat()
         {

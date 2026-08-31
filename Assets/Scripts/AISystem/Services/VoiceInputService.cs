@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using System;
 using System.Threading.Tasks;
@@ -84,11 +84,7 @@ namespace AISystem
                 Debug.LogWarning("[VoiceInput] Cannot start: microphoneRecord is null");
                 return;
             }
-            if (_isListening)
-            {
-                Debug.LogWarning("[VoiceInput] Cannot start: already listening (_isListening=true)");
-                return;
-            }
+            if (_isListening) return;
             if (_isPaused)
             {
                 Debug.LogWarning("[VoiceInput] Cannot start: paused (_isPaused=true)");

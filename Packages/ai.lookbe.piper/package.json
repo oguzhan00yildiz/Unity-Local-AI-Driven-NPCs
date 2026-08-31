@@ -1,0 +1,26 @@
+{
+  "name": "ai.lookbe.piper",
+  "version": "0.0.1",
+  "displayName": "Piper TTS Unity",
+  "description": "Piper TTS for Unity",
+  "unity": "2021.3",
+  "keywords": [
+    "piper",
+    "tts",
+    "ai"
+  ],
+  "author": {
+    "name": "lookbe"
+  },
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Piper",
+      "description": "Shows the basic piper usage.",
+      "path": "Samples~/BasicPiper"
+    }
+  ],
+  "_fingerprint": "39b51ff434fc056056e40c648bd8774c78fda110"
+}

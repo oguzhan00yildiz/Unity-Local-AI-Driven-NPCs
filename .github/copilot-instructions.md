@@ -8,6 +8,9 @@ A Unity project delivering fully **local** AI NPCs using LLM inference (LLMUnity
 ## Architecture
 
 ### Runtime Layer (`Assets/Scripts/AISystem/`)
+> **🚨 MANDATORY AI SYNC RULE**: Any script change in `Assets/Scripts/AISystem/` must also be synchronized with `AIPackageInstaller/Samples~/Scripts/AISystem/` (and vice-versa).
+> In addition, always sync changes directly to the local test project `c:\Projects\AITest\` (both in `Library/PackageCache/com.yildizoguzhan.ai-driven-npcs@*/` and `Assets/Samples/AI Driven NPCs System/*/AI Driven NPCs System/Scripts/AISystem/`).
+
 | Component | Role |
 |-----------|------|
 | `Core/AISystemManager.cs` | Scene singleton — coordinates all services; NPCAgents locate it via `AISystemManager.Instance` |
