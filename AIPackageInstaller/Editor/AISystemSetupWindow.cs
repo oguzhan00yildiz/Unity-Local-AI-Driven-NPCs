@@ -807,23 +807,45 @@ public class AISystemSetupWindow : EditorWindow
     /// Uses reflection to avoid hard dependency on LLMUnity types (which may
     /// still be installing when this script first compiles).
     /// </summary>
-    private static void AutoConfigureLLM()
+    public static void AutoConfigureLLM()
     {
+        string registeredName = null;
+
         ModelEntry llmModel = Models.Find(m =>
             Path.GetExtension(m.DestRelPath).ToLower() == ".gguf" && m.IsDownloaded);
 
-        if (llmModel == null) return;
+        if (llmModel != null && File.Exists(llmModel.FullPath))
+        {
+            registeredName = RegisterWithLLMManager(llmModel.FullPath, llmModel.DisplayName);
+        }
+        else
+        {
+            // Fallback: search StreamingAssets or Assets for any available .gguf file
+            string streamingDir = Application.streamingAssetsPath;
+            if (Directory.Exists(streamingDir))
+            {
+                var streamingGgufs = Directory.GetFiles(streamingDir, "*.gguf", SearchOption.AllDirectories);
+                if (streamingGgufs.Length > 0)
+                {
+                    registeredName = RegisterWithLLMManager(streamingGgufs[0], Path.GetFileName(streamingGgufs[0]));
+                }
+            }
 
-        string modelFilename = Path.GetFileName(llmModel.DestRelPath);
+            if (string.IsNullOrEmpty(registeredName) && Directory.Exists(Application.dataPath))
+            {
+                var assetGgufs = Directory.GetFiles(Application.dataPath, "*.gguf", SearchOption.AllDirectories);
+                if (assetGgufs.Length > 0)
+                {
+                    registeredName = RegisterWithLLMManager(assetGgufs[0], Path.GetFileName(assetGgufs[0]));
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(registeredName)) return;
 
         try
         {
-            // Step 1: Register the model file with LLMUnity's LLMManager
-            string registeredName = RegisterWithLLMManager(llmModel.FullPath, llmModel.DisplayName);
-
-            // Step 2: Search ALL prefab assets in the project for LLM components
-            // (not just a hardcoded path — prefab may be anywhere, especially in
-            //  testing projects where samples are imported to a different location)
+            // Search ALL prefab assets in the project for LLM components
             var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
             int prefabsUpdated = 0;
 
@@ -848,7 +870,7 @@ public class AISystemSetupWindow : EditorWindow
                 }
             }
 
-            // Step 3: Update any LLM components in currently open scenes
+            // Update any LLM components in currently open scenes
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
             {
                 var scene = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
@@ -868,11 +890,8 @@ public class AISystemSetupWindow : EditorWindow
             }
             else
             {
-                // No LLM prefab found yet — model is registered in LLMManager.
-                // It will auto-select when the user imports samples or instantiates
-                // a prefab that references this model name.
                 Debug.Log($"<b>[AI System Setup]</b> ✅ LLM model '{registeredName}' registered. " +
-                    "No LLM prefab found yet — it will be selected automatically when samples are imported.");
+                    "Prefabs will use it automatically.");
             }
         }
         catch (System.Exception ex)
@@ -971,5 +990,39 @@ public class AISystemSetupWindow : EditorWindow
     {
         Rect r = EditorGUILayout.GetControlRect(false, 1);
         EditorGUI.DrawRect(r, new Color(0.4f, 0.4f, 0.4f, 0.5f));
+    }
+}
+
+/// <summary>
+/// Automatically ensures LLM components in imported sample prefabs and scenes
+/// are configured with the downloaded GGUF model immediately upon import.
+/// </summary>
+public class AISystemSamplePostprocessor : AssetPostprocessor
+{
+    private static void OnPostprocessAllAssets(
+        string[] importedAssets,
+        string[] deletedAssets,
+        string[] movedAssets,
+        string[] movedFromAssetPaths)
+    {
+        bool hasRelevantAsset = false;
+        foreach (string asset in importedAssets)
+        {
+            if (asset.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase) ||
+                asset.EndsWith(".unity", System.StringComparison.OrdinalIgnoreCase) ||
+                asset.EndsWith(".gguf", System.StringComparison.OrdinalIgnoreCase))
+            {
+                hasRelevantAsset = true;
+                break;
+            }
+        }
+
+        if (hasRelevantAsset)
+        {
+            EditorApplication.delayCall += () =>
+            {
+                AISystemSetupWindow.AutoConfigureLLM();
+            };
+        }
     }
 }
