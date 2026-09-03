@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using LLMUnity;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +39,23 @@ namespace AISystem
 
         private async Task WarmupAll()
         {
+            // Ensure the LLM service process is fully initialized before requesting agent warmups
+            var llm = FindAnyObjectByType<LLM>();
+            if (llm != null)
+            {
+                try
+                {
+                    chatUI?.SetLoadingOverlay(true, "Initializing LLM runtime...");
+                    await llm.WaitUntilReady();
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[ModelBootstrapper] LLM runtime startup check: {ex.Message}");
+                }
+            }
+
+            chatUI?.SetLoadingOverlay(true, "Loading AI models...");
+
             var tasks = new List<Task>();
 
             // Warm up all LLMAgents in the scene

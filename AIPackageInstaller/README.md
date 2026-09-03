@@ -34,6 +34,8 @@ Watch **Window → General → Console** for progress:
 
 Installation takes **2–5 minutes** depending on connection speed.
 
+> ⚠️ **Important:** Keep the Unity Editor open and focused during package installation and model setup. Defocusing or switching to other apps can cause Unity to pause background tasks, which can interrupt LLMUnity's native server binary setup or model downloads.
+
 ---
 
 ## Step 2 — Model Files
@@ -53,7 +55,17 @@ After all packages finish installing, the **AI Model Downloader** window opens a
 All files save to `Assets/StreamingAssets/` automatically.  
 If the window doesn't open, trigger it manually: **Tools → AI Packages → Download Model Files**
 
-> When downloaded, the LLM model is automatically registered with LLMUnity's model manager and configured on the `LLM.prefab`. You can also assign any custom GGUF model in LLMUnity.
+> **Default LLM Model:** `Qwen3.5-0.8B-Q4_K_M.gguf` (~500 MB) is preconfigured as the default model. It provides fast, lightweight, on-device chat inference with low memory overhead.
+
+### How to Try Different LLM Models or Add Custom Models
+
+You can easily switch to another model (e.g. Llama 3, Mistral, Gemma, Phi-3) or use your own custom GGUF file:
+1. In the Hierarchy, select the **`LLM`** GameObject (located under the `AISystem` prefab).
+2. In the Inspector, locate the **`LLM`** component.
+3. Click the **Model** dropdown:
+   - **Download Presets:** Choose from popular community models to download them directly inside Unity.
+   - **Custom Model:** Click to browse and select any `.gguf` file stored on your machine (or place it into `Assets/StreamingAssets/`).
+4. Hit **Play** — the NPCs will automatically converse using your selected LLM model!
 
 ---
 

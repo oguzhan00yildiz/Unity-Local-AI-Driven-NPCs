@@ -44,6 +44,8 @@ You can add this entire framework to any new or existing Unity project in second
 [AI Package Installer] ✅ All AI packages installed successfully!
 ```
 
+> ⚠️ **Important:** Keep the Unity Editor open and in focus during package installation and model setup. Switching to other applications can cause Unity to throttle background execution, which can interrupt LLM native server configuration and model downloads.
+
 ### 2. Automatic Model Downloads
 Once packages are resolved, the **AI System Setup Window** automatically downloads and configures the required local models:
 
@@ -55,6 +57,16 @@ Once packages are resolved, the **AI System Setup Window** automatically downloa
 | **LLM** | `Qwen3.5-0.8B-Q4_K_M.gguf` | 500 MB | Fast & smart on-device language model |
 
 *(All models are saved to `Assets/StreamingAssets/` and auto-assigned to prefabs).*
+
+> **Default LLM Model:** `Qwen3.5-0.8B-Q4_K_M.gguf` (~500 MB) is preconfigured out of the box. It offers high-speed on-device generation with minimal resource usage.
+
+#### 🔄 How to Try Different LLM Models or Add a Custom Model
+1. In your scene hierarchy, expand the `AISystem` prefab and select the **`LLM`** GameObject.
+2. In the Inspector, locate the **`LLM`** component.
+3. Click the **Model** dropdown:
+   - **Download Presets:** Download popular models directly in Unity (Llama 3, Mistral, Gemma, Phi-3, etc.).
+   - **Custom Model:** Select or drag & drop any `.gguf` file stored on your PC or inside `Assets/StreamingAssets/`.
+4. Hit **Play** — your NPCs will immediately converse using the new LLM!
 
 ### 3. Import Ready Samples & Play
 1. In **Package Manager**, select **AI Driven NPCs System** → **Samples** tab.

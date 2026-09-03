@@ -54,6 +54,9 @@ public class AIPackageInstaller
     // ─────────────────────────────────────────────────────────────────────────
     static AIPackageInstaller()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return;
+
         if (SessionState.GetBool("AIPackageInstaller.CloseProjectSettings", false))
         {
             SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", false);
@@ -99,7 +102,7 @@ public class AIPackageInstaller
         List<AISystemSetupWindow.InstallStep> steps = new List<AISystemSetupWindow.InstallStep>
         {
             new AISystemSetupWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
-            new AISystemSetupWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git" },
+            new AISystemSetupWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git (keep Unity focused during setup)" },
             new AISystemSetupWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
             new AISystemSetupWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
         };
@@ -111,10 +114,12 @@ public class AIPackageInstaller
     // ─────────────────────────────────────────────────────────────────────────
     private static void Initialize()
     {
-        // Already fully installed this session — just trigger model check.
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return;
+
+        // Already fully installed this session — do not re-run or open windows.
         if (SessionState.GetBool("AIPackageInstaller.Done", false))
         {
-            EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
             return;
         }
 

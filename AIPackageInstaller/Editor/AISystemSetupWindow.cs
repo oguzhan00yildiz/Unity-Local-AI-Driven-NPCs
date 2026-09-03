@@ -51,21 +51,6 @@ public class AISystemSetupWindow : EditorWindow
 
         public void Refresh()
         {
-            if (IsOptionalLlm)
-            {
-                if (File.Exists(FullPath))
-                {
-                    var fi = new FileInfo(FullPath);
-                    IsDownloaded = fi.Length >= (long)(SizeMB * 0.5f * 1024 * 1024);
-                }
-                else
-                {
-                    // If another valid LLM model is already available in the project/LLMUnity, consider LLM requirement satisfied
-                    IsDownloaded = HasAnyLLMModelInstalled();
-                }
-                return;
-            }
-
             if (!File.Exists(FullPath))
             {
                 IsDownloaded = false;
@@ -99,14 +84,14 @@ public class AISystemSetupWindow : EditorWindow
                 {
                     try
                     {
-                        if (new FileInfo(path).Length > 10 * 1024 * 1024)
+                        if (File.Exists(path) && new FileInfo(path).Length > 10 * 1024 * 1024)
                             return true;
                     }
                     catch { }
                 }
             }
 
-            // 2. Check entire Assets folder for any .gguf file
+            // 2. Check entire Assets folder for any .gguf file (> 10MB)
             if (Directory.Exists(Application.dataPath))
             {
                 var assetGgufs = Directory.GetFiles(Application.dataPath, "*.gguf", SearchOption.AllDirectories);
@@ -114,14 +99,14 @@ public class AISystemSetupWindow : EditorWindow
                 {
                     try
                     {
-                        if (new FileInfo(path).Length > 10 * 1024 * 1024)
+                        if (File.Exists(path) && new FileInfo(path).Length > 10 * 1024 * 1024)
                             return true;
                     }
                     catch { }
                 }
             }
 
-            // 3. Check LLMUnity LLMManager registered models via reflection
+            // 3. Check LLMUnity LLMManager registered models via reflection — verify the file actually exists!
             var llmManagerType = System.Type.GetType("LLMUnity.LLMManager, undream.llmunity.Runtime");
             if (llmManagerType != null)
             {
@@ -129,14 +114,28 @@ public class AISystemSetupWindow : EditorWindow
                 if (modelEntriesField != null)
                 {
                     var entries = modelEntriesField.GetValue(null) as System.Collections.IList;
-                    if (entries != null && entries.Count > 0)
+                    if (entries != null)
                     {
-                        return true;
+                        foreach (var entry in entries)
+                        {
+                            if (entry == null) continue;
+                            var pathProp = entry.GetType().GetProperty("path") ?? entry.GetType().GetProperty("AssetPath");
+                            string p = pathProp?.GetValue(entry) as string;
+                            if (!string.IsNullOrEmpty(p) && File.Exists(p))
+                            {
+                                try
+                                {
+                                    if (new FileInfo(p).Length > 10 * 1024 * 1024)
+                                        return true;
+                                }
+                                catch { }
+                            }
+                        }
                     }
                 }
             }
 
-            // 4. Check LLM components in open scenes / prefabs
+            // 4. Check LLM components in open scenes / prefabs — verify assigned file actually exists!
             var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
             if (llmType != null)
             {
@@ -148,7 +147,18 @@ public class AISystemSetupWindow : EditorWindow
                     {
                         string assignedModel = modelProp.GetValue(llmInScene) as string;
                         if (!string.IsNullOrEmpty(assignedModel))
-                            return true;
+                        {
+                            string inStreaming = Path.Combine(Application.streamingAssetsPath, assignedModel);
+                            if (File.Exists(inStreaming) && new FileInfo(inStreaming).Length > 10 * 1024 * 1024)
+                                return true;
+
+                            string inAssets = Path.Combine(Application.dataPath, assignedModel);
+                            if (File.Exists(inAssets) && new FileInfo(inAssets).Length > 10 * 1024 * 1024)
+                                return true;
+
+                            if (File.Exists(assignedModel) && new FileInfo(assignedModel).Length > 10 * 1024 * 1024)
+                                return true;
+                        }
                     }
                 }
             }
@@ -324,10 +334,18 @@ public class AISystemSetupWindow : EditorWindow
 
     public static bool AreAllModelsDownloaded()
     {
+        bool hasLlm = HasAnyLLMModelInstalled();
         foreach (var m in Models)
         {
             m.Refresh();
-            if (!m.IsDownloaded) return false;
+            if (m.IsOptionalLlm)
+            {
+                if (!m.IsDownloaded && !hasLlm) return false;
+            }
+            else
+            {
+                if (!m.IsDownloaded) return false;
+            }
         }
         return true;
     }
@@ -357,7 +375,7 @@ public class AISystemSetupWindow : EditorWindow
         Steps.Add(new InstallStep
         {
             Name = "LLMUnity Package",
-            Description = llmInstalled ? "LLM inference engine installed and active" : "Installing LLMUnity package from Git",
+            Description = llmInstalled ? "LLM inference engine installed and active" : "Installing LLMUnity package from Git (keep Unity focused during setup)",
             Status = llmInstalled ? StepStatus.Completed : StepStatus.Pending
         });
 
@@ -507,6 +525,9 @@ public class AISystemSetupWindow : EditorWindow
     /// </summary>
     public static void CheckAndNotifyCompletion()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return;
+
         if (AreAllPackagesInstalled() && AreAllModelsDownloaded())
         {
             bool alreadyNotified = SessionState.GetBool(SetupCompleteNotifiedKey, false);
@@ -519,8 +540,10 @@ public class AISystemSetupWindow : EditorWindow
 
                 string message = hasSampleScene
                     ? "All required packages and models are downloaded, and the sample scene is imported!\n\n" +
+                      "⚠️ Important: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
                       "Would you like to open the demo scene (AIOTest) to test it right away?"
                     : "All required packages and models are downloaded and ready!\n\n" +
+                      "⚠️ Important: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
                       "You can now go to Package Manager to import the samples and open the demo scene to test it right away.";
 
                 string primaryBtn = hasSampleScene ? "Open Demo Scene" : "Open Package Manager";
@@ -548,24 +571,37 @@ public class AISystemSetupWindow : EditorWindow
     /// </summary>
     public static void AutoStartDownloads()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return;
+
         foreach (var m in Models) m.Refresh();
 
-        bool anyMissing = Models.Exists(m => !m.IsDownloaded);
+        bool hasLlm = HasAnyLLMModelInstalled();
+        bool anyMissing = Models.Exists(m =>
+        {
+            if (m.IsOptionalLlm) return !m.IsDownloaded && !hasLlm;
+            return !m.IsDownloaded;
+        });
+
         if (!anyMissing)
         {
             Debug.Log("<b>[AI System Setup]</b> All model files already present. ✅");
-            var win = EnsureWindow(WindowPhase.ModelDownload);
-            win.RefreshModelStatus();
-            EditorApplication.delayCall += () => CheckAndNotifyCompletion();
+            if (_instance != null)
+            {
+                _instance.RefreshModelStatus();
+                EditorApplication.delayCall += () => CheckAndNotifyCompletion();
+            }
             return;
         }
 
         // Switch phase inside the already-open window (no new window!)
         var existingWin = EnsureWindow(WindowPhase.ModelDownload);
-        existingWin.RefreshModelStatus();
-
-        Debug.Log("<b>[AI System Setup]</b> Starting download of missing model files…");
-        existingWin.DownloadAllModels(isAutomatic: true);
+        if (existingWin != null)
+        {
+            existingWin.RefreshModelStatus();
+            Debug.Log("<b>[AI System Setup]</b> Starting download of missing model files…");
+            existingWin.DownloadAllModels(isAutomatic: true);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -577,6 +613,9 @@ public class AISystemSetupWindow : EditorWindow
     /// </summary>
     private static AISystemSetupWindow EnsureWindow(WindowPhase phase)
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return _instance;
+
         if (_instance == null)
         {
             // CreateInstance + ShowUtility keeps the window floating and prevents
@@ -761,9 +800,14 @@ public class AISystemSetupWindow : EditorWindow
             GUILayout.FlexibleSpace();
         }
 
-        EditorGUILayout.Space(8);
+        EditorGUILayout.Space(6);
+        EditorGUILayout.HelpBox(
+            "💡 Keep Unity open and focused during setup. Switching to other apps can cause Unity to pause background tasks and interrupt LLM native library configuration.",
+            MessageType.None);
+
+        EditorGUILayout.Space(6);
         DrawLine();
-        EditorGUILayout.Space(8);
+        EditorGUILayout.Space(6);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -893,6 +937,14 @@ public class AISystemSetupWindow : EditorWindow
                 "The LLM model (Qwen3.5 0.8B, ~500 MB) is optional — you can download it here or assign your own custom .gguf model in LLMUnity.",
                 MessageType.Info);
         }
+
+        EditorGUILayout.HelpBox(
+            "💡 Default LLM Model: Qwen3.5-0.8B-Q4_K_M.gguf (~500 MB)\n\n" +
+            "How to try different LLM models or use a custom one:\n" +
+            "1. In the Hierarchy, select the 'LLM' GameObject (inside the AISystem prefab).\n" +
+            "2. In the Inspector, locate the 'LLM' component.\n" +
+            "3. Use the 'Model' dropdown to select & download other preset models (Mistral, Llama, Gemma, Phi-3, etc.) or choose/load your own custom .gguf file from disk.",
+            MessageType.None);
         EditorGUILayout.Space(4);
 
         bool anyMissing = Models.Exists(m => !m.IsDownloaded && !m.IsDownloading);
@@ -1029,6 +1081,10 @@ public class AISystemSetupWindow : EditorWindow
                         $"Download ({missingLlm.SizeMB} MB)",
                         "Skip LLM Download");
                 }
+            }
+            else if (missingLlm != null && !isAutomatic)
+            {
+                downloadOptionalLlm = true;
             }
 
             foreach (var m in Models)

@@ -30,7 +30,30 @@ namespace AISystem
 
             if (!Directory.Exists(pluginDir))
             {
-                Debug.LogWarning($"[NativePluginLoader] Whisper plugin dir not found: {pluginDir}");
+                // Check Packages folder
+                string packagesDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Packages", "com.whisper.unity", "Plugins", "Windows");
+                if (Directory.Exists(packagesDir))
+                {
+                    pluginDir = packagesDir;
+                }
+                else
+                {
+                    // Check Library/PackageCache
+                    string packageCache = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Library", "PackageCache");
+                    if (Directory.Exists(packageCache))
+                    {
+                        var matches = Directory.GetDirectories(packageCache, "com.whisper.unity*");
+                        if (matches.Length > 0)
+                        {
+                            string candidate = Path.Combine(matches[0], "Plugins", "Windows");
+                            if (Directory.Exists(candidate)) pluginDir = candidate;
+                        }
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(pluginDir) || !Directory.Exists(pluginDir))
+            {
                 return;
             }
 
