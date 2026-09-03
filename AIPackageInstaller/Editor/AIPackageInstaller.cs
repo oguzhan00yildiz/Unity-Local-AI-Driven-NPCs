@@ -49,10 +49,17 @@ public class AIPackageInstaller
     private static string        _currentPkgName;
     private static AddRequest    _addRequest;
     private static ListRequest   _listRequest;
+    private static double        _closeProjectSettingsUntil;
 
     // ─────────────────────────────────────────────────────────────────────────
     static AIPackageInstaller()
     {
+        if (SessionState.GetBool("AIPackageInstaller.CloseProjectSettings", false))
+        {
+            SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", false);
+            StartProjectSettingsCloser(5f);
+        }
+
         EditorApplication.delayCall += Initialize;
     }
 
@@ -66,7 +73,16 @@ public class AIPackageInstaller
         InitUI();
         AISystemSetupWindow.ShowWindow();
 
-        if (PatchManifest())
+        bool manifestChanged = PatchManifest(out bool registryAdded);
+        if (registryAdded)
+        {
+            SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", true);
+            StartProjectSettingsCloser(6f);
+            ShowNpmRegistryExplanationDialog();
+            CloseProjectSettingsWindow();
+        }
+
+        if (manifestChanged)
         {
             Debug.Log("<b>[AI Package Installer]</b> manifest.json updated → resolving packages (Unity will reload).");
             AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
@@ -118,7 +134,15 @@ public class AIPackageInstaller
         Debug.Log("<b>[AI Package Installer]</b> Initializing…");
         InitUI();
 
-        bool manifestChanged = PatchManifest();
+        bool manifestChanged = PatchManifest(out bool registryAdded);
+        if (registryAdded)
+        {
+            SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", true);
+            StartProjectSettingsCloser(6f);
+            ShowNpmRegistryExplanationDialog();
+            CloseProjectSettingsWindow();
+        }
+
         if (manifestChanged)
         {
             AISystemSetupWindow.ShowWindow();
@@ -134,6 +158,72 @@ public class AIPackageInstaller
         EnqueueAndInstallGitPackages(checkFirst: true);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Displays a popup informing the user about the npm scoped registry configuration
+    /// and why it is required for neural speech/voice inference.
+    /// </summary>
+    private static void ShowNpmRegistryExplanationDialog()
+    {
+        EditorUtility.DisplayDialog(
+            "AI Driven NPCs — NPM Registry Added",
+            "An NPM scoped registry (registry.npmjs.org) was added to your project's Packages/manifest.json.\n\n" +
+            "• What was done:\n" +
+            "Configured the scoped registry for 'com.github.asus4' and added ONNX Runtime 0.4.4 dependencies.\n\n" +
+            "• Why we did that:\n" +
+            "Piper TTS and Whisper Unity require ONNX Runtime to execute local voice synthesis and speech recognition models. These packages are distributed via NPM, so Unity needs this scoped registry to resolve and download them automatically.\n\n" +
+            "The Project Settings window opened by Unity will be automatically closed.",
+            "OK");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Project Settings window closer
+    // Unity automatically opens the Project Settings window whenever a scoped registry
+    // is added to manifest.json. We monitor and close it to keep focus on setup.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public static void StartProjectSettingsCloser(float duration = 6f)
+    {
+        _closeProjectSettingsUntil = EditorApplication.timeSinceStartup + duration;
+        CloseProjectSettingsWindow();
+        EditorApplication.update -= CloseProjectSettingsUpdate;
+        EditorApplication.update += CloseProjectSettingsUpdate;
+    }
+
+    private static void CloseProjectSettingsUpdate()
+    {
+        CloseProjectSettingsWindow();
+        if (EditorApplication.timeSinceStartup > _closeProjectSettingsUntil)
+        {
+            EditorApplication.update -= CloseProjectSettingsUpdate;
+        }
+    }
+
+    public static void CloseProjectSettingsWindow()
+    {
+        try
+        {
+            var windows = Resources.FindObjectsOfTypeAll<EditorWindow>();
+            for (int i = 0; i < windows.Length; i++)
+            {
+                var w = windows[i];
+                if (w == null) continue;
+                string typeName = w.GetType().Name;
+                string title = w.titleContent != null ? w.titleContent.text : string.Empty;
+
+                if (typeName == "ProjectSettingsWindow" ||
+                    title == "Project Settings" ||
+                    title.StartsWith("Project Settings"))
+                {
+                    w.Close();
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning("<b>[AI Package Installer]</b> Failed to close Project Settings window: " + ex.Message);
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     /// <summary>
@@ -145,6 +235,12 @@ public class AIPackageInstaller
     /// </summary>
     private static bool PatchManifest()
     {
+        return PatchManifest(out _);
+    }
+
+    private static bool PatchManifest(out bool registryAdded)
+    {
+        registryAdded = false;
         if (!File.Exists(ManifestPath))
         {
             Debug.LogError("<b>[AI Package Installer]</b> manifest.json not found at: " + ManifestPath);
@@ -166,16 +262,29 @@ public class AIPackageInstaller
         // ── 2. Add scoped registry if missing ────────────────────────────────
         if (!text.Contains("registry.npmjs.org"))
         {
-            const string registryBlock =
-                "\"scopedRegistries\": [\n" +
+            const string npmRegistryEntry =
                 "    {\n" +
                 "      \"name\": \"NPM\",\n" +
                 "      \"url\": \"https://registry.npmjs.org\",\n" +
-                "      \"scopes\": [\"com.github.asus4\"]\n" +
-                "    }\n" +
-                "  ],\n  ";
-            text = Regex.Replace(text, @"""dependencies""\s*:", registryBlock + "\"dependencies\":");
+                "      \"scopes\": [\n" +
+                "        \"com.github.asus4\"\n" +
+                "      ]\n" +
+                "    }";
+
+            if (text.Contains("\"scopedRegistries\""))
+            {
+                text = Regex.Replace(text, @"""scopedRegistries""\s*:\s*\[", "\"scopedRegistries\": [\n" + npmRegistryEntry + ",");
+            }
+            else
+            {
+                const string registryBlock =
+                    "\"scopedRegistries\": [\n" +
+                    npmRegistryEntry + "\n" +
+                    "  ],\n  ";
+                text = Regex.Replace(text, @"""dependencies""\s*:", registryBlock + "\"dependencies\":");
+            }
             changed = true;
+            registryAdded = true;
         }
 
         // ── 3. Add/update npm packages in dependencies ────────────────────────
