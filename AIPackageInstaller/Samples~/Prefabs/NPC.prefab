@@ -176,9 +176,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AISystem.NPCAgent
   npcName: Mestan
   llmAgent: {fileID: 6237645991601663353}
-  interactionRange: 3
+  interactionRange: 4
   interactionKey: 101
-  promptText: {fileID: 5660079689798306509}
+  interactionPrompt: {fileID: 1126826082234393643}
 --- !u!114 &6237645991601663353
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -220,7 +220,7 @@ MonoBehaviour:
   debugPrompt: 0
   _slot: -1
   _systemPrompt: A chat between a curious human and an artificial intelligence assistant.
-    The assistant gives helpful, detailed, and polite answers to the human's questions.
+    The assistant gives helpful, short, and polite answers to the human's questions.
 --- !u!33 &1315691624848630335
 MeshFilter:
   m_ObjectHideFlags: 0
