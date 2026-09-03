@@ -33,7 +33,7 @@ You can add this entire framework to any new or existing Unity project in second
 2. Click **+** (top-left) → **Add package from git URL…**
 3. Paste:
    ```text
-   https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller#packagetest
+   https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
    ```
 4. Click **Add**.
 
