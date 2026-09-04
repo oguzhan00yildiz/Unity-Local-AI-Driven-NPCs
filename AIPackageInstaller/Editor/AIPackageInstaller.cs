@@ -68,12 +68,34 @@ namespace AISystem.Editor
         EditorApplication.delayCall += Initialize;
     }
 
+    /// <summary>
+    /// Called when the AI System package is imported or dragged into the project.
+    /// </summary>
+    public static void OnPackageImported()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return;
+
+        // Reset stale Done flags because package was just imported/dragged into project
+        string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
+        EditorPrefs.DeleteKey(donePrefKey);
+        SessionState.SetBool("AIPackageInstaller.Done", false);
+
+        CheckAndPromptSetup(isDirectImport: true);
+    }
+
     [MenuItem("Tools/AI Packages/Force Install Dependencies")]
     public static void ForceInstall()
     {
         Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
+        StartAutomaticSetup();
+    }
+
+    public static void StartAutomaticSetup()
+    {
+        SessionState.SetBool("AIPackageInstaller.AutoSetupApproved", true);
+        SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
         SessionState.SetBool("AIPackageInstaller.Done", false);
-        SessionState.SetBool("AIPackageInstaller.ConsentGiven", true); // user explicitly triggered — skip dialog
         string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
         EditorPrefs.DeleteKey(donePrefKey);
 
@@ -91,14 +113,15 @@ namespace AISystem.Editor
 
         if (manifestChanged)
         {
-            Debug.Log("<b>[AI Package Installer]</b> manifest.json updated → resolving packages (Unity will reload).");
-            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
+            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.InProgress);
+            Debug.Log("<b>[AI Package Installer]</b> manifest.json updated (npm ONNX registry added) → resolving packages (Unity will reload).");
             Client.Resolve();
             return;
         }
 
         AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
-        EnqueueAndInstallGitPackages(checkFirst: false);
+        Debug.Log("<b>[AI Package Installer]</b> npm packages already present. Checking git packages…");
+        EnqueueAndInstallGitPackages(checkFirst: true);
     }
 
     private static void InitUI()
@@ -107,6 +130,7 @@ namespace AISystem.Editor
         {
             new AISystemSetupWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
             new AISystemSetupWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git (keep Unity focused during setup)" },
+            new AISystemSetupWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
             new AISystemSetupWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
         };
         AISystemSetupWindow.InitPackageSteps(steps);
@@ -120,56 +144,67 @@ namespace AISystem.Editor
         if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
             return;
 
-        // Already fully installed this session — do not re-run or open windows.
-        if (SessionState.GetBool("AIPackageInstaller.Done", false))
+        // Resuming automatic setup across domain reloads (e.g. after manifest patch & resolve)
+        if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false))
         {
-            return;
-        }
-
-        string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
-        if (EditorPrefs.GetBool(donePrefKey, false))
-        {
-            return;
-        }
-
-        // User already answered the consent dialog this session — skip it.
-        bool consentGiven = SessionState.GetBool("AIPackageInstaller.ConsentGiven", false);
-        if (!consentGiven)
-        {
-            bool proceed = AISystemSetupWindow.ShowConsentDialog();
-            if (!proceed)
-            {
-                Debug.Log("<b>[AI Package Installer]</b> Setup skipped by user. Run Tools → AI Packages → AI System Setup to install later.");
-                return;
-            }
-            SessionState.SetBool("AIPackageInstaller.ConsentGiven", true);
-        }
-
-        Debug.Log("<b>[AI Package Installer]</b> Initializing…");
-        InitUI();
-
-        bool manifestChanged = PatchManifest(out bool registryAdded);
-        if (registryAdded)
-        {
-            SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", true);
-            StartProjectSettingsCloser(6f);
-            ShowNpmRegistryExplanationDialog();
-            CloseProjectSettingsWindow();
-        }
-
-        if (manifestChanged)
-        {
+            Debug.Log("<b>[AI Package Installer]</b> Resuming automatic setup after reload…");
+            InitUI();
             AISystemSetupWindow.ShowWindow();
-            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.InProgress);
-            Debug.Log("<b>[AI Package Installer]</b> manifest.json patched (npm ONNX registry added). " +
-                      "Unity will reload — git packages will be installed afterwards automatically.");
-            Client.Resolve();
+            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
+            EnqueueAndInstallGitPackages(checkFirst: true);
             return;
         }
 
-        AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
-        Debug.Log("<b>[AI Package Installer]</b> npm packages already present. Checking git packages…");
-        EnqueueAndInstallGitPackages(checkFirst: true);
+        CheckAndPromptSetup(isDirectImport: false);
+    }
+
+    /// <summary>
+    /// Checks system installation status and prompts the user for setup permission if needed.
+    /// </summary>
+    public static void CheckAndPromptSetup(bool isDirectImport)
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
+            return;
+
+        if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false))
+            return;
+
+        bool allPkgs = AISystemSetupWindow.AreAllPackagesInstalled();
+        bool allModels = AISystemSetupWindow.AreAllModelsDownloaded();
+        bool contentPresent = IsContentExtracted();
+
+        if (allPkgs && allModels && contentPresent)
+        {
+            if (isDirectImport)
+            {
+                AISystemSetupWindow.ShowWindow();
+            }
+            return;
+        }
+
+        // Avoid repeated dialog popups on every script recompile during the same editor session
+        if (!isDirectImport)
+        {
+            if (SessionState.GetBool("AIPackageInstaller.PromptAnswered", false))
+                return;
+
+            string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
+            if (EditorPrefs.GetBool(donePrefKey, false))
+                return;
+        }
+
+        SessionState.SetBool("AIPackageInstaller.PromptAnswered", true);
+
+        // Ask user for permission to run automatic setup
+        bool proceed = AISystemSetupWindow.ShowConsentDialog();
+        if (proceed)
+        {
+            StartAutomaticSetup();
+        }
+        else
+        {
+            Debug.Log("<b>[AI Package Installer]</b> Setup postponed by user. You can start setup anytime via Tools → AI Packages → AI System Setup.");
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -179,15 +214,20 @@ namespace AISystem.Editor
     /// </summary>
     private static void ShowNpmRegistryExplanationDialog()
     {
-        EditorUtility.DisplayDialog(
-            "AI Driven NPCs — NPM Registry Added",
-            "An NPM scoped registry (registry.npmjs.org) was added to your project's Packages/manifest.json.\n\n" +
-            "• What was done:\n" +
-            "Configured the scoped registry for 'com.github.asus4' and added ONNX Runtime 0.4.4 dependencies.\n\n" +
-            "• Why we did that:\n" +
-            "Piper TTS and Whisper Unity require ONNX Runtime to execute local voice synthesis and speech recognition models. These packages are distributed via NPM, so Unity needs this scoped registry to resolve and download them automatically.\n\n" +
-            "The Project Settings window opened by Unity will be automatically closed.",
-            "OK");
+        AISystemDialogWindow.ShowDialog(
+            title: "AI Driven NPCs — NPM Registry Configured",
+            heading: "NPM Scoped Registry Configured",
+            message: "An NPM scoped registry (registry.npmjs.org) was added to your project's Packages/manifest.json.\n\n" +
+                     "• What was done:\n" +
+                     "Configured the scoped registry for 'com.github.asus4' and added ONNX Runtime 0.4.4 dependencies.\n\n" +
+                     "• Why we did that:\n" +
+                     "Piper TTS and Whisper Unity require ONNX Runtime to execute local voice synthesis and speech recognition models. These packages are distributed via NPM, so Unity needs this scoped registry to resolve and download them automatically.\n\n" +
+                     "The Project Settings window opened by Unity will be automatically closed.",
+            primaryBtn: "OK",
+            secondaryBtn: null,
+            icon: "✅",
+            width: 530,
+            height: 310);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -400,11 +440,17 @@ namespace AISystem.Editor
         else
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
-            SessionState.SetBool("AIPackageInstaller.Done", true);
-            EditorPrefs.SetBool($"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}", true);
-            ExtractContentPackageIfPresent();
-            EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
+            OnPackagesCompleted();
         }
+    }
+
+    private static void OnPackagesCompleted()
+    {
+        SessionState.SetBool("AIPackageInstaller.Done", true);
+        SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", false);
+        EditorPrefs.SetBool($"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}", true);
+        ExtractContentPackageIfPresent();
+        EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
     }
 
     private static void InstallNext()
@@ -412,10 +458,7 @@ namespace AISystem.Editor
         if (_gitQueue.Count == 0)
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
-            SessionState.SetBool("AIPackageInstaller.Done", true);
-            EditorPrefs.SetBool($"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}", true);
-            ExtractContentPackageIfPresent();
-            EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
+            OnPackagesCompleted();
             return;
         }
 
@@ -451,14 +494,34 @@ namespace AISystem.Editor
     // ── Asset Store Content Packaging & Auto-Extraction ───────────────────────
 
     /// <summary>
+    /// Checks if core sample / content assets have already been extracted.
+    /// </summary>
+    public static bool IsContentExtracted()
+    {
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (Directory.Exists(stagingDir)) return true; // Author dev staging mode
+
+        string managerScript = Path.Combine(Application.dataPath, "AI Driven NPCs System", "Scripts", "AISystem", "Core", "AISystemManager.cs");
+        if (File.Exists(managerScript)) return true;
+
+        string[] guids = AssetDatabase.FindAssets("AISystemManager t:MonoScript");
+        return guids != null && guids.Length > 0;
+    }
+
+    /// <summary>
     /// Automatically extracts the bundled content package if present in the project.
     /// Ensures scripts and prefabs are only imported AFTER packages are installed,
     /// preventing CS0246 missing namespace errors and broken nested prefabs on first import.
     /// </summary>
     public static void ExtractContentPackageIfPresent()
     {
-        string managerScript = Path.Combine(Application.dataPath, "AI Driven NPCs System", "Scripts", "AISystem", "Core", "AISystemManager.cs");
-        if (File.Exists(managerScript))
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (Directory.Exists(stagingDir))
+        {
+            return; // In author dev project during upload prep — do not extract
+        }
+
+        if (IsContentExtracted())
         {
             return;
         }
@@ -612,4 +675,37 @@ namespace AISystem.Editor
         EditorUtility.DisplayDialog("Restore Complete", "Development assets restored successfully!", "OK");
     }
 }
+
+/// <summary>
+/// Detects when the AI System package or installer assets are imported/updated,
+/// automatically prompting the user for permission to run setup.
+/// </summary>
+public class AIPackagePostprocessor : AssetPostprocessor
+{
+    private static void OnPostprocessAllAssets(
+        string[] importedAssets,
+        string[] deletedAssets,
+        string[] movedAssets,
+        string[] movedFromAssetPaths)
+    {
+        bool packageImported = false;
+        foreach (string asset in importedAssets)
+        {
+            if (asset.Contains("AIPackageInstaller") ||
+                asset.Contains("AISystemSetupWindow") ||
+                asset.Contains("AI-Driven-NPCs-Content.unitypackage") ||
+                asset.StartsWith("Assets/AI Driven NPCs System"))
+            {
+                packageImported = true;
+                break;
+            }
+        }
+
+        if (packageImported)
+        {
+            EditorApplication.delayCall += () => AIPackageInstaller.OnPackageImported();
+        }
+    }
 }
+}
+

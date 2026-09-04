@@ -32,6 +32,7 @@ namespace AssetStoreTools.Api.Responses
             if (!packageDict.ContainsKey("packages"))
                 throw new Exception("Response did not not contain the list of packages");
 
+            var serializer = new JsonSerializer()
             {
                 ContractResolver = PackageAdditionalData.AssetStorePackageResolver.Instance
             };

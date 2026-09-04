@@ -244,12 +244,11 @@ namespace AISystem.Editor
         },
         new ModelEntry
         {
-            Group = "LLM — Qwen3.5 0.8B (Language Model - Optional)",
+            Group = "LLM (Language Model)",
             DisplayName = "Qwen3.5-0.8B-Q4_K_M.gguf",
             Url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_K_M.gguf",
             DestRelPath = "Qwen3.5-0.8B-Q4_K_M.gguf",
-            SizeMB = 500,
-            IsOptionalLlm = true
+            SizeMB = 500
         },
     };
 
@@ -280,23 +279,24 @@ namespace AISystem.Editor
     public static void ShowModelDownloaderWindow() => EnsureWindow(WindowPhase.ModelDownload);
 
     /// <summary>
-    /// Shows a yes/no consent dialog on first package import.
+    /// Shows a permission consent dialog for automatic setup on package import.
     /// Returns true if the user agreed to proceed.
     /// </summary>
     public static bool ShowConsentDialog()
     {
-        return EditorUtility.DisplayDialog(
-            "AI Driven NPCs — Setup Required",
-            "This package needs to install several Unity packages and download required voice model files (~265 MB):\n\n" +
-            "  • LLMUnity (language model runtime)\n" +
-            "  • Piper TTS (text-to-speech)\n" +
-            "  • Whisper Unity (speech recognition)\n" +
-            "  • ONNX Runtime 0.4.4 (via NPM registry)\n\n" +
-            "Note: The default LLM model (Qwen3.5 0.8B, ~500 MB) is optional and you will be prompted before downloading.\n\n" +
-            "A setup window will open to track progress.\n" +
-            "You can also run this later via Tools → AI Packages → AI System Setup.",
-            "Yes, Set Up Now",
-            "Skip for Now");
+        return AISystemDialogWindow.ShowDialog(
+            title: "AI Driven NPCs — Automatic Setup",
+            heading: "Automatic Setup Required",
+            message: "The AI Driven NPCs package has been imported.\n\n" +
+                     "Would you like to start the automatic setup now?\n\n" +
+                     "With your permission, this will:\n" +
+                     "  • Configure required packages (ONNX, LLMUnity, Piper, Whisper)\n" +
+                     "  • Unpack core assets, prefabs & demo scenes\n" +
+                     "  • Download required AI models (Whisper, Piper, and Qwen LLM)",
+            primaryBtn: "Yes, Start Setup",
+            secondaryBtn: "Later (Manual Setup)",
+            icon: "✅",
+            accentColor: EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.1f, 0.65f, 0.2f));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -336,18 +336,10 @@ namespace AISystem.Editor
 
     public static bool AreAllModelsDownloaded()
     {
-        bool hasLlm = HasAnyLLMModelInstalled();
         foreach (var m in Models)
         {
             m.Refresh();
-            if (m.IsOptionalLlm)
-            {
-                if (!m.IsDownloaded && !hasLlm) return false;
-            }
-            else
-            {
-                if (!m.IsDownloaded) return false;
-            }
+            if (!m.IsDownloaded) return false;
         }
         return true;
     }
@@ -488,6 +480,15 @@ namespace AISystem.Editor
     }
 
     /// <summary>
+    /// Checks if the package is installed as a UPM package (e.g. via git URL in manifest.json)
+    /// rather than imported as Asset Store content into Assets/.
+    /// </summary>
+    public static bool IsInstalledViaUPM()
+    {
+        return CheckPackageInManifest("com.yildizoguzhan.ai-driven-npcs");
+    }
+
+    /// <summary>
     /// Opens the sample demo scene immediately.
     /// </summary>
     public static void OpenSampleScene()
@@ -502,8 +503,15 @@ namespace AISystem.Editor
         }
         else
         {
-            Debug.LogWarning("[AI System Setup] AIOTest scene not found. Opening Package Manager to import samples…");
-            OpenPackageManager();
+            if (IsInstalledViaUPM())
+            {
+                Debug.LogWarning("[AI System Setup] AIOTest scene not found. Opening Package Manager to import samples…");
+                OpenPackageManager();
+            }
+            else
+            {
+                Debug.LogWarning("[AI System Setup] AIOTest scene not found in Assets.");
+            }
         }
     }
 
@@ -539,28 +547,50 @@ namespace AISystem.Editor
 
                 string scenePath = FindSampleScenePath();
                 bool hasSampleScene = !string.IsNullOrEmpty(scenePath);
+                bool isUpm = IsInstalledViaUPM();
 
-                string message = hasSampleScene
-                    ? "All required packages and models are downloaded, and the sample scene is imported!\n\n" +
-                      "⚠️ Important: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                      "Would you like to open the demo scene (AIOTest) to test it right away?"
-                    : "All required packages and models are downloaded and ready!\n\n" +
-                      "⚠️ Important: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                      "You can now go to Package Manager to import the samples and open the demo scene to test it right away.";
+                string message;
+                string primaryBtn;
 
-                string primaryBtn = hasSampleScene ? "Open Demo Scene" : "Open Package Manager";
+                if (hasSampleScene)
+                {
+                    message = "All required packages and models are downloaded and ready!\n\n" +
+                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
+                              "Would you like to open the demo scene (AIOTest) to test it right away?";
+                    primaryBtn = "Open Demo Scene";
+                }
+                else if (isUpm)
+                {
+                    message = "All required packages and models are downloaded and ready!\n\n" +
+                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
+                              "You can now go to Package Manager to import the samples and open the demo scene to test it right away.";
+                    primaryBtn = "Open Package Manager";
+                }
+                else
+                {
+                    message = "All required packages and models are downloaded and ready!\n\n" +
+                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
+                              "Your local AI NPC system is configured and ready to use.";
+                    primaryBtn = "Got It";
+                }
 
-                bool choosePrimary = EditorUtility.DisplayDialog(
-                    "AI Driven NPCs — Setup Complete! 🎉",
-                    message,
-                    primaryBtn,
-                    "Got It");
+                bool showCancel = hasSampleScene || isUpm;
+                bool choosePrimary = AISystemDialogWindow.ShowDialog(
+                    title: "AI Driven NPCs — Setup Complete! 🎉",
+                    heading: "Setup Complete! Everything is Ready",
+                    message: message,
+                    primaryBtn: primaryBtn,
+                    secondaryBtn: showCancel ? "Got It" : null,
+                    icon: "✅",
+                    accentColor: EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.1f, 0.65f, 0.2f),
+                    width: 530,
+                    height: 295);
 
                 if (choosePrimary)
                 {
                     if (hasSampleScene)
                         OpenSampleScene();
-                    else
+                    else if (isUpm)
                         OpenPackageManager();
                 }
             }
@@ -578,29 +608,24 @@ namespace AISystem.Editor
 
         foreach (var m in Models) m.Refresh();
 
-        bool hasLlm = HasAnyLLMModelInstalled();
-        bool anyMissing = Models.Exists(m =>
-        {
-            if (m.IsOptionalLlm) return !m.IsDownloaded && !hasLlm;
-            return !m.IsDownloaded;
-        });
-
-        if (!anyMissing)
-        {
-            Debug.Log("<b>[AI System Setup]</b> All model files already present. ✅");
-            if (_instance != null)
-            {
-                _instance.RefreshModelStatus();
-                EditorApplication.delayCall += () => CheckAndNotifyCompletion();
-            }
-            return;
-        }
+        bool anyMissing = Models.Exists(m => !m.IsDownloaded);
 
         // Switch phase inside the already-open window (no new window!)
         var existingWin = EnsureWindow(WindowPhase.ModelDownload);
         if (existingWin != null)
         {
             existingWin.RefreshModelStatus();
+        }
+
+        if (!anyMissing)
+        {
+            Debug.Log("<b>[AI System Setup]</b> All model files already present. ✅");
+            EditorApplication.delayCall += () => CheckAndNotifyCompletion();
+            return;
+        }
+
+        if (existingWin != null)
+        {
             Debug.Log("<b>[AI System Setup]</b> Starting download of missing model files…");
             existingWin.DownloadAllModels(isAutomatic: true);
         }
@@ -692,6 +717,7 @@ namespace AISystem.Editor
 
         string scenePath = FindSampleScenePath();
         bool hasSampleScene = !string.IsNullOrEmpty(scenePath);
+        bool isUpm = IsInstalledViaUPM();
 
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
@@ -705,25 +731,29 @@ namespace AISystem.Editor
             EditorGUILayout.Space(2);
 
             string infoText = hasSampleScene
-                ? "All required packages and models are downloaded, and samples are imported! You can open the demo scene (AIOTest) to test right away."
-                : "All required packages and models are downloaded! Go to Package Manager to import the samples and open the demo scene to test.";
+                ? "All required packages and models are downloaded, and demo scenes are ready! You can open the demo scene (AIOTest) to test right away."
+                : (isUpm
+                    ? "All required packages and models are downloaded! Go to Package Manager to import the samples and open the demo scene to test."
+                    : "All required packages and models are downloaded! Your local AI NPC system is fully configured and ready to use.");
 
             EditorGUILayout.LabelField(infoText, EditorStyles.wordWrappedLabel);
             EditorGUILayout.Space(6);
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("📦 Open Package Manager", GUILayout.Height(26)))
-                {
-                    OpenPackageManager();
-                }
-
                 if (hasSampleScene)
                 {
                     GUIStyle playBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
                     if (GUILayout.Button("▶ Open Demo Scene (AIOTest)", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();
+                    }
+                }
+                else if (isUpm)
+                {
+                    if (GUILayout.Button("📦 Open Package Manager", GUILayout.Height(26)))
+                    {
+                        OpenPackageManager();
                     }
                 }
             }
@@ -935,8 +965,8 @@ namespace AISystem.Editor
         else
         {
             EditorGUILayout.HelpBox(
-                "Whisper (Speech Recognition) and Piper (Text-to-Speech) models are downloaded for voice.\n" +
-                "The LLM model (Qwen3.5 0.8B, ~500 MB) is optional — you can download it here or assign your own custom .gguf model in LLMUnity.",
+                "Local AI models (Whisper STT, Piper TTS, and Qwen3.5 LLM) are required for on-device inference.\n" +
+                "Click 'Download All Models' below to download any missing files to StreamingAssets.",
                 MessageType.Info);
         }
 
@@ -949,16 +979,28 @@ namespace AISystem.Editor
             MessageType.None);
         EditorGUILayout.Space(4);
 
-        bool anyMissing = Models.Exists(m => !m.IsDownloaded && !m.IsDownloading);
-        using (new EditorGUI.DisabledGroupScope(_activeDownloads > 0 || !anyMissing))
+        int missingCount = Models.Count(m => !m.IsDownloaded && !m.IsDownloading);
+
+        if (_activeDownloads > 0)
         {
-            string label = _activeDownloads > 0
-                ? $"Downloading… ({_activeDownloads} active)"
-                : (allModelsDone ? "✅  All Models Downloaded" : "⬇  Download All Missing Models");
-            if (GUILayout.Button(label, GUILayout.Height(32)))
-                DownloadAllModels();
+            using (new EditorGUI.DisabledGroupScope(true))
+            {
+                GUILayout.Button($"⏳ Downloading Models… ({_activeDownloads} active)", GUILayout.Height(30));
+            }
+            EditorGUILayout.Space(4);
         }
-        EditorGUILayout.Space(6);
+        else if (missingCount > 0)
+        {
+            GUIStyle dlAllBtnStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontStyle = FontStyle.Bold
+            };
+            if (GUILayout.Button($"⬇  Download All Models ({missingCount} missing)", dlAllBtnStyle, GUILayout.Height(30)))
+            {
+                DownloadAllModels(isAutomatic: false, forceRedownload: false);
+            }
+            EditorGUILayout.Space(4);
+        }
 
         _modelScroll = EditorGUILayout.BeginScrollView(_modelScroll);
 
@@ -985,13 +1027,37 @@ namespace AISystem.Editor
             if (GUILayout.Button("◀ Back: Package Install", GUILayout.Height(26), GUILayout.Width(170)))
                 SetPhase(WindowPhase.PackageInstall);
 
-            if (GUILayout.Button("↻ Refresh Status", GUILayout.Height(26), GUILayout.Width(120)))
+            if (GUILayout.Button("↻ Refresh", GUILayout.Height(26), GUILayout.Width(80)))
                 RefreshModelStatus();
 
             GUILayout.FlexibleSpace();
 
-            if (allModelsDone)
+            if (_activeDownloads == 0 && missingCount > 0)
             {
+                GUIStyle dlQuickStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
+                if (GUILayout.Button("⬇ Download All Models", dlQuickStyle, GUILayout.Height(26), GUILayout.Width(180)))
+                    DownloadAllModels(isAutomatic: false, forceRedownload: false);
+            }
+            else if (allModelsDone)
+            {
+                if (GUILayout.Button("↻ Re-download All Models", GUILayout.Height(26), GUILayout.Width(170)))
+                {
+                    bool confirm = AISystemDialogWindow.ShowDialog(
+                        title: "Re-download All Models?",
+                        heading: "Re-download All Models?",
+                        message: "All models are already downloaded. Do you want to re-download all model files?",
+                        primaryBtn: "Yes, Re-download",
+                        secondaryBtn: "Cancel",
+                        icon: "↻",
+                        accentColor: EditorGUIUtility.isProSkin ? new Color(0.4f, 0.7f, 1f) : new Color(0.15f, 0.45f, 0.85f),
+                        width: 480,
+                        height: 230);
+                    if (confirm)
+                    {
+                        DownloadAllModels(isAutomatic: false, forceRedownload: true);
+                    }
+                }
+
                 if (GUILayout.Button("Done / Close", GUILayout.Height(26), GUILayout.Width(110)))
                     Close();
             }
@@ -1028,8 +1094,7 @@ namespace AISystem.Editor
             }
             else if (model.IsDownloaded)
             {
-                string statusLabel = (model.IsOptionalLlm && !File.Exists(model.FullPath)) ? "LLM Ready" : "Ready";
-                EditorGUILayout.LabelField(statusLabel, EditorStyles.miniLabel, GUILayout.Width(80));
+                EditorGUILayout.LabelField("Ready", EditorStyles.miniLabel, GUILayout.Width(80));
                 if (File.Exists(model.FullPath))
                 {
                     if (GUILayout.Button("Delete", GUILayout.Width(55)))
@@ -1038,11 +1103,6 @@ namespace AISystem.Editor
                         model.Refresh();
                         AssetDatabase.Refresh();
                     }
-                }
-                else if (model.IsOptionalLlm)
-                {
-                    if (GUILayout.Button("Download", GUILayout.Width(80)))
-                        _ = DownloadModel(model);
                 }
             }
             else
@@ -1053,50 +1113,24 @@ namespace AISystem.Editor
         }
     }
 
-    private const string LlmPromptSessionKey = "AISystemSetupWindow.LlmPromptAnswered";
     private static bool _isDownloadingAll;
 
-    private async void DownloadAllModels(bool isAutomatic = false)
+    public async void DownloadAllModels(bool isAutomatic = false, bool forceRedownload = false)
     {
         if (_isDownloadingAll) return;
         _isDownloadingAll = true;
 
         try
         {
-            bool hasLlmInstalled = HasAnyLLMModelInstalled();
-            bool alreadyPrompted = SessionState.GetBool(LlmPromptSessionKey, false);
-            bool downloadOptionalLlm = false;
-
-            var missingLlm = Models.Find(m => m.IsOptionalLlm && !m.IsDownloaded && !m.IsDownloading);
-
-            // Only prompt if NO LLM is installed at all, and (if automatic) hasn't been prompted already this session
-            if (missingLlm != null && !hasLlmInstalled)
-            {
-                if (!isAutomatic || !alreadyPrompted)
-                {
-                    SessionState.SetBool(LlmPromptSessionKey, true);
-                    downloadOptionalLlm = EditorUtility.DisplayDialog(
-                        "Download LLM Language Model?",
-                        $"Would you like to download the default LLM model ({missingLlm.DisplayName}, ~{missingLlm.SizeMB} MB)?\n\n" +
-                        $"• Download: Downloads {missingLlm.DisplayName} (~{missingLlm.SizeMB} MB) to StreamingAssets and configures it automatically for LLMUnity.\n\n" +
-                        "• Skip: Do not download. You can download it later from this window or use your own custom GGUF model in LLMUnity.",
-                        $"Download ({missingLlm.SizeMB} MB)",
-                        "Skip LLM Download");
-                }
-            }
-            else if (missingLlm != null && !isAutomatic)
-            {
-                downloadOptionalLlm = true;
-            }
-
             foreach (var m in Models)
             {
                 m.Refresh();
-                if (!m.IsDownloaded && !m.IsDownloading)
+                if ((!m.IsDownloaded || forceRedownload) && !m.IsDownloading)
                 {
-                    if (m.IsOptionalLlm && !downloadOptionalLlm)
+                    if (forceRedownload && File.Exists(m.FullPath))
                     {
-                        continue;
+                        try { File.Delete(m.FullPath); } catch { }
+                        m.Refresh();
                     }
                     await DownloadModel(m);
                 }
@@ -1425,6 +1459,171 @@ namespace AISystem.Editor
     {
         Rect r = EditorGUILayout.GetControlRect(false, 1);
         EditorGUI.DrawRect(r, new Color(0.4f, 0.4f, 0.4f, 0.5f));
+    }
+}
+
+/// <summary>
+/// Friendly modal dialog window providing a clean green checkmark (or custom icon)
+/// instead of the harsh yellow warning exclamation mark from standard OS dialogs.
+/// </summary>
+public class AISystemDialogWindow : EditorWindow
+{
+    private static bool _result;
+    private string _heading;
+    private string _message;
+    private string _primaryBtn;
+    private string _secondaryBtn;
+    private string _icon;
+    private Color _accentColor;
+
+    private Vector2 _scroll;
+
+    public static bool ShowDialog(
+        string title,
+        string heading,
+        string message,
+        string primaryBtn = "OK",
+        string secondaryBtn = null,
+        string icon = "✅",
+        Color? accentColor = null,
+        float width = 520f,
+        float height = 285f)
+    {
+        try
+        {
+            var win = CreateInstance<AISystemDialogWindow>();
+            win.titleContent = new GUIContent(title);
+            win._heading = heading;
+            win._message = message;
+            win._primaryBtn = primaryBtn;
+            win._secondaryBtn = secondaryBtn;
+            win._icon = icon;
+            win._accentColor = accentColor ?? (EditorGUIUtility.isProSkin 
+                ? new Color(0.35f, 0.95f, 0.5f) 
+                : new Color(0.1f, 0.65f, 0.2f));
+
+            Vector2 size = new Vector2(width, height);
+            win.minSize = size;
+            win.maxSize = size;
+
+            try
+            {
+                Rect main = EditorGUIUtility.GetMainWindowPosition();
+                win.position = new Rect(
+                    main.x + (main.width - size.x) * 0.5f,
+                    main.y + (main.height - size.y) * 0.5f,
+                    size.x, size.y);
+            }
+            catch { }
+
+            _result = false;
+            win.ShowModalUtility();
+            return _result;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[AI System Setup] Custom dialog fallback: {ex.Message}");
+            return EditorUtility.DisplayDialog(title, message, primaryBtn, secondaryBtn ?? "");
+        }
+    }
+
+    private void OnGUI()
+    {
+        if (Event.current.type == EventType.KeyDown)
+        {
+            if (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter)
+            {
+                _result = true;
+                Close();
+                Event.current.Use();
+                return;
+            }
+            else if (Event.current.keyCode == KeyCode.Escape)
+            {
+                _result = false;
+                Close();
+                Event.current.Use();
+                return;
+            }
+        }
+
+        EditorGUILayout.Space(16);
+
+        using (var scroll = new EditorGUILayout.ScrollViewScope(_scroll))
+        {
+            _scroll = scroll.scrollPosition;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.Space(16);
+
+                // Icon (e.g. green checkmark badge)
+                GUIStyle iconStyle = new GUIStyle(EditorStyles.label)
+                {
+                    fontSize = 36,
+                    alignment = TextAnchor.MiddleCenter
+                };
+                EditorGUILayout.LabelField(_icon, iconStyle, GUILayout.Width(46), GUILayout.Height(46));
+
+                EditorGUILayout.Space(12);
+
+                using (new EditorGUILayout.VerticalScope())
+                {
+                    GUIStyle headingStyle = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        fontSize = 14,
+                        normal = { textColor = _accentColor }
+                    };
+                    EditorGUILayout.LabelField(_heading, headingStyle);
+                    EditorGUILayout.Space(6);
+
+                    GUIStyle msgStyle = new GUIStyle(EditorStyles.wordWrappedLabel)
+                    {
+                        fontSize = 12
+                    };
+                    EditorGUILayout.LabelField(_message, msgStyle);
+                }
+
+                EditorGUILayout.Space(16);
+            }
+        }
+
+        GUILayout.FlexibleSpace();
+
+        // Divider
+        Rect r = EditorGUILayout.GetControlRect(false, 1);
+        EditorGUI.DrawRect(r, new Color(0.4f, 0.4f, 0.4f, 0.35f));
+        EditorGUILayout.Space(10);
+
+        // Buttons
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            EditorGUILayout.Space(16);
+
+            if (!string.IsNullOrEmpty(_secondaryBtn))
+            {
+                if (GUILayout.Button(_secondaryBtn, GUILayout.Height(28), GUILayout.MinWidth(95)))
+                {
+                    _result = false;
+                    Close();
+                }
+            }
+
+            GUILayout.FlexibleSpace();
+
+            GUIStyle primaryStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontStyle = FontStyle.Bold
+            };
+            if (GUILayout.Button(_primaryBtn, primaryStyle, GUILayout.Height(28), GUILayout.MinWidth(120)))
+            {
+                _result = true;
+                Close();
+            }
+
+            EditorGUILayout.Space(16);
+        }
+        EditorGUILayout.Space(12);
     }
 }
 
