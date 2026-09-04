@@ -7,16 +7,18 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-/// <summary>
-/// Runs automatically when the package is first imported.
-/// Phase 1: Edits manifest.json to add the npm scoped registry and ONNX 0.4.4 packages
-///          (git-URL ONNX lacks LFS DLLs → native crash; npm has real binaries).
-///          Calls Client.Resolve() which triggers a domain reload.
-/// Phase 2: After reload, installs remaining git-URL packages one by one.
-/// </summary>
-[InitializeOnLoad]
-public class AIPackageInstaller
+namespace AISystem.Editor
 {
+    /// <summary>
+    /// Runs automatically when the package is first imported.
+    /// Phase 1: Edits manifest.json to add the npm scoped registry and ONNX 0.4.4 packages
+    ///          (git-URL ONNX lacks LFS DLLs → native crash; npm has real binaries).
+    ///          Calls Client.Resolve() which triggers a domain reload.
+    /// Phase 2: After reload, installs remaining git-URL packages one by one.
+    /// </summary>
+    [InitializeOnLoad]
+    public class AIPackageInstaller
+    {
     // ── NPM packages (need scoped registry) ──────────────────────────────────
     // Key = package id, Value = version
     private static readonly Dictionary<string, string> NpmPackages = new Dictionary<string, string>
@@ -72,6 +74,8 @@ public class AIPackageInstaller
         Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
         SessionState.SetBool("AIPackageInstaller.Done", false);
         SessionState.SetBool("AIPackageInstaller.ConsentGiven", true); // user explicitly triggered — skip dialog
+        string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
+        EditorPrefs.DeleteKey(donePrefKey);
 
         InitUI();
         AISystemSetupWindow.ShowWindow();
@@ -103,7 +107,6 @@ public class AIPackageInstaller
         {
             new AISystemSetupWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
             new AISystemSetupWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git (keep Unity focused during setup)" },
-            new AISystemSetupWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
             new AISystemSetupWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
         };
         AISystemSetupWindow.InitPackageSteps(steps);
@@ -119,6 +122,12 @@ public class AIPackageInstaller
 
         // Already fully installed this session — do not re-run or open windows.
         if (SessionState.GetBool("AIPackageInstaller.Done", false))
+        {
+            return;
+        }
+
+        string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
+        if (EditorPrefs.GetBool(donePrefKey, false))
         {
             return;
         }
@@ -392,6 +401,8 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
+            EditorPrefs.SetBool($"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}", true);
+            ExtractContentPackageIfPresent();
             EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
         }
     }
@@ -402,6 +413,8 @@ public class AIPackageInstaller
         {
             Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
             SessionState.SetBool("AIPackageInstaller.Done", true);
+            EditorPrefs.SetBool($"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}", true);
+            ExtractContentPackageIfPresent();
             EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
             return;
         }
@@ -434,4 +447,169 @@ public class AIPackageInstaller
 
         InstallNext();
     }
+
+    // ── Asset Store Content Packaging & Auto-Extraction ───────────────────────
+
+    /// <summary>
+    /// Automatically extracts the bundled content package if present in the project.
+    /// Ensures scripts and prefabs are only imported AFTER packages are installed,
+    /// preventing CS0246 missing namespace errors and broken nested prefabs on first import.
+    /// </summary>
+    public static void ExtractContentPackageIfPresent()
+    {
+        string managerScript = Path.Combine(Application.dataPath, "AI Driven NPCs System", "Scripts", "AISystem", "Core", "AISystemManager.cs");
+        if (File.Exists(managerScript))
+        {
+            return;
+        }
+
+        string[] candidates = new[]
+        {
+            "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage",
+            "Assets/AI-Driven-NPCs-Content.unitypackage"
+        };
+
+        foreach (string relPath in candidates)
+        {
+            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, relPath);
+            if (File.Exists(fullPath))
+            {
+                Debug.Log($"<b>[AI Package Installer]</b> 📦 Unpacking content package: {relPath}...");
+                AssetDatabase.ImportPackage(relPath, false);
+                break;
+            }
+        }
+    }
+
+    [MenuItem("Tools/AI Packages/Unpack Content Package")]
+    public static void UnpackContentPackageManual()
+    {
+        string[] candidates = new[]
+        {
+            "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage",
+            "Assets/AI-Driven-NPCs-Content.unitypackage"
+        };
+
+        bool found = false;
+        foreach (string relPath in candidates)
+        {
+            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, relPath);
+            if (File.Exists(fullPath))
+            {
+                Debug.Log($"<b>[AI Package Installer]</b> 📦 Unpacking content package: {relPath}...");
+                AssetDatabase.ImportPackage(relPath, false);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            EditorUtility.DisplayDialog("Unpack Content Package", "No 'AI-Driven-NPCs-Content.unitypackage' found to unpack.", "OK");
+        }
+    }
+
+    [MenuItem("Tools/AI Packages/Export Asset Store Content Package")]
+    public static void ExportAssetStoreContentPackage()
+    {
+        string packagePath = "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage";
+        string[] exportPaths = new[]
+        {
+            "Assets/AI Driven NPCs System/Prefabs",
+            "Assets/AI Driven NPCs System/Resources",
+            "Assets/AI Driven NPCs System/Scenes",
+            "Assets/AI Driven NPCs System/Scripts"
+        };
+
+        List<string> validPaths = new List<string>();
+        foreach (string p in exportPaths)
+        {
+            if (Directory.Exists(p)) validPaths.Add(p);
+        }
+
+        if (validPaths.Count == 0)
+        {
+            EditorUtility.DisplayDialog("Export Content Package", "No source folders found in Assets/AI Driven NPCs System/ to export.", "OK");
+            return;
+        }
+
+        AssetDatabase.ExportPackage(validPaths.ToArray(), packagePath, ExportPackageOptions.Recurse);
+        AssetDatabase.Refresh();
+        Debug.Log($"<b>[AI Package Installer]</b> ✅ Exported content package to: {packagePath}");
+        EditorUtility.DisplayDialog("Export Complete", $"Content package successfully exported to:\n{packagePath}", "OK");
+    }
+
+    [MenuItem("Tools/AI Packages/Prepare for Asset Store Upload")]
+    public static void PrepareForAssetStoreUpload()
+    {
+        ExportAssetStoreContentPackage();
+
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (!Directory.Exists(stagingDir)) Directory.CreateDirectory(stagingDir);
+
+        string[] folders = new[] { "Prefabs", "Resources", "Scenes", "Scripts" };
+        foreach (string f in folders)
+        {
+            string src = Path.Combine(Application.dataPath, "AI Driven NPCs System", f);
+            string dst = Path.Combine(stagingDir, f);
+            if (Directory.Exists(src))
+            {
+                if (Directory.Exists(dst)) Directory.Delete(dst, true);
+                Directory.Move(src, dst);
+            }
+            string metaSrc = src + ".meta";
+            string metaDst = dst + ".meta";
+            if (File.Exists(metaSrc))
+            {
+                if (File.Exists(metaDst)) File.Delete(metaDst);
+                File.Move(metaSrc, metaDst);
+            }
+        }
+
+        AssetDatabase.Refresh();
+        EditorUtility.DisplayDialog("Ready for Asset Store Upload",
+            "Assets/AI Driven NPCs System is now ready for upload!\n\n" +
+            "It now contains ONLY:\n" +
+            "• Editor/ (Installer & Setup)\n" +
+            "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload)\n" +
+            "• Documentation (README & Setup Guide)\n\n" +
+            "You can now run the Publisher Tool on 'Assets/AI Driven NPCs System'.\n\n" +
+            "When you are done uploading, click Tools → AI Packages → Restore Development Assets.", "OK");
+    }
+
+    [MenuItem("Tools/AI Packages/Restore Development Assets")]
+    public static void RestoreDevelopmentAssets()
+    {
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (!Directory.Exists(stagingDir))
+        {
+            EditorUtility.DisplayDialog("Restore Development Assets", "No staging folder found. Assets are already in place.", "OK");
+            return;
+        }
+
+        string[] folders = new[] { "Prefabs", "Resources", "Scenes", "Scripts" };
+        foreach (string f in folders)
+        {
+            string src = Path.Combine(stagingDir, f);
+            string dst = Path.Combine(Application.dataPath, "AI Driven NPCs System", f);
+            if (Directory.Exists(src))
+            {
+                if (Directory.Exists(dst)) Directory.Delete(dst, true);
+                Directory.Move(src, dst);
+            }
+            string metaSrc = src + ".meta";
+            string metaDst = dst + ".meta";
+            if (File.Exists(metaSrc))
+            {
+                if (File.Exists(metaDst)) File.Delete(metaDst);
+                File.Move(metaSrc, metaDst);
+            }
+        }
+
+        if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+        AssetDatabase.Refresh();
+        Debug.Log("<b>[AI Package Installer]</b> ✅ Development assets restored.");
+        EditorUtility.DisplayDialog("Restore Complete", "Development assets restored successfully!", "OK");
+    }
+}
 }
