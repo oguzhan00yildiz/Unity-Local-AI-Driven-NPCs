@@ -7,7 +7,7 @@
   "samples": [
     {
       "displayName": "AI Driven NPCs System",
-      "description": "Modular AI-NPC system. Includes: AISystemManager, ChatUIController, VoiceInputService (Whisper STT), VoiceOutputService (PiperTTS + TextMeshPro), ModelBootstrapper, NPCAgent, AIOTest scene, and all prefabs (AISystem, LLM, NPC, Player, TTS). TMP Essential Resources are imported automatically.",
+      "description": "Modular AI-NPC system. Includes: AISystemManager, ChatUIController, VoiceInputService (Whisper STT), VoiceOutputService (PiperTTS + TextMeshPro), ModelBootstrapper, NPCAgent, AIOScene demo scene, and all prefabs (AISystem, LLM, NPC, Player, TTS). TMP Essential Resources are imported automatically.",
       "path": "Samples~"
     }
   ]

@@ -257,8 +257,11 @@ namespace AISystem.Editor
     // ─────────────────────────────────────────────────────────────────────────
     private enum WindowPhase { PackageInstall, ModelDownload }
 
-    // Only ever one instance — never use GetWindow more than once.
-    private static AISystemSetupWindow _instance;
+    private class WindowHolder
+    {
+        public AISystemSetupWindow Instance;
+    }
+    private static readonly WindowHolder Holder = new WindowHolder();
 
     // Phase 1
     public static List<InstallStep> Steps { get; } = new List<InstallStep>();
@@ -307,7 +310,7 @@ namespace AISystem.Editor
     {
         Steps.Clear();
         Steps.AddRange(steps);
-        _instance?.Repaint();
+        Holder.Instance?.Repaint();
     }
 
     public static void UpdatePackageStep(string name, StepStatus status, string error = null)
@@ -322,7 +325,7 @@ namespace AISystem.Editor
         {
             Steps.Add(new InstallStep { Name = name, Status = status, ErrorMessage = error });
         }
-        _instance?.Repaint();
+        Holder.Instance?.Repaint();
     }
 
     public static bool AreAllPackagesInstalled()
@@ -387,7 +390,7 @@ namespace AISystem.Editor
             Status = whisperInstalled ? StepStatus.Completed : StepStatus.Pending
         });
 
-        _instance?.Repaint();
+        Holder.Instance?.Repaint();
     }
 
     private static bool CheckScopedRegistryAndOnnx()
@@ -467,11 +470,17 @@ namespace AISystem.Editor
     private const string SetupCompleteNotifiedKey = "AISystemSetupWindow.SetupCompleteNotified";
 
     /// <summary>
-    /// Checks if sample scene AIOTest exists in the project.
+    /// Checks if sample demo scene (AIOScene or AIOTest) exists in the project.
     /// </summary>
     public static string FindSampleScenePath()
     {
-        string[] guids = AssetDatabase.FindAssets("AIOTest t:Scene");
+        string[] guids = AssetDatabase.FindAssets("AIOScene t:Scene");
+        if (guids != null && guids.Length > 0)
+        {
+            return AssetDatabase.GUIDToAssetPath(guids[0]);
+        }
+
+        guids = AssetDatabase.FindAssets("AIOTest t:Scene");
         if (guids != null && guids.Length > 0)
         {
             return AssetDatabase.GUIDToAssetPath(guids[0]);
@@ -505,12 +514,12 @@ namespace AISystem.Editor
         {
             if (IsInstalledViaUPM())
             {
-                Debug.LogWarning("[AI System Setup] AIOTest scene not found. Opening Package Manager to import samples…");
+                Debug.LogWarning("[AI System Setup] AIOScene demo scene not found. Opening Package Manager to import samples…");
                 OpenPackageManager();
             }
             else
             {
-                Debug.LogWarning("[AI System Setup] AIOTest scene not found in Assets.");
+                Debug.LogWarning("[AI System Setup] AIOScene demo scene not found in Assets.");
             }
         }
     }
@@ -556,7 +565,7 @@ namespace AISystem.Editor
                 {
                     message = "All required packages and models are downloaded and ready!\n\n" +
                               "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                              "Would you like to open the demo scene (AIOTest) to test it right away?";
+                              "Would you like to open the demo scene (AIOScene) to test it right away?";
                     primaryBtn = "Open Demo Scene";
                 }
                 else if (isUpm)
@@ -641,31 +650,31 @@ namespace AISystem.Editor
     private static AISystemSetupWindow EnsureWindow(WindowPhase phase)
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
-            return _instance;
+            return Holder.Instance;
 
-        if (_instance == null)
+        if (Holder.Instance == null)
         {
             // CreateInstance + ShowUtility keeps the window floating and prevents
             // it from being merged with other dockable windows (no duplicate docking).
-            _instance = CreateInstance<AISystemSetupWindow>();
-            _instance.titleContent = new GUIContent("AI System Setup");
-            _instance.minSize      = new Vector2(560, 500);
-            _instance.ShowUtility();
+            Holder.Instance = CreateInstance<AISystemSetupWindow>();
+            Holder.Instance.titleContent = new GUIContent("AI System Setup");
+            Holder.Instance.minSize      = new Vector2(560, 500);
+            Holder.Instance.ShowUtility();
         }
 
-        _instance._phase = phase;
+        Holder.Instance._phase = phase;
         RefreshPackageSteps();
         if (phase == WindowPhase.ModelDownload)
-            _instance.RefreshModelStatus();
+            Holder.Instance.RefreshModelStatus();
 
-        _instance.Focus();
+        Holder.Instance.Focus();
 
         EditorApplication.delayCall += () =>
         {
             CheckAndNotifyCompletion();
         };
 
-        return _instance;
+        return Holder.Instance;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -674,7 +683,7 @@ namespace AISystem.Editor
 
     private void OnEnable()
     {
-        _instance = this;
+        Holder.Instance = this;
         EditorApplication.update += ForceRepaint;
         RefreshPackageSteps();
         RefreshModelStatus();
@@ -683,8 +692,8 @@ namespace AISystem.Editor
     private void OnDisable()
     {
         EditorApplication.update -= ForceRepaint;
-        if (_instance == this)
-            _instance = null;
+        if (Holder.Instance == this)
+            Holder.Instance = null;
     }
 
     private void ForceRepaint() => Repaint();
@@ -731,7 +740,7 @@ namespace AISystem.Editor
             EditorGUILayout.Space(2);
 
             string infoText = hasSampleScene
-                ? "All required packages and models are downloaded, and demo scenes are ready! You can open the demo scene (AIOTest) to test right away."
+                ? "All required packages and models are downloaded, and demo scenes are ready! You can open the demo scene (AIOScene) to test right away."
                 : (isUpm
                     ? "All required packages and models are downloaded! Go to Package Manager to import the samples and open the demo scene to test."
                     : "All required packages and models are downloaded! Your local AI NPC system is fully configured and ready to use.");
@@ -744,7 +753,7 @@ namespace AISystem.Editor
                 if (hasSampleScene)
                 {
                     GUIStyle playBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
-                    if (GUILayout.Button("▶ Open Demo Scene (AIOTest)", playBtnStyle, GUILayout.Height(26)))
+                    if (GUILayout.Button("▶ Open Demo Scene (AIOScene)", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();
                     }
@@ -766,10 +775,10 @@ namespace AISystem.Editor
     // Header
     // ─────────────────────────────────────────────────────────────────────────
 
-    private static GUIStyle _activeLeftTabStyle;
-    private static GUIStyle _activeRightTabStyle;
+    private GUIStyle _activeLeftTabStyle;
+    private GUIStyle _activeRightTabStyle;
 
-    private static GUIStyle GetActiveTabStyle(bool isLeft)
+    private GUIStyle GetActiveTabStyle(bool isLeft)
     {
         Color highlight = EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.05f, 0.65f, 0.2f);
         GUIStyle baseStyle = isLeft ? EditorStyles.miniButtonLeft : EditorStyles.miniButtonRight;
@@ -1113,7 +1122,7 @@ namespace AISystem.Editor
         }
     }
 
-    private static bool _isDownloadingAll;
+    private bool _isDownloadingAll;
 
     public async void DownloadAllModels(bool isAutomatic = false, bool forceRedownload = false)
     {
@@ -1468,7 +1477,12 @@ namespace AISystem.Editor
 /// </summary>
 public class AISystemDialogWindow : EditorWindow
 {
-    private static bool _result;
+    private class DialogState
+    {
+        public bool Result;
+    }
+    private static readonly DialogState State = new DialogState();
+
     private string _heading;
     private string _message;
     private string _primaryBtn;
@@ -1516,9 +1530,9 @@ public class AISystemDialogWindow : EditorWindow
             }
             catch { }
 
-            _result = false;
+            State.Result = false;
             win.ShowModalUtility();
-            return _result;
+            return State.Result;
         }
         catch (System.Exception ex)
         {
@@ -1533,14 +1547,14 @@ public class AISystemDialogWindow : EditorWindow
         {
             if (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter)
             {
-                _result = true;
+                State.Result = true;
                 Close();
                 Event.current.Use();
                 return;
             }
             else if (Event.current.keyCode == KeyCode.Escape)
             {
-                _result = false;
+                State.Result = false;
                 Close();
                 Event.current.Use();
                 return;
@@ -1604,7 +1618,7 @@ public class AISystemDialogWindow : EditorWindow
             {
                 if (GUILayout.Button(_secondaryBtn, GUILayout.Height(28), GUILayout.MinWidth(95)))
                 {
-                    _result = false;
+                    State.Result = false;
                     Close();
                 }
             }
@@ -1617,7 +1631,7 @@ public class AISystemDialogWindow : EditorWindow
             };
             if (GUILayout.Button(_primaryBtn, primaryStyle, GUILayout.Height(28), GUILayout.MinWidth(120)))
             {
-                _result = true;
+                State.Result = true;
                 Close();
             }
 

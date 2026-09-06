@@ -46,12 +46,17 @@ namespace AISystem.Editor
     private static readonly string ManifestPath = Path.Combine(
         Directory.GetParent(Application.dataPath).FullName, "Packages", "manifest.json");
 
-    private static Queue<string> _gitQueue  = new Queue<string>();
-    private static Queue<string> _gitNames  = new Queue<string>();
-    private static string        _currentPkgName;
-    private static AddRequest    _addRequest;
-    private static ListRequest   _listRequest;
-    private static double        _closeProjectSettingsUntil;
+    private class InstallerState
+    {
+        public string CurrentPkgName;
+        public AddRequest AddRequest;
+        public ListRequest ListRequest;
+        public double CloseProjectSettingsUntil;
+    }
+
+    private static readonly InstallerState State = new InstallerState();
+    private static readonly Queue<string> _gitQueue = new Queue<string>();
+    private static readonly Queue<string> _gitNames = new Queue<string>();
 
     // ─────────────────────────────────────────────────────────────────────────
     static AIPackageInstaller()
@@ -238,7 +243,7 @@ namespace AISystem.Editor
 
     public static void StartProjectSettingsCloser(float duration = 6f)
     {
-        _closeProjectSettingsUntil = EditorApplication.timeSinceStartup + duration;
+        State.CloseProjectSettingsUntil = EditorApplication.timeSinceStartup + duration;
         CloseProjectSettingsWindow();
         EditorApplication.update -= CloseProjectSettingsUpdate;
         EditorApplication.update += CloseProjectSettingsUpdate;
@@ -247,7 +252,7 @@ namespace AISystem.Editor
     private static void CloseProjectSettingsUpdate()
     {
         CloseProjectSettingsWindow();
-        if (EditorApplication.timeSinceStartup > _closeProjectSettingsUntil)
+        if (EditorApplication.timeSinceStartup > State.CloseProjectSettingsUntil)
         {
             EditorApplication.update -= CloseProjectSettingsUpdate;
         }
@@ -394,22 +399,22 @@ namespace AISystem.Editor
             return;
         }
 
-        _listRequest = Client.List(true, false);
+        State.ListRequest = Client.List(true, false);
         EditorApplication.update += OnListComplete;
     }
 
     private static void OnListComplete()
     {
-        if (!_listRequest.IsCompleted) return;
+        if (!State.ListRequest.IsCompleted) return;
         EditorApplication.update -= OnListComplete;
 
-        if (_listRequest.Status != StatusCode.Success)
+        if (State.ListRequest.Status != StatusCode.Success)
         {
-            Debug.LogError("<b>[AI Package Installer]</b> Failed to list packages: " + _listRequest.Error.message);
+            Debug.LogError("<b>[AI Package Installer]</b> Failed to list packages: " + State.ListRequest.Error.message);
             return;
         }
 
-        var installed = _listRequest.Result
+        var installed = State.ListRequest.Result
             .Select(p => p.packageId.ToLower())
             .ToList();
 
@@ -463,29 +468,29 @@ namespace AISystem.Editor
         }
 
         string pkg = _gitQueue.Dequeue();
-        _currentPkgName = _gitNames.Dequeue();
+        State.CurrentPkgName = _gitNames.Dequeue();
 
-        AISystemSetupWindow.UpdatePackageStep(_currentPkgName, AISystemSetupWindow.StepStatus.InProgress);
+        AISystemSetupWindow.UpdatePackageStep(State.CurrentPkgName, AISystemSetupWindow.StepStatus.InProgress);
 
         Debug.Log($"<b>[AI Package Installer]</b> Installing: {pkg}…");
-        _addRequest = Client.Add(pkg);
+        State.AddRequest = Client.Add(pkg);
         EditorApplication.update += OnAddComplete;
     }
 
     private static void OnAddComplete()
     {
-        if (!_addRequest.IsCompleted) return;
+        if (!State.AddRequest.IsCompleted) return;
         EditorApplication.update -= OnAddComplete;
 
-        if (_addRequest.Status == StatusCode.Success)
+        if (State.AddRequest.Status == StatusCode.Success)
         {
-            Debug.Log($"<b>[AI Package Installer]</b> ✅ Installed: {_addRequest.Result.packageId}");
-            AISystemSetupWindow.UpdatePackageStep(_currentPkgName, AISystemSetupWindow.StepStatus.Completed);
+            Debug.Log($"<b>[AI Package Installer]</b> ✅ Installed: {State.AddRequest.Result.packageId}");
+            AISystemSetupWindow.UpdatePackageStep(State.CurrentPkgName, AISystemSetupWindow.StepStatus.Completed);
         }
         else
         {
-            Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed: {_addRequest.Error.message}");
-            AISystemSetupWindow.UpdatePackageStep(_currentPkgName, AISystemSetupWindow.StepStatus.Failed, _addRequest.Error.message);
+            Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed: {State.AddRequest.Error.message}");
+            AISystemSetupWindow.UpdatePackageStep(State.CurrentPkgName, AISystemSetupWindow.StepStatus.Failed, State.AddRequest.Error.message);
         }
 
         InstallNext();
@@ -602,6 +607,57 @@ namespace AISystem.Editor
         EditorUtility.DisplayDialog("Export Complete", $"Content package successfully exported to:\n{packagePath}", "OK");
     }
 
+    private static void SafeMoveDirectory(string src, string dst)
+    {
+        if (!Directory.Exists(src)) return;
+        if (!Directory.Exists(dst)) Directory.CreateDirectory(dst);
+
+        foreach (string file in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+        {
+            string rel = file.Substring(src.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string targetFile = Path.Combine(dst, rel);
+            string targetDir = Path.GetDirectoryName(targetFile);
+            if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+            if (File.Exists(targetFile))
+            {
+                File.SetAttributes(targetFile, FileAttributes.Normal);
+                File.Delete(targetFile);
+            }
+
+            int retries = 3;
+            while (retries > 0)
+            {
+                try
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                    File.Move(file, targetFile);
+                    break;
+                }
+                catch (IOException)
+                {
+                    retries--;
+                    if (retries == 0) throw;
+                    System.Threading.Thread.Sleep(100);
+                }
+            }
+        }
+
+        try { Directory.Delete(src, true); } catch { }
+    }
+
+    private static void SafeMoveFile(string src, string dst)
+    {
+        if (!File.Exists(src)) return;
+        if (File.Exists(dst))
+        {
+            File.SetAttributes(dst, FileAttributes.Normal);
+            File.Delete(dst);
+        }
+        File.SetAttributes(src, FileAttributes.Normal);
+        File.Move(src, dst);
+    }
+
     [MenuItem("Tools/AI Packages/Prepare for Asset Store Upload")]
     public static void PrepareForAssetStoreUpload()
     {
@@ -615,18 +671,11 @@ namespace AISystem.Editor
         {
             string src = Path.Combine(Application.dataPath, "AI Driven NPCs System", f);
             string dst = Path.Combine(stagingDir, f);
-            if (Directory.Exists(src))
-            {
-                if (Directory.Exists(dst)) Directory.Delete(dst, true);
-                Directory.Move(src, dst);
-            }
+            SafeMoveDirectory(src, dst);
+
             string metaSrc = src + ".meta";
             string metaDst = dst + ".meta";
-            if (File.Exists(metaSrc))
-            {
-                if (File.Exists(metaDst)) File.Delete(metaDst);
-                File.Move(metaSrc, metaDst);
-            }
+            SafeMoveFile(metaSrc, metaDst);
         }
 
         AssetDatabase.Refresh();
@@ -655,21 +704,17 @@ namespace AISystem.Editor
         {
             string src = Path.Combine(stagingDir, f);
             string dst = Path.Combine(Application.dataPath, "AI Driven NPCs System", f);
-            if (Directory.Exists(src))
-            {
-                if (Directory.Exists(dst)) Directory.Delete(dst, true);
-                Directory.Move(src, dst);
-            }
+            SafeMoveDirectory(src, dst);
+
             string metaSrc = src + ".meta";
             string metaDst = dst + ".meta";
-            if (File.Exists(metaSrc))
-            {
-                if (File.Exists(metaDst)) File.Delete(metaDst);
-                File.Move(metaSrc, metaDst);
-            }
+            SafeMoveFile(metaSrc, metaDst);
         }
 
-        if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
+        if (Directory.Exists(stagingDir))
+        {
+            try { Directory.Delete(stagingDir, true); } catch { }
+        }
         AssetDatabase.Refresh();
         Debug.Log("<b>[AI Package Installer]</b> ✅ Development assets restored.");
         EditorUtility.DisplayDialog("Restore Complete", "Development assets restored successfully!", "OK");

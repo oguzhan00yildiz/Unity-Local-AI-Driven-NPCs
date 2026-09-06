@@ -55,13 +55,13 @@ MonoBehaviour:
   _parallelPrompts: -1
   _contextSize: 8192
   _batchSize: 512
-  _model: Qwen3.5-0.8B-Q4_K_M.gguf
+  _model: meta-llama-3.1-8b-instruct-abliterated-q4_k_m.gguf
   _flashAttention: 0
   _reasoning: 0
   _lora: 
   _loraWeights: 
   dontDestroyOnLoad: 1
   _embeddingsOnly: 0
-  _embeddingLength: 1024
+  _embeddingLength: 4096
   minContextLength: 0
-  maxContextLength: 40960
+  maxContextLength: 131072

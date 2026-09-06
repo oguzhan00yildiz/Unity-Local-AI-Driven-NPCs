@@ -11,32 +11,46 @@ namespace AISystem
     /// </summary>
     public class AISystemManager : MonoBehaviour
     {
-        //  Singleton 
-        public static AISystemManager Instance { get; private set; }
+        // ── Singleton ─────────────────────────────────────────────────────────
+        private class ManagerHolder
+        {
+            public AISystemManager Instance;
+        }
+        private static readonly ManagerHolder Holder = new ManagerHolder();
 
-        //  Service references (auto-resolved from children if left empty) 
-        [Header("Services  assigned to children of the AI System prefab")]
+        public static AISystemManager Instance
+        {
+            get
+            {
+                if (Holder.Instance == null)
+                    Holder.Instance = FindObjectOfType<AISystemManager>();
+                return Holder.Instance;
+            }
+        }
+
+        // ── Service references (auto-resolved from children if left empty) ────
+        [Header("Services — assigned to children of the AI System prefab")]
         [Tooltip("If left empty, resolved automatically via GetComponentInChildren.")]
         public ChatUIController chatUI;
         public VoiceInputService voiceInput;
         public VoiceOutputService voiceOutput;
         public ModelBootstrapper modelBootstrapper;
 
-        //  Active NPC 
+        // ── Active NPC ────────────────────────────────────────────────────────
         private NPCAgent _currentNPC;
         private bool _isWaitingForResponse;
         private bool _playerLeftDuringChat;
 
-        //  Lifecycle 
+        // ── Lifecycle ─────────────────────────────────────────────────────────
         void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (Holder.Instance != null && Holder.Instance != this)
             {
                 Debug.LogWarning("[AISystem] Multiple AISystemManagers found in scene. Destroying duplicate.");
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            Holder.Instance = this;
 
             // Auto-resolve services if not assigned in Inspector
             if (chatUI == null)            chatUI            = GetComponentInChildren<ChatUIController>(true);
@@ -78,7 +92,13 @@ namespace AISystem
                 chatUI.OnCloseChat   -= CloseChat;
             }
 
-            if (Instance == this) Instance = null;
+            if (Holder.Instance == this) Holder.Instance = null;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            Holder.Instance = null;
         }
 
         //  Public API 

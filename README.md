@@ -71,7 +71,7 @@ Once packages are resolved, the **AI System Setup Window** automatically downloa
 ### 3. Import Ready Samples & Play
 1. In **Package Manager**, select **AI Driven NPCs System** → **Samples** tab.
 2. Click **Import** next to **AI Driven NPCs System**.
-3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOTest.unity`.
+3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity`.
 4. Press **Play**!
 
 ---

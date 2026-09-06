@@ -73,7 +73,7 @@ You can easily switch to another model (e.g. Llama 3, Mistral, Gemma, Phi-3) or 
 
 1. **Window → Package Manager** → select **AI Driven NPCs System** → **Samples** tab
 2. Click **Import** next to **AI Driven NPCs System**
-3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOTest.unity`
+3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity`
 4. Press **Play**
 
 ---
