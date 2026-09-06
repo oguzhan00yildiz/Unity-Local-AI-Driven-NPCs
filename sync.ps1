@@ -28,6 +28,10 @@ $aiTestAssets = 'c:\Projects\AITest\Assets\AI Driven NPCs System'
 if (Test-Path $aiTestAssets) {
     Copy-Item -Path 'Assets\AI Driven NPCs System\Editor\*' -Destination "$aiTestAssets\Editor\" -Recurse -Force
     Write-Host "Synced to AITest Assets: $aiTestAssets\Editor\"
+    if (Test-Path "$aiTestAssets\Scripts") {
+        Copy-Item -Path "$srcBase\Scripts\*" -Destination "$aiTestAssets\Scripts\" -Recurse -Force
+        Write-Host "Synced to AITest Assets Scripts: $aiTestAssets\Scripts\"
+    }
 }
 
 # 3. Sync to AITest PackageCache (if present)

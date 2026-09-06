@@ -23,7 +23,11 @@ namespace AISystem
             get
             {
                 if (Holder.Instance == null)
+#if UNITY_2023_1_OR_NEWER
+                    Holder.Instance = FindFirstObjectByType<AISystemManager>();
+#else
                     Holder.Instance = FindObjectOfType<AISystemManager>();
+#endif
                 return Holder.Instance;
             }
         }

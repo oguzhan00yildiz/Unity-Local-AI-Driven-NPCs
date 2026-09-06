@@ -70,7 +70,23 @@ namespace AISystem.Editor
             StartProjectSettingsCloser(5f);
         }
 
+        AssetDatabase.importPackageCompleted += OnImportPackageCompleted;
         EditorApplication.delayCall += Initialize;
+    }
+
+    private static void OnImportPackageCompleted(string packageName)
+    {
+        if (packageName.Contains("AI-Driven-NPCs-Content"))
+        {
+            EditorApplication.delayCall += () =>
+            {
+                if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false) &&
+                    !AISystemSetupWindow.AreAllModelsDownloaded())
+                {
+                    AISystemSetupWindow.AutoStartDownloads();
+                }
+            };
+        }
     }
 
     /// <summary>
@@ -149,14 +165,36 @@ namespace AISystem.Editor
         if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
             return;
 
-        // Resuming automatic setup across domain reloads (e.g. after manifest patch & resolve)
+        // Resuming automatic setup across domain reloads (e.g. after manifest patch & resolve, or content unpack)
         if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false))
         {
             Debug.Log("<b>[AI Package Installer]</b> Resuming automatic setup after reload…");
             InitUI();
-            AISystemSetupWindow.ShowWindow();
-            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
-            EnqueueAndInstallGitPackages(checkFirst: true);
+
+            if (!AISystemSetupWindow.AreAllPackagesInstalled())
+            {
+                AISystemSetupWindow.ShowWindow();
+                AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
+                EnqueueAndInstallGitPackages(checkFirst: true);
+                return;
+            }
+
+            if (HasContentPackageToExtract() && !IsContentExtracted())
+            {
+                Debug.Log("<b>[AI Package Installer]</b> Packages verified. Unpacking content package…");
+                ExtractContentPackageIfPresent();
+                return;
+            }
+
+            if (!AISystemSetupWindow.AreAllModelsDownloaded())
+            {
+                Debug.Log("<b>[AI Package Installer]</b> Packages and content ready. Starting model downloads…");
+                AISystemSetupWindow.AutoStartDownloads();
+                return;
+            }
+
+            MarkSetupCompleted();
+            AISystemSetupWindow.CheckAndNotifyCompletion();
             return;
         }
 
@@ -194,7 +232,7 @@ namespace AISystem.Editor
                 return;
 
             string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
-            if (EditorPrefs.GetBool(donePrefKey, false))
+            if (EditorPrefs.GetBool(donePrefKey, false) && (allPkgs && allModels && contentPresent))
                 return;
         }
 
@@ -449,12 +487,47 @@ namespace AISystem.Editor
         }
     }
 
-    private static void OnPackagesCompleted()
+    public static void MarkSetupCompleted()
     {
         SessionState.SetBool("AIPackageInstaller.Done", true);
         SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", false);
-        EditorPrefs.SetBool($"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}", true);
-        ExtractContentPackageIfPresent();
+        string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
+        EditorPrefs.SetBool(donePrefKey, true);
+    }
+
+    public static bool HasContentPackageToExtract()
+    {
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (Directory.Exists(stagingDir)) return false; // Author dev staging mode
+
+        string[] candidates = new[]
+        {
+            "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage",
+            "Assets/AI-Driven-NPCs-Content.unitypackage"
+        };
+
+        foreach (string relPath in candidates)
+        {
+            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, relPath);
+            if (File.Exists(fullPath)) return true;
+        }
+        return false;
+    }
+
+    private static void OnPackagesCompleted()
+    {
+        bool contentExtracted = IsContentExtracted();
+        bool hasContentPackage = HasContentPackageToExtract();
+
+        if (hasContentPackage && !contentExtracted)
+        {
+            SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
+            Debug.Log("<b>[AI Package Installer]</b> All packages installed! Unpacking core content package…");
+            ExtractContentPackageIfPresent();
+            return;
+        }
+
+        SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
         EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
     }
 
@@ -580,6 +653,11 @@ namespace AISystem.Editor
     [MenuItem("Tools/AI Packages/Export Asset Store Content Package")]
     public static void ExportAssetStoreContentPackage()
     {
+        ExportAssetStoreContentPackage(true);
+    }
+
+    public static void ExportAssetStoreContentPackage(bool interactive)
+    {
         string packagePath = "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage";
         string[] exportPaths = new[]
         {
@@ -597,14 +675,16 @@ namespace AISystem.Editor
 
         if (validPaths.Count == 0)
         {
-            EditorUtility.DisplayDialog("Export Content Package", "No source folders found in Assets/AI Driven NPCs System/ to export.", "OK");
+            if (interactive)
+                EditorUtility.DisplayDialog("Export Content Package", "No source folders found in Assets/AI Driven NPCs System/ to export.", "OK");
             return;
         }
 
         AssetDatabase.ExportPackage(validPaths.ToArray(), packagePath, ExportPackageOptions.Recurse);
         AssetDatabase.Refresh();
         Debug.Log($"<b>[AI Package Installer]</b> ✅ Exported content package to: {packagePath}");
-        EditorUtility.DisplayDialog("Export Complete", $"Content package successfully exported to:\n{packagePath}", "OK");
+        if (interactive)
+            EditorUtility.DisplayDialog("Export Complete", $"Content package successfully exported to:\n{packagePath}", "OK");
     }
 
     private static void SafeMoveDirectory(string src, string dst)
@@ -661,7 +741,12 @@ namespace AISystem.Editor
     [MenuItem("Tools/AI Packages/Prepare for Asset Store Upload")]
     public static void PrepareForAssetStoreUpload()
     {
-        ExportAssetStoreContentPackage();
+        PrepareForAssetStoreUpload(true);
+    }
+
+    public static void PrepareForAssetStoreUpload(bool interactive)
+    {
+        ExportAssetStoreContentPackage(false);
 
         string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
         if (!Directory.Exists(stagingDir)) Directory.CreateDirectory(stagingDir);
@@ -679,23 +764,32 @@ namespace AISystem.Editor
         }
 
         AssetDatabase.Refresh();
-        EditorUtility.DisplayDialog("Ready for Asset Store Upload",
-            "Assets/AI Driven NPCs System is now ready for upload!\n\n" +
-            "It now contains ONLY:\n" +
-            "• Editor/ (Installer & Setup)\n" +
-            "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload)\n" +
-            "• Documentation (README & Setup Guide)\n\n" +
-            "You can now run the Publisher Tool on 'Assets/AI Driven NPCs System'.\n\n" +
-            "When you are done uploading, click Tools → AI Packages → Restore Development Assets.", "OK");
+        if (interactive)
+        {
+            EditorUtility.DisplayDialog("Ready for Asset Store Upload",
+                "Assets/AI Driven NPCs System is now ready for upload!\n\n" +
+                "It now contains ONLY:\n" +
+                "• Editor/ (Installer & Setup)\n" +
+                "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload)\n" +
+                "• Documentation (README & Setup Guide)\n\n" +
+                "You can now run the Publisher Tool on 'Assets/AI Driven NPCs System'.\n\n" +
+                "When you are done uploading, click Tools → AI Packages → Restore Development Assets.", "OK");
+        }
     }
 
     [MenuItem("Tools/AI Packages/Restore Development Assets")]
     public static void RestoreDevelopmentAssets()
     {
+        RestoreDevelopmentAssets(true);
+    }
+
+    public static void RestoreDevelopmentAssets(bool interactive)
+    {
         string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
         if (!Directory.Exists(stagingDir))
         {
-            EditorUtility.DisplayDialog("Restore Development Assets", "No staging folder found. Assets are already in place.", "OK");
+            if (interactive)
+                EditorUtility.DisplayDialog("Restore Development Assets", "No staging folder found. Assets are already in place.", "OK");
             return;
         }
 
@@ -717,7 +811,8 @@ namespace AISystem.Editor
         }
         AssetDatabase.Refresh();
         Debug.Log("<b>[AI Package Installer]</b> ✅ Development assets restored.");
-        EditorUtility.DisplayDialog("Restore Complete", "Development assets restored successfully!", "OK");
+        if (interactive)
+            EditorUtility.DisplayDialog("Restore Complete", "Development assets restored successfully!", "OK");
     }
 }
 

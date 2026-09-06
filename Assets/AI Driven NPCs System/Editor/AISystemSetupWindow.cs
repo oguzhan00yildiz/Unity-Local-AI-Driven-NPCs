@@ -549,6 +549,8 @@ namespace AISystem.Editor
 
         if (AreAllPackagesInstalled() && AreAllModelsDownloaded())
         {
+            AIPackageInstaller.MarkSetupCompleted();
+
             bool alreadyNotified = SessionState.GetBool(SetupCompleteNotifiedKey, false);
             if (!alreadyNotified)
             {
@@ -1163,81 +1165,118 @@ namespace AISystem.Editor
         _activeDownloads++;
         Repaint();
 
+        string tempDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Temp", "AIDownloads");
+        if (!Directory.Exists(tempDir))
+            Directory.CreateDirectory(tempDir);
+
+        string tempPath = Path.Combine(tempDir, Path.GetFileName(model.FullPath) + ".download");
+        long minExpectedBytes = model.SizeMB > 1 ? (long)(model.SizeMB * 0.85f * 1024 * 1024) : 100;
+        bool alreadyDownloaded = false;
+
+        if (File.Exists(tempPath))
+        {
+            var existingFi = new FileInfo(tempPath);
+            if (existingFi.Length >= minExpectedBytes)
+            {
+                alreadyDownloaded = true;
+                model.Progress = 1f;
+                Debug.Log($"<b>[AI System Setup]</b> Using completed temp download for {model.DisplayName} ({existingFi.Length / (1024 * 1024)} MB).");
+            }
+            else
+            {
+                try { File.Delete(tempPath); } catch { }
+            }
+        }
+
         try
         {
-            string dir = Path.GetDirectoryName(model.FullPath);
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            bool downloadedWithCurl = false;
-
-            // 1. Try native high-speed curl first (bypasses Mono single-thread TLS)
-            try
+            if (!alreadyDownloaded)
             {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "curl.exe",
-                    Arguments = $"-L --fail --retry 3 -s -S -o \"{model.FullPath}\" \"{model.Url}\"",
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    RedirectStandardError = true
-                };
+                bool downloadedWithCurl = false;
 
-                using (var process = System.Diagnostics.Process.Start(psi))
+                // 1. Try native high-speed curl first (bypasses Mono single-thread TLS)
+                try
                 {
-                    if (process != null)
+                    var psi = new System.Diagnostics.ProcessStartInfo
                     {
+                        FileName = "curl.exe",
+                        Arguments = $"-L --fail --retry 3 -s -S -o \"{tempPath}\" \"{model.Url}\"",
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardError = true
+                    };
+
+                    using (var process = new System.Diagnostics.Process { StartInfo = psi })
+                    {
+                        process.Start();
+                        var stderrTask = process.StandardError.ReadToEndAsync();
                         long targetBytes = (long)model.SizeMB * 1024 * 1024;
+
                         while (!process.HasExited)
                         {
                             await Task.Delay(150);
-                            if (File.Exists(model.FullPath) && targetBytes > 0)
+                            process.Refresh();
+                            if (File.Exists(tempPath) && targetBytes > 0)
                             {
                                 try
                                 {
-                                    long curBytes = new FileInfo(model.FullPath).Length;
+                                    long curBytes = new FileInfo(tempPath).Length;
                                     model.Progress = Mathf.Clamp01((float)curBytes / targetBytes);
-                                    Repaint();
                                 }
                                 catch { }
                             }
                         }
 
                         await Task.Run(() => process.WaitForExit());
+                        string curlError = await stderrTask;
 
-                        if (process.ExitCode == 0 && File.Exists(model.FullPath))
+                        if (process.ExitCode == 0 && File.Exists(tempPath))
                         {
                             downloadedWithCurl = true;
                         }
+                        else
+                        {
+                            Debug.LogWarning($"<b>[AI System Setup]</b> curl download failed for {model.DisplayName} (code {process.ExitCode}): {curlError}. Falling back to WebClient…");
+                        }
                     }
                 }
-            }
-            catch (System.Exception)
-            {
-                downloadedWithCurl = false;
-            }
-
-            // 2. Fallback to WebClient if curl wasn't available
-            if (!downloadedWithCurl)
-            {
-                using (var client = new WebClient())
+                catch (System.Exception ex)
                 {
-                    client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                    client.DownloadProgressChanged += (_, e) =>
+                    Debug.LogWarning($"<b>[AI System Setup]</b> curl process threw for {model.DisplayName}: {ex.Message}. Falling back to WebClient…");
+                    downloadedWithCurl = false;
+                }
+
+                // 2. Fallback to WebClient if curl wasn't available
+                if (!downloadedWithCurl)
+                {
+                    using (var client = new WebClient())
                     {
-                        model.Progress = e.ProgressPercentage / 100f;
-                        Repaint();
-                    };
-                    await client.DownloadFileTaskAsync(new System.Uri(model.Url), model.FullPath);
+                        client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                        client.DownloadProgressChanged += (_, e) =>
+                        {
+                            model.Progress = e.ProgressPercentage / 100f;
+                        };
+                        await client.DownloadFileTaskAsync(new System.Uri(model.Url), tempPath);
+                    }
                 }
             }
 
             // 3. Verify downloaded file size
-            var fi = new FileInfo(model.FullPath);
+            var fi = new FileInfo(tempPath);
             if (model.SizeMB > 1 && fi.Length < (long)(model.SizeMB * 0.5f * 1024 * 1024))
             {
                 throw new System.Exception($"Downloaded file size ({fi.Length / (1024 * 1024)}MB) was smaller than expected ({model.SizeMB}MB).");
             }
+
+            // 4. Move finished file atomically to target path
+            string dir = Path.GetDirectoryName(model.FullPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            File.Copy(tempPath, model.FullPath, true);
+            try { File.Delete(tempPath); } catch { }
 
             model.IsDownloaded = true;
             model.Progress = 1f;
@@ -1256,6 +1295,7 @@ namespace AISystem.Editor
 
             try
             {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
                 if (File.Exists(model.FullPath) && !model.IsDownloaded)
                 {
                     File.Delete(model.FullPath);
@@ -1270,11 +1310,15 @@ namespace AISystem.Editor
 
             if (_activeDownloads == 0)
             {
-                AssetDatabase.Refresh();
-                AutoConfigureLLM();
-                Repaint();
-                Debug.Log("<b>[AI System Setup]</b> All downloads complete. ✅");
-                EditorApplication.delayCall += () => CheckAndNotifyCompletion();
+                EditorApplication.delayCall += () =>
+                {
+                    AssetDatabase.Refresh();
+                    AutoConfigureLLM();
+                    Repaint();
+                    Debug.Log("<b>[AI System Setup]</b> All downloads complete. ✅");
+                    AIPackageInstaller.MarkSetupCompleted();
+                    CheckAndNotifyCompletion();
+                };
             }
         }
     }
