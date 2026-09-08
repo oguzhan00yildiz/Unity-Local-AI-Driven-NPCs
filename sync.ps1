@@ -33,6 +33,18 @@ if (Test-Path $aiTestAssets) {
         Copy-Item -Path "$srcBase\Scripts\*" -Destination "$aiTestAssets\Scripts\" -Recurse -Force
         Write-Host "Synced to AITest Assets Scripts: $aiTestAssets\Scripts\"
     }
+    if (Test-Path "$aiTestAssets\Prefabs") {
+        Copy-Item -Path "$srcBase\Prefabs\*" -Destination "$aiTestAssets\Prefabs\" -Recurse -Force
+        Write-Host "Synced to AITest Assets Prefabs: $aiTestAssets\Prefabs\"
+    }
+    if (Test-Path "$aiTestAssets\Scenes") {
+        Copy-Item -Path "$srcBase\Scenes\*" -Destination "$aiTestAssets\Scenes\" -Recurse -Force
+        Write-Host "Synced to AITest Assets Scenes: $aiTestAssets\Scenes\"
+    }
+    if (Test-Path "$aiTestAssets\Resources") {
+        Copy-Item -Path "$srcBase\Resources\*" -Destination "$aiTestAssets\Resources\" -Recurse -Force
+        Write-Host "Synced to AITest Assets Resources: $aiTestAssets\Resources\"
+    }
 }
 
 # 3. Sync to AITest PackageCache (if present)

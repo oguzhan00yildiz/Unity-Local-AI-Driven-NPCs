@@ -282,10 +282,13 @@ namespace AISystem.Editor
     // Static API — called by AIPackageInstaller
     // ─────────────────────────────────────────────────────────────────────────
 
-    [MenuItem("Tools/AI Packages/AI System Setup")]
-    public static void ShowWindow() => EnsureWindow(WindowPhase.PackageInstall);
+    [MenuItem("Tools/AI Packages/AI System Setup", false, 0)]
+    public static void ShowWindow()
+    {
+        WindowPhase initialPhase = AreAllPackagesInstalled() ? WindowPhase.ModelDownload : WindowPhase.PackageInstall;
+        EnsureWindow(initialPhase);
+    }
 
-    [MenuItem("Tools/AI Packages/Download Model Files")]
     public static void ShowModelDownloaderWindow() => EnsureWindow(WindowPhase.ModelDownload);
 
     /// <summary>
@@ -556,6 +559,7 @@ namespace AISystem.Editor
 
         if (AreAllPackagesInstalled() && AreAllModelsDownloaded())
         {
+            AIPackageInstaller.EnsureDefaultSamplePresets();
             AIPackageInstaller.MarkSetupCompleted();
 
             bool alreadyNotified = SessionState.GetBool(SetupCompleteNotifiedKey, false);

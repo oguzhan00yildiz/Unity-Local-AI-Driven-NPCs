@@ -7,7 +7,7 @@ namespace AISystem.Editor
 {
     public class SystemHealthChecker : EditorWindow
     {
-    [MenuItem("Tools/AI Packages/System Health & GPU")]
+    [MenuItem("Tools/AI Packages/System Health & GPU", false, 21)]
     public static void ShowWindow()
     {
         GetWindow<SystemHealthChecker>("System Health");

@@ -172,9 +172,16 @@ namespace AISystem
 
             _isListening = false;
 
-            if (chunk.Data == null || chunk.Data.Length == 0 || IsSilent(chunk.Data))
+            if (chunk.Data == null || chunk.Data.Length == 0)
             {
-                Debug.Log("[VoiceInput] Silent audio  transcription skipped.");
+                if (autoRestartAfterTranscribe && !_isPaused)
+                    StartListening();
+                return;
+            }
+
+            if (IsSilent(chunk.Data, out float avgEnergy))
+            {
+                Debug.Log($"[VoiceInput] Silent audio (avg energy: {avgEnergy:F5} < threshold: {silenceThreshold:F5}), transcription skipped.");
                 if (autoRestartAfterTranscribe && !_isPaused)
                     StartListening();
                 return;
@@ -230,11 +237,22 @@ namespace AISystem
                 vadIndicator.color = color;
         }
 
+        private bool IsSilent(float[] samples, out float avgEnergy)
+        {
+            if (samples == null || samples.Length == 0)
+            {
+                avgEnergy = 0f;
+                return true;
+            }
+            float sum = 0f;
+            for (int i = 0; i < samples.Length; i++) sum += Mathf.Abs(samples[i]);
+            avgEnergy = sum / samples.Length;
+            return avgEnergy < silenceThreshold;
+        }
+
         private bool IsSilent(float[] samples)
         {
-            float sum = 0f;
-            foreach (float s in samples) sum += Mathf.Abs(s);
-            return (sum / samples.Length) < silenceThreshold;
+            return IsSilent(samples, out _);
         }
     }
 }

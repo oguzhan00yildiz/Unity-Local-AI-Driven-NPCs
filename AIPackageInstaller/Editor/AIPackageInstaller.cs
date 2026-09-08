@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -105,7 +106,6 @@ namespace AISystem.Editor
         CheckAndPromptSetup(isDirectImport: true);
     }
 
-    [MenuItem("Tools/AI Packages/Force Install Dependencies")]
     public static void ForceInstall()
     {
         Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
@@ -527,6 +527,12 @@ namespace AISystem.Editor
             return;
         }
 
+        // If installed via UPM, automatically import package samples
+        ImportUPMSamplesIfAvailable();
+
+        // Ensure default personality sample presets are created automatically
+        EnsureDefaultSamplePresets();
+
         SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
         EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
     }
@@ -622,273 +628,57 @@ namespace AISystem.Editor
         }
     }
 
-    [MenuItem("Tools/AI Packages/Unpack Content Package")]
-    public static void UnpackContentPackageManual()
+    /// <summary>
+    /// If the package was installed via Unity Package Manager, auto-imports its sample assets.
+    /// </summary>
+    public static bool ImportUPMSamplesIfAvailable()
     {
-        string[] candidates = new[]
+        try
         {
-            "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage",
-            "Assets/AI-Driven-NPCs-Content.unitypackage"
-        };
-
-        bool found = false;
-        foreach (string relPath in candidates)
-        {
-            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, relPath);
-            if (File.Exists(fullPath))
+            var samples = UnityEditor.PackageManager.UI.Sample.FindByPackage("com.yildizoguzhan.ai-driven-npcs", null);
+            if (samples != null)
             {
-                Debug.Log($"<b>[AI Package Installer]</b> 📦 Unpacking content package: {relPath}...");
-                AssetDatabase.ImportPackage(relPath, false);
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            EditorUtility.DisplayDialog("Unpack Content Package", "No 'AI-Driven-NPCs-Content.unitypackage' found to unpack.", "OK");
-        }
-    }
-
-    [MenuItem("Tools/AI Packages/Export Complete Asset Store Package (.unitypackage)")]
-    public static void ExportCompleteAssetStorePackage()
-    {
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (Directory.Exists(stagingDir))
-        {
-            RestoreDevelopmentAssets(false);
-        }
-
-        string savePath = EditorUtility.SaveFilePanel(
-            "Export Complete Asset Store Package",
-            "",
-            "AI-Driven-NPCs-System.unitypackage",
-            "unitypackage");
-
-        if (string.IsNullOrEmpty(savePath))
-            return;
-
-        // 1. Build inner content payload package
-        ExportAssetStoreContentPackage(false);
-
-        string contentPkgRelative = "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage";
-        string contentPkgFull = Path.Combine(Directory.GetParent(Application.dataPath).FullName, contentPkgRelative);
-
-        if (!File.Exists(contentPkgFull))
-        {
-            EditorUtility.DisplayDialog("Export Failed", "Could not generate inner content package: " + contentPkgRelative, "OK");
-            return;
-        }
-
-        // 2. Export complete outer package (Editor + Content Payload + Docs)
-        string[] outerPaths = new[]
-        {
-            "Assets/AI Driven NPCs System/Editor",
-            contentPkgRelative,
-            "Assets/AI Driven NPCs System/README.md",
-            "Assets/AI Driven NPCs System/SETUP_GUIDE_EN.md"
-        };
-
-        List<string> validPaths = new List<string>();
-        foreach (string p in outerPaths)
-        {
-            string full = Path.Combine(Directory.GetParent(Application.dataPath).FullName, p);
-            if (File.Exists(full) || Directory.Exists(full))
-            {
-                validPaths.Add(p);
-            }
-        }
-
-        AssetDatabase.ExportPackage(validPaths.ToArray(), savePath, ExportPackageOptions.Recurse);
-
-        // 3. Clean up the temporary inner package from local Assets
-        if (File.Exists(contentPkgFull))
-        {
-            AssetDatabase.DeleteAsset(contentPkgRelative);
-        }
-
-        AssetDatabase.Refresh();
-
-        Debug.Log($"<b>[AI Package Installer]</b> ✅ Complete Asset Store package exported to: {savePath}");
-        EditorUtility.DisplayDialog("Export Complete",
-            $"Complete Asset Store Package exported successfully to:\n{savePath}\n\n" +
-            "This package contains:\n" +
-            "• Editor/ (Setup window & automated dependency installer)\n" +
-            "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload with Scenes, Prefabs, Scripts)\n" +
-            "• Documentation\n\n" +
-            "When imported into any project (such as AITest), it will import cleanly with 0 compile errors and immediately launch the AI System Setup window!",
-            "OK");
-    }
-
-    [MenuItem("Tools/AI Packages/Internal/Export Content Payload Only (.unitypackage)")]
-    public static void ExportAssetStoreContentPackage()
-    {
-        ExportAssetStoreContentPackage(true);
-    }
-
-    public static void ExportAssetStoreContentPackage(bool interactive)
-    {
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (Directory.Exists(stagingDir))
-        {
-            RestoreDevelopmentAssets(false);
-        }
-
-        string packagePath = "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage";
-        string[] exportPaths = new[]
-        {
-            "Assets/AI Driven NPCs System/Prefabs",
-            "Assets/AI Driven NPCs System/Resources",
-            "Assets/AI Driven NPCs System/Scenes",
-            "Assets/AI Driven NPCs System/Scripts"
-        };
-
-        List<string> validPaths = new List<string>();
-        foreach (string p in exportPaths)
-        {
-            if (Directory.Exists(p)) validPaths.Add(p);
-        }
-
-        if (validPaths.Count == 0)
-        {
-            if (interactive)
-                EditorUtility.DisplayDialog("Export Content Package", "No source folders found in Assets/AI Driven NPCs System/ to export.", "OK");
-            return;
-        }
-
-        AssetDatabase.ExportPackage(validPaths.ToArray(), packagePath, ExportPackageOptions.Recurse);
-        AssetDatabase.Refresh();
-        Debug.Log($"<b>[AI Package Installer]</b> ✅ Exported content package to: {packagePath}");
-        if (interactive)
-            EditorUtility.DisplayDialog("Export Complete", $"Content package successfully exported to:\n{packagePath}", "OK");
-    }
-
-    private static void SafeMoveDirectory(string src, string dst)
-    {
-        if (!Directory.Exists(src)) return;
-        if (!Directory.Exists(dst)) Directory.CreateDirectory(dst);
-
-        foreach (string file in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
-        {
-            string rel = file.Substring(src.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string targetFile = Path.Combine(dst, rel);
-            string targetDir = Path.GetDirectoryName(targetFile);
-            if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
-
-            if (File.Exists(targetFile))
-            {
-                File.SetAttributes(targetFile, FileAttributes.Normal);
-                File.Delete(targetFile);
-            }
-
-            int retries = 3;
-            while (retries > 0)
-            {
-                try
+                foreach (var sample in samples)
                 {
-                    File.SetAttributes(file, FileAttributes.Normal);
-                    File.Move(file, targetFile);
-                    break;
-                }
-                catch (IOException)
-                {
-                    retries--;
-                    if (retries == 0) throw;
-                    System.Threading.Thread.Sleep(100);
+                    if (!sample.isImported)
+                    {
+                        Debug.Log("<b>[AI Package Installer]</b> 📦 Automatically importing package samples…");
+                        sample.Import(UnityEditor.PackageManager.UI.Sample.ImportOptions.OverridePreviousImports);
+                        return true;
+                    }
                 }
             }
         }
-
-        try { Directory.Delete(src, true); } catch { }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[AI Package Installer] Note: Auto-import of UPM samples skipped: " + ex.Message);
+        }
+        return false;
     }
 
-    private static void SafeMoveFile(string src, string dst)
+    /// <summary>
+    /// Generates default personality presets at default installation without needing a manual menu button.
+    /// </summary>
+    public static void EnsureDefaultSamplePresets()
     {
-        if (!File.Exists(src)) return;
-        if (File.Exists(dst))
+        try
         {
-            File.SetAttributes(dst, FileAttributes.Normal);
-            File.Delete(dst);
+            var type = Type.GetType("AISystem.SamplePresetGenerator, Assembly-CSharp-Editor")
+                       ?? Type.GetType("AISystem.SamplePresetGenerator");
+            if (type != null)
+            {
+                var method = type.GetMethod("EnsureDefaultPresets", new Type[] { typeof(bool) });
+                if (method != null)
+                {
+                    method.Invoke(null, new object[] { false });
+                    return;
+                }
+            }
         }
-        File.SetAttributes(src, FileAttributes.Normal);
-        File.Move(src, dst);
-    }
-
-    [MenuItem("Tools/AI Packages/Prepare for Asset Store Upload")]
-    public static void PrepareForAssetStoreUpload()
-    {
-        PrepareForAssetStoreUpload(true);
-    }
-
-    public static void PrepareForAssetStoreUpload(bool interactive)
-    {
-        ExportAssetStoreContentPackage(false);
-
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (!Directory.Exists(stagingDir)) Directory.CreateDirectory(stagingDir);
-
-        string[] folders = new[] { "Prefabs", "Resources", "Scenes", "Scripts" };
-        foreach (string f in folders)
+        catch (Exception ex)
         {
-            string src = Path.Combine(Application.dataPath, "AI Driven NPCs System", f);
-            string dst = Path.Combine(stagingDir, f);
-            SafeMoveDirectory(src, dst);
-
-            string metaSrc = src + ".meta";
-            string metaDst = dst + ".meta";
-            SafeMoveFile(metaSrc, metaDst);
+            Debug.LogWarning("[AI Package Installer] Note: Could not auto-generate sample presets: " + ex.Message);
         }
-
-        AssetDatabase.Refresh();
-        if (interactive)
-        {
-            EditorUtility.DisplayDialog("Ready for Asset Store Upload",
-                "Assets/AI Driven NPCs System is now ready for upload!\n\n" +
-                "It now contains ONLY:\n" +
-                "• Editor/ (Installer & Setup)\n" +
-                "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload)\n" +
-                "• Documentation (README & Setup Guide)\n\n" +
-                "You can now run the Publisher Tool on 'Assets/AI Driven NPCs System'.\n\n" +
-                "When you are done uploading, click Tools → AI Packages → Restore Development Assets.", "OK");
-        }
-    }
-
-    [MenuItem("Tools/AI Packages/Restore Development Assets")]
-    public static void RestoreDevelopmentAssets()
-    {
-        RestoreDevelopmentAssets(true);
-    }
-
-    public static void RestoreDevelopmentAssets(bool interactive)
-    {
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (!Directory.Exists(stagingDir))
-        {
-            if (interactive)
-                EditorUtility.DisplayDialog("Restore Development Assets", "No staging folder found. Assets are already in place.", "OK");
-            return;
-        }
-
-        string[] folders = new[] { "Prefabs", "Resources", "Scenes", "Scripts" };
-        foreach (string f in folders)
-        {
-            string src = Path.Combine(stagingDir, f);
-            string dst = Path.Combine(Application.dataPath, "AI Driven NPCs System", f);
-            SafeMoveDirectory(src, dst);
-
-            string metaSrc = src + ".meta";
-            string metaDst = dst + ".meta";
-            SafeMoveFile(metaSrc, metaDst);
-        }
-
-        if (Directory.Exists(stagingDir))
-        {
-            try { Directory.Delete(stagingDir, true); } catch { }
-        }
-        AssetDatabase.Refresh();
-        Debug.Log("<b>[AI Package Installer]</b> ✅ Development assets restored.");
-        if (interactive)
-            EditorUtility.DisplayDialog("Restore Complete", "Development assets restored successfully!", "OK");
     }
 }
 

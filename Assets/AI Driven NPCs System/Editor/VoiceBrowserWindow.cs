@@ -77,7 +77,7 @@ namespace AISystem.Editor
     private Vector2 scrollPos;
     private int activeDownloads = 0;
 
-    [MenuItem("Tools/AI Packages/Voice Browser")]
+    [MenuItem("Tools/AI Packages/Voice Browser", false, 20)]
     public static void ShowWindow()
     {
         GetWindow<VoiceBrowserWindow>("Voice Browser");

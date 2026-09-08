@@ -12,7 +12,6 @@ namespace AISystem
             EditorApplication.delayCall += EnsureDefaultPresets;
         }
 
-        [MenuItem("Tools/AI Packages/Generate Sample Presets")]
         public static void GeneratePresets()
         {
             EnsureDefaultPresets(true);
