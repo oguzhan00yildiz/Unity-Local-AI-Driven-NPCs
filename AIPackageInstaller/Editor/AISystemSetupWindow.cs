@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEditor;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AISystem.Editor
@@ -45,6 +47,8 @@ namespace AISystem.Editor
         public bool   IsDownloaded;
         public bool   IsDownloading;
         public float  Progress;
+        public long   DownloadedBytes;
+        public string StatusDetail;
         public string Error;
 
         public string FullPath => Path.Combine(
@@ -270,6 +274,9 @@ namespace AISystem.Editor
     private WindowPhase _phase = WindowPhase.PackageInstall;
     private Vector2     _modelScroll;
     private int         _activeDownloads;
+    private static CancellationTokenSource _downloadCts;
+    private static System.Diagnostics.Process _currentCurlProcess;
+    private static WebClient _currentWebClient;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Static API — called by AIPackageInstaller
@@ -687,6 +694,7 @@ namespace AISystem.Editor
     {
         Holder.Instance = this;
         EditorApplication.update += ForceRepaint;
+        Application.runInBackground = true;
         RefreshPackageSteps();
         RefreshModelStatus();
     }
@@ -704,6 +712,78 @@ namespace AISystem.Editor
     {
         foreach (var m in Models) m.Refresh();
         Repaint();
+    }
+
+    public void ForceRestartDownloads()
+    {
+        Debug.Log("<b>[AI System Setup]</b> ⚡ Force Restart Downloads requested.");
+
+        // 1. Cancel running CancellationTokenSource
+        try
+        {
+            _downloadCts?.Cancel();
+            _downloadCts?.Dispose();
+        }
+        catch { }
+        _downloadCts = null;
+
+        // 2. Kill running curl process if any
+        try
+        {
+            if (_currentCurlProcess != null && !_currentCurlProcess.HasExited)
+            {
+                _currentCurlProcess.Kill();
+            }
+        }
+        catch { }
+        _currentCurlProcess = null;
+
+        // 3. Cancel WebClient if any
+        try
+        {
+            _currentWebClient?.CancelAsync();
+            _currentWebClient?.Dispose();
+        }
+        catch { }
+        _currentWebClient = null;
+
+        // 4. Delete incomplete .download temp files to ensure clean state
+        try
+        {
+            string tempDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Temp", "AIDownloads");
+            if (Directory.Exists(tempDir))
+            {
+                var tempFiles = Directory.GetFiles(tempDir, "*.download");
+                foreach (var f in tempFiles)
+                {
+                    try { File.Delete(f); } catch { }
+                }
+            }
+        }
+        catch { }
+
+        // 5. Reset model states & counters
+        _isDownloadingAll = false;
+        _activeDownloads = 0;
+        foreach (var m in Models)
+        {
+            m.IsDownloading = false;
+            m.Progress = 0f;
+            m.DownloadedBytes = 0;
+            m.StatusDetail = null;
+            m.Error = null;
+            m.Refresh();
+        }
+
+        Repaint();
+
+        // 6. Ensure background execution and start fresh download batch
+        Application.runInBackground = true;
+        EditorApplication.delayCall += () =>
+        {
+            Debug.Log("<b>[AI System Setup]</b> ⚡ Starting fresh download of missing models…");
+            DownloadAllModels(isAutomatic: false, forceRedownload: false);
+        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -844,6 +924,21 @@ namespace AISystem.Editor
         }
 
         EditorGUILayout.Space(6);
+
+        // Overall System Setup progress bar
+        int pkgsDoneCount = Steps.Count(s => s.Status == StepStatus.Completed);
+        int modelsDoneCount = Models.Count(m => m.IsDownloaded);
+        int totalItems = (Steps.Count > 0 ? Steps.Count : 4) + Models.Count;
+        int totalDone = pkgsDoneCount + modelsDoneCount;
+        float totalProgress = totalItems > 0 ? (float)totalDone / totalItems : 0f;
+
+        Rect setupBarRect = EditorGUILayout.GetControlRect(false, 20);
+        string setupBarText = (totalDone == totalItems && totalItems > 0)
+            ? $"Overall Setup  {totalDone} / {totalItems}  (Fully Ready ✅)"
+            : $"Overall Setup Progress  {totalDone} / {totalItems}  ({(int)(totalProgress * 100)}%)";
+        EditorGUI.ProgressBar(setupBarRect, totalProgress, setupBarText);
+
+        EditorGUILayout.Space(6);
         EditorGUILayout.HelpBox(
             "💡 Keep Unity open and focused during setup. Switching to other apps can cause Unity to pause background tasks and interrupt LLM native library configuration.",
             MessageType.None);
@@ -956,6 +1051,24 @@ namespace AISystem.Editor
                     EditorGUILayout.LabelField(step.Description, EditorStyles.miniLabel);
                 }
             }
+
+            if (step.Status == StepStatus.InProgress)
+            {
+                Rect r = GUILayoutUtility.GetRect(130, 20);
+                float anim = (float)((EditorApplication.timeSinceStartup * 0.35) % 1.0);
+                EditorGUI.ProgressBar(r, anim, "Installing…");
+            }
+            else if (step.Status == StepStatus.Completed)
+            {
+                EditorGUILayout.LabelField("Ready", EditorStyles.miniLabel, GUILayout.Width(60));
+            }
+            else if (step.Status == StepStatus.Failed)
+            {
+                if (GUILayout.Button("Retry", GUILayout.Width(65)))
+                {
+                    AIPackageInstaller.ForceInstall();
+                }
+            }
         }
     }
 
@@ -991,12 +1104,71 @@ namespace AISystem.Editor
         EditorGUILayout.Space(4);
 
         int missingCount = Models.Count(m => !m.IsDownloaded && !m.IsDownloading);
+        int downloadedCount = Models.Count(m => m.IsDownloaded);
+        int totalCount = Models.Count;
+
+        // Overall Models progress bar
+        float modelProgress = totalCount > 0 ? (float)downloadedCount / totalCount : 0f;
+        Rect mRect = EditorGUILayout.GetControlRect(false, 22);
+        string modelProgressText = allModelsDone
+            ? $"Models  {downloadedCount} / {totalCount}  (All Complete ✅)"
+            : (_activeDownloads > 0
+                ? $"Models  {downloadedCount} / {totalCount}  ({(int)(modelProgress * 100)}%)"
+                : $"Models  {downloadedCount} / {totalCount}  ({missingCount} missing)");
+        EditorGUI.ProgressBar(mRect, modelProgress, modelProgressText);
+        EditorGUILayout.Space(6);
 
         if (_activeDownloads > 0)
         {
-            using (new EditorGUI.DisabledGroupScope(true))
+            var activeModel = Models.FirstOrDefault(m => m.IsDownloading);
+            int queueRemaining = Models.Count(m => !m.IsDownloaded && !m.IsDownloading);
+
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                GUILayout.Button($"⏳ Downloading Models… ({_activeDownloads} active)", GUILayout.Height(30));
+                EditorGUILayout.Space(2);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    string activeName = activeModel != null ? activeModel.DisplayName : "Model files";
+                    GUIStyle titleStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 12 };
+                    EditorGUILayout.LabelField($"⏳ Downloading: {activeName}", titleStyle);
+
+                    GUIStyle restartTopBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
+                    if (GUILayout.Button("⚡ Force Restart Downloads", restartTopBtnStyle, GUILayout.Width(190), GUILayout.Height(24)))
+                    {
+                        ForceRestartDownloads();
+                    }
+                }
+
+                if (activeModel != null)
+                {
+                    EditorGUILayout.LabelField($"Category: {activeModel.Group}  |  Target: StreamingAssets/{activeModel.DestRelPath}", EditorStyles.miniLabel);
+                    EditorGUILayout.Space(2);
+
+                    float pct = activeModel.Progress;
+                    string progressText;
+                    if (activeModel.DownloadedBytes > 0)
+                    {
+                        float curMB = activeModel.DownloadedBytes / (1024f * 1024f);
+                        progressText = $"{curMB:0.1} / {activeModel.SizeMB} MB  ({(int)(pct * 100)}%)";
+                    }
+                    else if (!string.IsNullOrEmpty(activeModel.StatusDetail))
+                    {
+                        progressText = $"{activeModel.StatusDetail} (Expected ~{activeModel.SizeMB} MB)";
+                    }
+                    else
+                    {
+                        progressText = $"Connecting to server… (~{activeModel.SizeMB} MB)";
+                    }
+
+                    Rect pRect = EditorGUILayout.GetControlRect(false, 20);
+                    EditorGUI.ProgressBar(pRect, pct, progressText);
+                }
+
+                EditorGUILayout.Space(2);
+                float batchPct = totalCount > 0 ? (float)downloadedCount / totalCount : 0f;
+                Rect bRect = EditorGUILayout.GetControlRect(false, 18);
+                EditorGUI.ProgressBar(bRect, batchPct, $"Batch Queue: {downloadedCount} / {totalCount} models ({queueRemaining} queued)");
+                EditorGUILayout.Space(2);
             }
             EditorGUILayout.Space(4);
         }
@@ -1038,7 +1210,14 @@ namespace AISystem.Editor
             if (GUILayout.Button("◀ Back: Package Install", GUILayout.Height(26), GUILayout.Width(170)))
                 SetPhase(WindowPhase.PackageInstall);
 
-            if (GUILayout.Button("↻ Refresh", GUILayout.Height(26), GUILayout.Width(80)))
+            GUIStyle restartBtnStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontStyle = _activeDownloads > 0 ? FontStyle.Bold : FontStyle.Normal
+            };
+            if (GUILayout.Button("⚡ Force Restart Downloads", restartBtnStyle, GUILayout.Height(26), GUILayout.Width(190)))
+                ForceRestartDownloads();
+
+            if (GUILayout.Button("↻ Refresh", GUILayout.Height(26), GUILayout.Width(75)))
                 RefreshModelStatus();
 
             GUILayout.FlexibleSpace();
@@ -1074,34 +1253,53 @@ namespace AISystem.Editor
             }
         }
         EditorGUILayout.Space(6);
-
-        // Keep repainting while downloading
-        if (_activeDownloads > 0)
-            EditorApplication.update += Repaint;
-        else
-            EditorApplication.update -= Repaint;
     }
 
     private void DrawModelRow(ModelEntry model)
     {
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
-            string icon = model.IsDownloading ? "⬇" : (model.IsDownloaded ? "✅" : "○");
+            string icon = model.IsDownloading ? "⏳" : (model.IsDownloaded ? "✅" : "○");
             EditorGUILayout.LabelField(icon, GUILayout.Width(22));
-            EditorGUILayout.LabelField($"{model.DisplayName}  ({model.SizeMB} MB)", GUILayout.MinWidth(200));
+
+            GUIStyle nameStyle = model.IsDownloading ? EditorStyles.boldLabel : EditorStyles.label;
+            EditorGUILayout.LabelField($"{model.DisplayName}  ({model.SizeMB} MB)", nameStyle, GUILayout.MinWidth(180));
 
             if (model.IsDownloading)
             {
-                Rect r = GUILayoutUtility.GetRect(120, 18);
-                EditorGUI.ProgressBar(r, model.Progress, $"{(int)(model.Progress * 100)}%");
+                Rect r = GUILayoutUtility.GetRect(160, 18);
+                string barText;
+                if (model.DownloadedBytes > 0)
+                {
+                    float curMB = model.DownloadedBytes / (1024f * 1024f);
+                    barText = $"{curMB:0.1} / {model.SizeMB} MB ({(int)(model.Progress * 100)}%)";
+                }
+                else if (!string.IsNullOrEmpty(model.StatusDetail))
+                {
+                    barText = model.StatusDetail;
+                }
+                else
+                {
+                    barText = $"Starting… ({(int)(model.Progress * 100)}%)";
+                }
+                EditorGUI.ProgressBar(r, model.Progress, barText);
+
+                if (GUILayout.Button("⚡ Restart", GUILayout.Width(70), GUILayout.Height(18)))
+                {
+                    ForceRestartDownloads();
+                }
             }
             else if (!string.IsNullOrEmpty(model.Error))
             {
                 GUIStyle err = new GUIStyle(EditorStyles.miniLabel)
                     { normal = { textColor = new Color(0.9f, 0.2f, 0.2f) } };
-                EditorGUILayout.LabelField(model.Error, err, GUILayout.Width(120));
-                if (GUILayout.Button("Retry", GUILayout.Width(55)))
-                    _ = DownloadModel(model);
+                EditorGUILayout.LabelField(model.Error, err, GUILayout.Width(100));
+                if (GUILayout.Button("Retry", GUILayout.Width(65)))
+                {
+                    if (_downloadCts == null || _downloadCts.IsCancellationRequested)
+                        _downloadCts = new CancellationTokenSource();
+                    _ = DownloadModel(model, _downloadCts.Token);
+                }
             }
             else if (model.IsDownloaded)
             {
@@ -1119,7 +1317,11 @@ namespace AISystem.Editor
             else
             {
                 if (GUILayout.Button("Download", GUILayout.Width(80)))
-                    _ = DownloadModel(model);
+                {
+                    if (_downloadCts == null || _downloadCts.IsCancellationRequested)
+                        _downloadCts = new CancellationTokenSource();
+                    _ = DownloadModel(model, _downloadCts.Token);
+                }
             }
         }
     }
@@ -1131,10 +1333,17 @@ namespace AISystem.Editor
         if (_isDownloadingAll) return;
         _isDownloadingAll = true;
 
+        _downloadCts?.Cancel();
+        _downloadCts?.Dispose();
+        _downloadCts = new CancellationTokenSource();
+        var ct = _downloadCts.Token;
+
         try
         {
             foreach (var m in Models)
             {
+                if (ct.IsCancellationRequested) break;
+
                 m.Refresh();
                 if ((!m.IsDownloaded || forceRedownload) && !m.IsDownloading)
                 {
@@ -1143,9 +1352,13 @@ namespace AISystem.Editor
                         try { File.Delete(m.FullPath); } catch { }
                         m.Refresh();
                     }
-                    await DownloadModel(m);
+                    await DownloadModel(m, ct);
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Debug.Log("<b>[AI System Setup]</b> Model downloads cancelled.");
         }
         finally
         {
@@ -1153,7 +1366,7 @@ namespace AISystem.Editor
         }
     }
 
-    private async Task DownloadModel(ModelEntry model)
+    private async Task DownloadModel(ModelEntry model, CancellationToken ct = default)
     {
         if (model.IsDownloading) return;
         model.Refresh();
@@ -1162,8 +1375,12 @@ namespace AISystem.Editor
         model.IsDownloading = true;
         model.Error         = null;
         model.Progress      = 0f;
+        model.DownloadedBytes = 0;
+        model.StatusDetail  = "Starting…";
         _activeDownloads++;
         Repaint();
+
+        Application.runInBackground = true;
 
         string tempDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Temp", "AIDownloads");
         if (!Directory.Exists(tempDir))
@@ -1180,6 +1397,8 @@ namespace AISystem.Editor
             {
                 alreadyDownloaded = true;
                 model.Progress = 1f;
+                model.DownloadedBytes = existingFi.Length;
+                model.StatusDetail = "Verifying…";
                 Debug.Log($"<b>[AI System Setup]</b> Using completed temp download for {model.DisplayName} ({existingFi.Length / (1024 * 1024)} MB).");
             }
             else
@@ -1190,9 +1409,12 @@ namespace AISystem.Editor
 
         try
         {
+            ct.ThrowIfCancellationRequested();
+
             if (!alreadyDownloaded)
             {
                 bool downloadedWithCurl = false;
+                model.StatusDetail = "Connecting…";
 
                 // 1. Try native high-speed curl first (bypasses Mono single-thread TLS)
                 try
@@ -1200,7 +1422,7 @@ namespace AISystem.Editor
                     var psi = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = "curl.exe",
-                        Arguments = $"-L --fail --retry 3 -s -S -o \"{tempPath}\" \"{model.Url}\"",
+                        Arguments = $"-L --fail --connect-timeout 20 --retry 3 --retry-delay 2 -s -S -o \"{tempPath}\" \"{model.Url}\"",
                         CreateNoWindow = true,
                         UseShellExecute = false,
                         RedirectStandardError = true
@@ -1208,58 +1430,95 @@ namespace AISystem.Editor
 
                     using (var process = new System.Diagnostics.Process { StartInfo = psi })
                     {
+                        _currentCurlProcess = process;
                         process.Start();
                         var stderrTask = process.StandardError.ReadToEndAsync();
                         long targetBytes = (long)model.SizeMB * 1024 * 1024;
 
                         while (!process.HasExited)
                         {
-                            await Task.Delay(150);
+                            if (ct.IsCancellationRequested)
+                            {
+                                try { process.Kill(); } catch { }
+                                ct.ThrowIfCancellationRequested();
+                            }
+
+                            await Task.Delay(150).ConfigureAwait(false);
                             process.Refresh();
+
                             if (File.Exists(tempPath) && targetBytes > 0)
                             {
                                 try
                                 {
                                     long curBytes = new FileInfo(tempPath).Length;
+                                    model.DownloadedBytes = curBytes;
                                     model.Progress = Mathf.Clamp01((float)curBytes / targetBytes);
+                                    float curMB = curBytes / (1024f * 1024f);
+                                    model.StatusDetail = $"{curMB:0.1} / {model.SizeMB} MB ({(int)(model.Progress * 100)}%)";
                                 }
                                 catch { }
                             }
                         }
 
-                        await Task.Run(() => process.WaitForExit());
-                        string curlError = await stderrTask;
+                        await Task.Run(() => process.WaitForExit()).ConfigureAwait(false);
+                        string curlError = "";
+                        try { curlError = await stderrTask.ConfigureAwait(false); } catch { }
+                        _currentCurlProcess = null;
 
                         if (process.ExitCode == 0 && File.Exists(tempPath))
                         {
                             downloadedWithCurl = true;
                         }
-                        else
+                        else if (!ct.IsCancellationRequested)
                         {
                             Debug.LogWarning($"<b>[AI System Setup]</b> curl download failed for {model.DisplayName} (code {process.ExitCode}): {curlError}. Falling back to WebClient…");
                         }
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (System.Exception ex)
                 {
-                    Debug.LogWarning($"<b>[AI System Setup]</b> curl process threw for {model.DisplayName}: {ex.Message}. Falling back to WebClient…");
+                    if (!ct.IsCancellationRequested)
+                    {
+                        Debug.LogWarning($"<b>[AI System Setup]</b> curl process threw for {model.DisplayName}: {ex.Message}. Falling back to WebClient…");
+                    }
                     downloadedWithCurl = false;
                 }
+                finally
+                {
+                    _currentCurlProcess = null;
+                }
+
+                ct.ThrowIfCancellationRequested();
 
                 // 2. Fallback to WebClient if curl wasn't available
                 if (!downloadedWithCurl)
                 {
                     using (var client = new WebClient())
                     {
-                        client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                        client.DownloadProgressChanged += (_, e) =>
+                        _currentWebClient = client;
+                        using (ct.Register(() => { try { client.CancelAsync(); } catch { } }))
                         {
-                            model.Progress = e.ProgressPercentage / 100f;
-                        };
-                        await client.DownloadFileTaskAsync(new System.Uri(model.Url), tempPath);
+                            client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                            client.DownloadProgressChanged += (_, e) =>
+                            {
+                                model.DownloadedBytes = e.BytesReceived;
+                                model.Progress = e.ProgressPercentage / 100f;
+                                float curMB = e.BytesReceived / (1024f * 1024f);
+                                float totMB = e.TotalBytesToReceive > 0 ? e.TotalBytesToReceive / (1024f * 1024f) : model.SizeMB;
+                                model.StatusDetail = $"{curMB:0.1} / {totMB:0.1} MB ({e.ProgressPercentage}%)";
+                            };
+                            await client.DownloadFileTaskAsync(new System.Uri(model.Url), tempPath).ConfigureAwait(false);
+                        }
+                        _currentWebClient = null;
                     }
                 }
             }
+
+            ct.ThrowIfCancellationRequested();
 
             // 3. Verify downloaded file size
             var fi = new FileInfo(tempPath);
@@ -1280,6 +1539,8 @@ namespace AISystem.Editor
 
             model.IsDownloaded = true;
             model.Progress = 1f;
+            model.DownloadedBytes = (long)model.SizeMB * 1024 * 1024;
+            model.StatusDetail = "Done";
 
             if (Path.GetExtension(model.FullPath).ToLower() == ".gguf")
             {
@@ -1288,9 +1549,30 @@ namespace AISystem.Editor
 
             Debug.Log($"<b>[AI System Setup]</b> ✅ Downloaded: {model.DestRelPath}");
         }
+        catch (OperationCanceledException)
+        {
+            model.Error = null;
+            model.StatusDetail = "Cancelled";
+            Debug.Log($"<b>[AI System Setup]</b> Download cancelled for {model.DisplayName}");
+            try
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+            catch { }
+            throw;
+        }
         catch (System.Exception ex)
         {
+            if (ct.IsCancellationRequested)
+            {
+                model.Error = null;
+                model.StatusDetail = "Cancelled";
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                throw new OperationCanceledException();
+            }
+
             model.Error = "Failed";
+            model.StatusDetail = "Failed";
             Debug.LogError($"<b>[AI System Setup]</b> ❌ {model.DisplayName}: {ex.Message}");
 
             try
@@ -1306,9 +1588,11 @@ namespace AISystem.Editor
         finally
         {
             model.IsDownloading = false;
-            _activeDownloads--;
+            _activeDownloads = Mathf.Max(0, _activeDownloads - 1);
+            _currentCurlProcess = null;
+            _currentWebClient = null;
 
-            if (_activeDownloads == 0)
+            if (_activeDownloads == 0 && !_isDownloadingAll && !ct.IsCancellationRequested)
             {
                 EditorApplication.delayCall += () =>
                 {

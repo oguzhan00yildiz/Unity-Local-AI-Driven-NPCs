@@ -46,11 +46,12 @@ namespace AISystem.Editor
 
         // 2. DLL Check
         GUILayout.Label("Dependencies (Whisper/LLM)", EditorStyles.boldLabel);
-        bool hasWhisper = File.Exists(Path.Combine(Application.dataPath, "com.whisper.unity/Plugins/Windows/libwhisper.dll"));
+        string whisperLocation = GetWhisperPluginLocation();
+        bool hasWhisper = !string.IsNullOrEmpty(whisperLocation);
         
         if (hasWhisper)
         {
-            EditorGUILayout.LabelField("Whisper DLLs:", "✅ Found");
+            EditorGUILayout.LabelField("Whisper DLLs:", $"✅ Found ({whisperLocation})");
         }
         else
         {
@@ -154,6 +155,48 @@ namespace AISystem.Editor
         {
             Debug.LogError($"[System Health] Failed to set GPU layers: {ex.Message}");
         }
+    }
+
+    private static string GetWhisperPluginLocation()
+    {
+        // 1. AssetDatabase check across Packages/ and Assets/
+        var guids = AssetDatabase.FindAssets("libwhisper");
+        foreach (var guid in guids)
+        {
+            string p = AssetDatabase.GUIDToAssetPath(guid);
+            if (p.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase) ||
+                p.EndsWith(".dylib", System.StringComparison.OrdinalIgnoreCase) ||
+                p.EndsWith(".so", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return p.StartsWith("Packages/") ? "UPM Package" : "Assets";
+            }
+        }
+
+        // 2. Check UPM virtual package path
+        string pkgPath = Path.GetFullPath("Packages/com.whisper.unity/Plugins/Windows/libwhisper.dll");
+        if (File.Exists(pkgPath)) return "UPM Package";
+
+        // 3. Check Library/PackageCache
+        string packageCache = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Library", "PackageCache");
+        if (Directory.Exists(packageCache))
+        {
+            var matches = Directory.GetDirectories(packageCache, "com.whisper.unity*");
+            foreach (var match in matches)
+            {
+                string candidate = Path.Combine(match, "Plugins", "Windows", "libwhisper.dll");
+                if (File.Exists(candidate)) return "PackageCache";
+            }
+        }
+
+        // 4. Check Assets/ folder (legacy / embedded package)
+        string assetPath = Path.Combine(Application.dataPath, "com.whisper.unity", "Plugins", "Windows", "libwhisper.dll");
+        if (File.Exists(assetPath)) return "Assets";
+
+        // 5. Fallback: check if Whisper assembly is compiled & loaded
+        var whisperType = System.Type.GetType("Whisper.WhisperManager, com.whisper.unity");
+        if (whisperType != null) return "Package Active";
+
+        return null;
     }
 
     private void DrawLine()

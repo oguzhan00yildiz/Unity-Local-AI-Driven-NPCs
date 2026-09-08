@@ -650,7 +650,77 @@ namespace AISystem.Editor
         }
     }
 
-    [MenuItem("Tools/AI Packages/Export Asset Store Content Package")]
+    [MenuItem("Tools/AI Packages/Export Complete Asset Store Package (.unitypackage)")]
+    public static void ExportCompleteAssetStorePackage()
+    {
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (Directory.Exists(stagingDir))
+        {
+            RestoreDevelopmentAssets(false);
+        }
+
+        string savePath = EditorUtility.SaveFilePanel(
+            "Export Complete Asset Store Package",
+            "",
+            "AI-Driven-NPCs-System.unitypackage",
+            "unitypackage");
+
+        if (string.IsNullOrEmpty(savePath))
+            return;
+
+        // 1. Build inner content payload package
+        ExportAssetStoreContentPackage(false);
+
+        string contentPkgRelative = "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage";
+        string contentPkgFull = Path.Combine(Directory.GetParent(Application.dataPath).FullName, contentPkgRelative);
+
+        if (!File.Exists(contentPkgFull))
+        {
+            EditorUtility.DisplayDialog("Export Failed", "Could not generate inner content package: " + contentPkgRelative, "OK");
+            return;
+        }
+
+        // 2. Export complete outer package (Editor + Content Payload + Docs)
+        string[] outerPaths = new[]
+        {
+            "Assets/AI Driven NPCs System/Editor",
+            contentPkgRelative,
+            "Assets/AI Driven NPCs System/README.md",
+            "Assets/AI Driven NPCs System/SETUP_GUIDE_EN.md"
+        };
+
+        List<string> validPaths = new List<string>();
+        foreach (string p in outerPaths)
+        {
+            string full = Path.Combine(Directory.GetParent(Application.dataPath).FullName, p);
+            if (File.Exists(full) || Directory.Exists(full))
+            {
+                validPaths.Add(p);
+            }
+        }
+
+        AssetDatabase.ExportPackage(validPaths.ToArray(), savePath, ExportPackageOptions.Recurse);
+
+        // 3. Clean up the temporary inner package from local Assets
+        if (File.Exists(contentPkgFull))
+        {
+            AssetDatabase.DeleteAsset(contentPkgRelative);
+        }
+
+        AssetDatabase.Refresh();
+
+        Debug.Log($"<b>[AI Package Installer]</b> ✅ Complete Asset Store package exported to: {savePath}");
+        EditorUtility.DisplayDialog("Export Complete",
+            $"Complete Asset Store Package exported successfully to:\n{savePath}\n\n" +
+            "This package contains:\n" +
+            "• Editor/ (Setup window & automated dependency installer)\n" +
+            "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload with Scenes, Prefabs, Scripts)\n" +
+            "• Documentation\n\n" +
+            "When imported into any project (such as AITest), it will import cleanly with 0 compile errors and immediately launch the AI System Setup window!",
+            "OK");
+    }
+
+    [MenuItem("Tools/AI Packages/Internal/Export Content Payload Only (.unitypackage)")]
     public static void ExportAssetStoreContentPackage()
     {
         ExportAssetStoreContentPackage(true);
@@ -658,6 +728,12 @@ namespace AISystem.Editor
 
     public static void ExportAssetStoreContentPackage(bool interactive)
     {
+        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
+        if (Directory.Exists(stagingDir))
+        {
+            RestoreDevelopmentAssets(false);
+        }
+
         string packagePath = "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage";
         string[] exportPaths = new[]
         {

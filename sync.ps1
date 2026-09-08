@@ -26,6 +26,7 @@ if (Test-Path 'Assets\AI Driven NPCs System\README.md') {
 # 2. Sync to AITest Asset Store package directory (if present)
 $aiTestAssets = 'c:\Projects\AITest\Assets\AI Driven NPCs System'
 if (Test-Path $aiTestAssets) {
+    if (-not (Test-Path "$aiTestAssets\Editor")) { New-Item -ItemType Directory -Path "$aiTestAssets\Editor" -Force | Out-Null }
     Copy-Item -Path 'Assets\AI Driven NPCs System\Editor\*' -Destination "$aiTestAssets\Editor\" -Recurse -Force
     Write-Host "Synced to AITest Assets: $aiTestAssets\Editor\"
     if (Test-Path "$aiTestAssets\Scripts") {
