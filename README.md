@@ -217,3 +217,11 @@ This project is licensed under the **MIT License**.
 - [Whisper.unity](https://github.com/Macoron/whisper.unity) by Macoron (Whisper STT port).
 - [Piper TTS Unity](https://github.com/lookbe/piper-no-espeak-unity) by lookbe & Rhasspy.
 - [ONNX Runtime Unity](https://github.com/asus4/onnxruntime-unity) by asus4.
+
+---
+
+## 💬 Support & Contact
+
+- **Issues & Bug Reports:** [GitHub Issues](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs/issues)
+- **Email Support:** [oguzhan00yildiz@gmail.com](mailto:oguzhan00yildiz@gmail.com)
+- **Author:** Oguzhan Yildiz

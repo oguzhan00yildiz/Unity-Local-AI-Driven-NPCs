@@ -72,6 +72,17 @@ Access all tools via **Tools → AI Packages**:
 
 ---
 
+## 💻 Compatibility & System Requirements
+
+- **Unity Version:** Unity 2022.3 LTS or Unity 6 (6000.x)+
+- **Render Pipeline:** Universal Render Pipeline (URP) out of the box (Built-in and HDRP compatible by assigning pipeline-appropriate materials to the sample scene)
+- **Supported Operating System:** Windows 10/11 (64-bit)
+- **Hardware Requirements:**
+  - Minimum: 8 GB RAM, 4-core CPU (runs 100% on CPU if desired)
+  - Recommended: 16 GB RAM, dedicated NVIDIA / AMD GPU (4+ GB VRAM) for accelerated inference
+
+---
+
 ## 📄 Licensing & Third-Party Credits
 
 This project includes integrations and bindings for open-source AI libraries. Please see [`ThirdPartyNotices.md`](ThirdPartyNotices.md) for full license details:
@@ -80,3 +91,12 @@ This project includes integrations and bindings for open-source AI libraries. Pl
 - **Piper TTS**: MIT License (lookbe, Rhasspy)
 - **ONNX Runtime Unity**: MIT License (asus4, Microsoft)
 - **Qwen Language Models**: Apache 2.0 / Qwen Community License
+
+---
+
+## 💬 Support & Contact
+
+If you have questions, encounter issues, or need help integrating the system into your project:
+- **GitHub Issues:** [Unity-Local-AI-Driven-NPCs Issues](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs/issues)
+- **Email Support:** [oguzhan00yildiz@gmail.com](mailto:oguzhan00yildiz@gmail.com)
+- **Community Repository:** [GitHub Repository](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs)

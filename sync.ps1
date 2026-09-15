@@ -79,6 +79,8 @@ if (Test-Path $aiTestAssets) {
         Sync-DirectoryContents -src "$srcBase\Resources" -dst "$aiTestAssets\Resources"
         Write-Host "Synced to AITest Assets Resources: $aiTestAssets\Resources\"
     }
+    Copy-Item -Path 'Assets\AI Driven NPCs System\*.md*' -Destination "$aiTestAssets\" -Force -ErrorAction SilentlyContinue
+    Write-Host "Synced docs to AITest Assets: $aiTestAssets\"
 }
 
 # 3. Sync to AITest PackageCache (if present)

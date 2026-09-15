@@ -125,3 +125,12 @@ The system works out of the box with both the **New Input System** and the **Leg
 | Voice input not capturing speech | Microphone permissions or silent input | Verify your default microphone in Windows Sound Settings or select it in the chat UI dropdown. |
 | Audio has no speech output | TTS voice model missing | Open **Tools → AI Packages → AI System Setup** or **Voice Browser** to download the voice files. |
 | Re-run package or model installation | Need fresh dependencies | Open **Tools → AI Packages → AI System Setup** or click **Tools → AI Packages → Force Install Dependencies**. |
+
+---
+
+## 💬 Support & Contact
+
+If you have questions, encounter issues, or need help integrating the system into your project:
+- **GitHub Issues:** [Unity-Local-AI-Driven-NPCs Issues](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs/issues)
+- **Email Support:** [oguzhan00yildiz@gmail.com](mailto:oguzhan00yildiz@gmail.com)
+- **Community Repository:** [GitHub Repository](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs)
