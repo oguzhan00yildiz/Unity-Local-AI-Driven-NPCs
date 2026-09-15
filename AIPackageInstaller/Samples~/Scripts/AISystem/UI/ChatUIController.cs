@@ -33,6 +33,12 @@ namespace AISystem
         public ScrollRect chatScrollRect;
         public float      autoScrollDelay = 0.1f;
 
+        [Header("Microphone Controls")]
+        public Button micToggleButton;
+        public Text   micToggleText;
+        public string micUnmutedLabel = "Mute";
+        public string micMutedLabel   = "Unmute";
+
         [Header("Settings")]
         public int maxDisplayedMessages = 10;
 
@@ -43,25 +49,37 @@ namespace AISystem
         /// <summary>Fired when the panel is closed via the close button or ESC key.</summary>
         public event Action OnCloseChat;
 
+        /// <summary>Fired when the user clicks the mute/unmute button.</summary>
+        public event Action OnToggleMicMute;
+
         //  State 
         private bool               _isOpen;
+        private bool               _isMicMuted;
         private string             _currentNPCName  = string.Empty;
         private readonly List<string> _chatHistory      = new();
         private string             _streamingResponse = string.Empty;
 
-        public bool IsOpen => _isOpen;
+        public bool IsOpen     => _isOpen;
+        public bool IsMicMuted => _isMicMuted;
 
         //  Lifecycle 
         void Awake() { /* intentionally empty — panel is hidden in Start after UI children initialise */ }
 
         void Start()
         {
+            EnsureEventSystem();
+            EnsureInputFieldWiring();
+            EnsureMicButtonWiring();
+
             if (chatPanel != null) chatPanel.SetActive(false);
 
-            if (sendButton  != null) sendButton.onClick.AddListener(OnSendClicked);
-            if (closeButton != null) closeButton.onClick.AddListener(OnCloseClicked);
+            if (sendButton      != null) sendButton.onClick.AddListener(OnSendClicked);
+            if (closeButton     != null) closeButton.onClick.AddListener(OnCloseClicked);
+            if (micToggleButton != null) micToggleButton.onClick.AddListener(OnMicToggleClicked);
             if (playerInputField != null)
                 playerInputField.onEndEdit.AddListener(OnInputEndEdit);
+
+            UpdateMicButtonDisplay();
         }
 
         void Update()
@@ -80,10 +98,86 @@ namespace AISystem
 #endif
         }
 
+        private bool IsEnterPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            return keyboard != null && (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame);
+#else
+            return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+#endif
+        }
+
+        private void EnsureEventSystem()
+        {
+#if UNITY_2023_1_OR_NEWER
+            if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() != null) return;
+#else
+            if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() != null) return;
+#endif
+            var esGo = new GameObject("EventSystem");
+            esGo.AddComponent<UnityEngine.EventSystems.EventSystem>();
+#if ENABLE_INPUT_SYSTEM
+            var uiModule = esGo.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            uiModule.AssignDefaultActions();
+#else
+            esGo.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+#endif
+        }
+
+        private void EnsureInputFieldWiring()
+        {
+            if (playerInputField == null) return;
+
+            if (playerInputField.textComponent == null)
+            {
+                var texts = playerInputField.GetComponentsInChildren<Text>(true);
+                foreach (var t in texts)
+                {
+                    if (t.gameObject.name.IndexOf("placeholder", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        if (playerInputField.placeholder == null)
+                            playerInputField.placeholder = t;
+                    }
+                    else
+                    {
+                        if (playerInputField.textComponent == null)
+                            playerInputField.textComponent = t;
+                    }
+                }
+            }
+        }
+
+        private void EnsureMicButtonWiring()
+        {
+            if (micToggleButton == null)
+            {
+                var buttons = GetComponentsInChildren<Button>(true);
+                foreach (var btn in buttons)
+                {
+                    if (btn.gameObject.name.IndexOf("mic", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        micToggleButton = btn;
+                        break;
+                    }
+                }
+            }
+
+            if (micToggleButton != null && micToggleText == null)
+            {
+                micToggleText = micToggleButton.GetComponentInChildren<Text>(true);
+            }
+        }
+
         //  Public API 
 
         public void Open(string npcName)
         {
+            EnsureEventSystem();
+            EnsureInputFieldWiring();
+            EnsureMicButtonWiring();
+            UpdateMicButtonDisplay();
+
             _currentNPCName    = npcName;
             _streamingResponse = string.Empty;
 
@@ -101,10 +195,12 @@ namespace AISystem
             if (playerInputField != null)
             {
                 playerInputField.text = string.Empty;
+                playerInputField.interactable = true;
                 playerInputField.Select();
                 playerInputField.ActivateInputField();
             }
 
+            RefreshDisplay();
             // Note: Cursor lock and player movement are managed by AISystemManager.
         }
 
@@ -175,19 +271,41 @@ namespace AISystem
             }
         }
 
+        /// <summary>Updates the mute/unmute button state and label.</summary>
+        public void SetMicMuted(bool isMuted)
+        {
+            _isMicMuted = isMuted;
+            UpdateMicButtonDisplay();
+        }
+
+        public void UpdateMicButtonDisplay()
+        {
+            if (micToggleText != null)
+                micToggleText.text = _isMicMuted ? micMutedLabel : micUnmutedLabel;
+        }
+
         //  Internal 
+
+        private void OnMicToggleClicked()
+        {
+            OnToggleMicMute?.Invoke();
+        } 
 
         private void OnSendClicked()
         {
             if (playerInputField == null) return;
             string msg = playerInputField.text.Trim();
             if (!string.IsNullOrEmpty(msg))
+            {
+                playerInputField.text = string.Empty;
+                playerInputField.ActivateInputField();
                 OnSendMessage?.Invoke(msg);
+            }
         }
 
         private void OnInputEndEdit(string value)
         {
-            if (!playerInputField.wasCanceled)
+            if (playerInputField != null && !playerInputField.wasCanceled && IsEnterPressed())
                 OnSendClicked();
         }
 

@@ -78,7 +78,8 @@ namespace AISystem.Editor
                 "Assets/AI Driven NPCs System/Editor",
                 contentPkgRelative,
                 "Assets/AI Driven NPCs System/README.md",
-                "Assets/AI Driven NPCs System/SETUP_GUIDE_EN.md"
+                "Assets/AI Driven NPCs System/SETUP_GUIDE_EN.md",
+                "Assets/AI Driven NPCs System/ThirdPartyNotices.md"
             };
 
             List<string> validPaths = new List<string>();
@@ -145,7 +146,7 @@ namespace AISystem.Editor
                     "It now contains ONLY:\n" +
                     "• Editor/ (Installer & Setup)\n" +
                     "• AI-Driven-NPCs-Content.unitypackage (Self-extracting payload)\n" +
-                    "• Documentation (README & Setup Guide)\n\n" +
+                    "• Documentation (README, Setup Guide & Third-Party Notices)\n\n" +
                     "You can now run the Publisher Tool on 'Assets/AI Driven NPCs System'.\n\n" +
                     "When you are done uploading, click Tools → AI Packages → Restore Development Assets.", "OK");
             }

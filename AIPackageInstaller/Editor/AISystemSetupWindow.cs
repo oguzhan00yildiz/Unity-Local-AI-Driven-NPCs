@@ -42,7 +42,6 @@ namespace AISystem.Editor
         public string Url;
         public string DestRelPath;
         public int    SizeMB;
-        public bool   IsOptionalLlm;
 
         public bool   IsDownloaded;
         public bool   IsDownloading;
@@ -289,6 +288,7 @@ namespace AISystem.Editor
         EnsureWindow(initialPhase);
     }
 
+    [MenuItem("Tools/AI Packages/Download Model Files", false, 1)]
     public static void ShowModelDownloaderWindow() => EnsureWindow(WindowPhase.ModelDownload);
 
     /// <summary>
@@ -471,6 +471,7 @@ namespace AISystem.Editor
         else
             RefreshPackageSteps();
         Repaint();
+        GUIUtility.ExitGUI();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -478,23 +479,34 @@ namespace AISystem.Editor
     // ─────────────────────────────────────────────────────────────────────────
 
     private const string SetupCompleteNotifiedKey = "AISystemSetupWindow.SetupCompleteNotified";
+    private static string _cachedSampleScenePath;
+    private static double _lastScenePathCheckTime;
 
     /// <summary>
     /// Checks if sample demo scene (AIOScene or AIOTest) exists in the project.
     /// </summary>
     public static string FindSampleScenePath()
     {
+        if (_cachedSampleScenePath != null && EditorApplication.timeSinceStartup - _lastScenePathCheckTime < 2.0)
+        {
+            return _cachedSampleScenePath;
+        }
+
+        _lastScenePathCheckTime = EditorApplication.timeSinceStartup;
         string[] guids = AssetDatabase.FindAssets("AIOScene t:Scene");
         if (guids != null && guids.Length > 0)
         {
-            return AssetDatabase.GUIDToAssetPath(guids[0]);
+            _cachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+            return _cachedSampleScenePath;
         }
 
         guids = AssetDatabase.FindAssets("AIOTest t:Scene");
         if (guids != null && guids.Length > 0)
         {
-            return AssetDatabase.GUIDToAssetPath(guids[0]);
+            _cachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+            return _cachedSampleScenePath;
         }
+        _cachedSampleScenePath = null;
         return null;
     }
 
@@ -791,28 +803,196 @@ namespace AISystem.Editor
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // GUI Layout Snapshot (Prevents ArgumentException / Repaint control count mismatch)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private class GuiLayoutState
+    {
+        public WindowPhase Phase;
+        public bool AllPackagesInstalled;
+        public bool AllModelsDownloaded;
+        public bool HasSampleScene;
+        public string SampleScenePath;
+        public bool IsUpm;
+
+        // Header / overall
+        public int PkgsDoneCount;
+        public int ModelsDoneCount;
+        public int TotalItems;
+        public int TotalDone;
+        public float TotalProgress;
+
+        // Package Phase
+        public struct StepSnapshot
+        {
+            public string Name;
+            public string Description;
+            public StepStatus Status;
+            public string ErrorMessage;
+        }
+        public readonly List<StepSnapshot> StepSnapshots = new List<StepSnapshot>();
+        public int PkgCompletedCount;
+        public bool AllPackagesCompleted;
+
+        // Model Phase
+        public int ActiveDownloads;
+        public bool IsDownloadingAll;
+        public int MissingCount;
+        public int DownloadedCount;
+        public int TotalCount;
+        public float ModelProgress;
+        public bool AllModelsDone;
+
+        public ModelEntry ActiveDownloadingModel;
+
+        public struct ModelSnapshot
+        {
+            public string Group;
+            public string DisplayName;
+            public int SizeMB;
+            public string DestRelPath;
+            public bool IsDownloading;
+            public bool IsDownloaded;
+            public string Error;
+            public bool ExistsOnDisk;
+            public float Progress;
+            public long DownloadedBytes;
+            public string StatusDetail;
+        }
+        public readonly Dictionary<string, ModelSnapshot> ModelSnapshots = new Dictionary<string, ModelSnapshot>();
+
+        public ModelSnapshot GetModelSnapshot(ModelEntry entry)
+        {
+            if (entry != null && ModelSnapshots.TryGetValue(entry.DestRelPath, out var s))
+                return s;
+            return default;
+        }
+    }
+
+    private GuiLayoutState _guiState;
+
+    private GuiLayoutState CaptureGuiLayoutState()
+    {
+        var state = new GuiLayoutState
+        {
+            Phase = _phase,
+            ActiveDownloads = _activeDownloads,
+            IsDownloadingAll = _isDownloadingAll
+        };
+
+        // 1. Packages
+        if (Steps.Count == 0)
+        {
+            RefreshPackageSteps();
+        }
+        int pkgDone = 0;
+        foreach (var s in Steps)
+        {
+            if (s.Status == StepStatus.Completed) pkgDone++;
+            state.StepSnapshots.Add(new GuiLayoutState.StepSnapshot
+            {
+                Name = s.Name,
+                Description = s.Description,
+                Status = s.Status,
+                ErrorMessage = s.ErrorMessage
+            });
+        }
+        state.PkgCompletedCount = pkgDone;
+        state.AllPackagesCompleted = Steps.Count > 0 && pkgDone == Steps.Count;
+        state.AllPackagesInstalled = state.AllPackagesCompleted;
+
+        // 2. Models
+        int missing = 0;
+        int downloaded = 0;
+        ModelEntry activeModel = null;
+
+        foreach (var m in Models)
+        {
+            m.Refresh();
+            bool exists = File.Exists(m.FullPath);
+            if (m.IsDownloading)
+            {
+                if (activeModel == null) activeModel = m;
+            }
+            else if (m.IsDownloaded)
+            {
+                downloaded++;
+            }
+            else
+            {
+                missing++;
+            }
+
+            state.ModelSnapshots[m.DestRelPath] = new GuiLayoutState.ModelSnapshot
+            {
+                Group = m.Group,
+                DisplayName = m.DisplayName,
+                SizeMB = m.SizeMB,
+                DestRelPath = m.DestRelPath,
+                IsDownloading = m.IsDownloading,
+                IsDownloaded = m.IsDownloaded,
+                Error = m.Error,
+                ExistsOnDisk = exists,
+                Progress = m.Progress,
+                DownloadedBytes = m.DownloadedBytes,
+                StatusDetail = m.StatusDetail
+            };
+        }
+
+        state.ActiveDownloadingModel = activeModel;
+        state.DownloadedCount = downloaded;
+        state.MissingCount = missing;
+        state.TotalCount = Models.Count;
+        state.AllModelsDone = (downloaded == Models.Count && Models.Count > 0);
+        state.AllModelsDownloaded = state.AllModelsDone;
+        state.ModelProgress = state.TotalCount > 0 ? (float)downloaded / state.TotalCount : 0f;
+
+        // Overall progress in header
+        state.PkgsDoneCount = pkgDone;
+        state.ModelsDoneCount = downloaded;
+        state.TotalItems = (Steps.Count > 0 ? Steps.Count : 4) + Models.Count;
+        state.TotalDone = pkgDone + downloaded;
+        state.TotalProgress = state.TotalItems > 0 ? (float)state.TotalDone / state.TotalItems : 0f;
+
+        // Banner info (only search scene if completed)
+        if (state.AllPackagesInstalled && state.AllModelsDownloaded)
+        {
+            state.SampleScenePath = FindSampleScenePath();
+            state.HasSampleScene = !string.IsNullOrEmpty(state.SampleScenePath);
+            state.IsUpm = IsInstalledViaUPM();
+        }
+
+        return state;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // OnGUI
     // ─────────────────────────────────────────────────────────────────────────
 
     private void OnGUI()
     {
-        DrawHeader();
-        DrawSetupCompleteBanner();
+        if (Event.current.type == EventType.Layout || _guiState == null)
+        {
+            _guiState = CaptureGuiLayoutState();
+        }
 
-        if (_phase == WindowPhase.PackageInstall)
-            DrawPackagePhase();
+        DrawHeader(_guiState);
+        DrawSetupCompleteBanner(_guiState);
+
+        if (_guiState.Phase == WindowPhase.PackageInstall)
+            DrawPackagePhase(_guiState);
         else
-            DrawModelPhase();
+            DrawModelPhase(_guiState);
     }
 
-    private void DrawSetupCompleteBanner()
+    private void DrawSetupCompleteBanner(GuiLayoutState state)
     {
-        if (!AreAllPackagesInstalled() || !AreAllModelsDownloaded())
+        if (!state.AllPackagesInstalled || !state.AllModelsDownloaded)
             return;
 
-        string scenePath = FindSampleScenePath();
-        bool hasSampleScene = !string.IsNullOrEmpty(scenePath);
-        bool isUpm = IsInstalledViaUPM();
+        string scenePath = state.SampleScenePath;
+        bool hasSampleScene = state.HasSampleScene;
+        bool isUpm = state.IsUpm;
 
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
@@ -842,6 +1022,7 @@ namespace AISystem.Editor
                     if (GUILayout.Button("▶ Open Demo Scene (AIOScene)", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();
+                        GUIUtility.ExitGUI();
                     }
                 }
                 else if (isUpm)
@@ -849,6 +1030,7 @@ namespace AISystem.Editor
                     if (GUILayout.Button("📦 Open Package Manager", GUILayout.Height(26)))
                     {
                         OpenPackageManager();
+                        GUIUtility.ExitGUI();
                     }
                 }
             }
@@ -883,7 +1065,7 @@ namespace AISystem.Editor
         return cached;
     }
 
-    private void DrawHeader()
+    private void DrawHeader(GuiLayoutState state)
     {
         EditorGUILayout.Space(10);
 
@@ -901,9 +1083,9 @@ namespace AISystem.Editor
             GUILayout.FlexibleSpace();
 
             // Step 1 tab
-            bool pkgsDone = AreAllPackagesInstalled();
+            bool pkgsDone = state.AllPackagesInstalled;
             string step1Title = pkgsDone ? "① Package Install  ✓" : "① Package Install";
-            GUIStyle step1Style = _phase == WindowPhase.PackageInstall 
+            GUIStyle step1Style = state.Phase == WindowPhase.PackageInstall 
                 ? GetActiveTabStyle(true) 
                 : EditorStyles.miniButtonLeft;
 
@@ -913,9 +1095,9 @@ namespace AISystem.Editor
             }
 
             // Step 2 tab
-            bool modelsDone = AreAllModelsDownloaded();
+            bool modelsDone = state.AllModelsDownloaded;
             string step2Title = modelsDone ? "② Model Download  ✓" : "② Model Download";
-            GUIStyle step2Style = _phase == WindowPhase.ModelDownload 
+            GUIStyle step2Style = state.Phase == WindowPhase.ModelDownload 
                 ? GetActiveTabStyle(false) 
                 : EditorStyles.miniButtonRight;
 
@@ -930,17 +1112,11 @@ namespace AISystem.Editor
         EditorGUILayout.Space(6);
 
         // Overall System Setup progress bar
-        int pkgsDoneCount = Steps.Count(s => s.Status == StepStatus.Completed);
-        int modelsDoneCount = Models.Count(m => m.IsDownloaded);
-        int totalItems = (Steps.Count > 0 ? Steps.Count : 4) + Models.Count;
-        int totalDone = pkgsDoneCount + modelsDoneCount;
-        float totalProgress = totalItems > 0 ? (float)totalDone / totalItems : 0f;
-
         Rect setupBarRect = EditorGUILayout.GetControlRect(false, 20);
-        string setupBarText = (totalDone == totalItems && totalItems > 0)
-            ? $"Overall Setup  {totalDone} / {totalItems}  (Fully Ready ✅)"
-            : $"Overall Setup Progress  {totalDone} / {totalItems}  ({(int)(totalProgress * 100)}%)";
-        EditorGUI.ProgressBar(setupBarRect, totalProgress, setupBarText);
+        string setupBarText = (state.TotalDone == state.TotalItems && state.TotalItems > 0)
+            ? $"Overall Setup  {state.TotalDone} / {state.TotalItems}  (Fully Ready ✅)"
+            : $"Overall Setup Progress  {state.TotalDone} / {state.TotalItems}  ({(int)(state.TotalProgress * 100)}%)";
+        EditorGUI.ProgressBar(setupBarRect, state.TotalProgress, setupBarText);
 
         EditorGUILayout.Space(6);
         EditorGUILayout.HelpBox(
@@ -956,20 +1132,9 @@ namespace AISystem.Editor
     // Phase 1 — Package Install
     // ─────────────────────────────────────────────────────────────────────────
 
-    private void DrawPackagePhase()
+    private void DrawPackagePhase(GuiLayoutState state)
     {
-        if (Steps.Count == 0)
-        {
-            RefreshPackageSteps();
-        }
-
-        int completed = 0;
-        foreach (var s in Steps)
-            if (s.Status == StepStatus.Completed) completed++;
-
-        bool allCompleted = Steps.Count > 0 && completed == Steps.Count;
-
-        if (allCompleted)
+        if (state.AllPackagesCompleted)
         {
             EditorGUILayout.HelpBox(
                 "All required Unity packages are installed and up to date! ✅\nClick 'Next: Model Downloads ▶' to view or download voice and language models.",
@@ -984,15 +1149,15 @@ namespace AISystem.Editor
         EditorGUILayout.Space(8);
 
         // Overall progress bar
-        float progress = Steps.Count > 0 ? (float)completed / Steps.Count : 0f;
+        float progress = state.StepSnapshots.Count > 0 ? (float)state.PkgCompletedCount / state.StepSnapshots.Count : 0f;
         Rect pRect = EditorGUILayout.GetControlRect(false, 22);
-        string progressText = allCompleted
-            ? $"Packages  {completed} / {Steps.Count}  (All Complete ✅)"
-            : $"Packages  {completed} / {Steps.Count}";
+        string progressText = state.AllPackagesCompleted
+            ? $"Packages  {state.PkgCompletedCount} / {state.StepSnapshots.Count}  (All Complete ✅)"
+            : $"Packages  {state.PkgCompletedCount} / {state.StepSnapshots.Count}";
         EditorGUI.ProgressBar(pRect, progress, progressText);
         EditorGUILayout.Space(10);
 
-        foreach (var step in Steps)
+        foreach (var step in state.StepSnapshots)
             DrawPackageRow(step);
 
         GUILayout.FlexibleSpace();
@@ -1004,11 +1169,13 @@ namespace AISystem.Editor
             if (GUILayout.Button("↻ Re-check Status", GUILayout.Height(26), GUILayout.Width(130)))
             {
                 RefreshPackageSteps(force: true);
+                GUIUtility.ExitGUI();
             }
 
             if (GUILayout.Button("Install / Repair Packages", GUILayout.Height(26), GUILayout.Width(170)))
             {
                 AIPackageInstaller.ForceInstall();
+                GUIUtility.ExitGUI();
             }
 
             GUILayout.FlexibleSpace();
@@ -1022,7 +1189,7 @@ namespace AISystem.Editor
         EditorGUILayout.Space(6);
     }
 
-    private void DrawPackageRow(InstallStep step)
+    private void DrawPackageRow(GuiLayoutState.StepSnapshot step)
     {
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
@@ -1071,6 +1238,7 @@ namespace AISystem.Editor
                 if (GUILayout.Button("Retry", GUILayout.Width(65)))
                 {
                     AIPackageInstaller.ForceInstall();
+                    GUIUtility.ExitGUI();
                 }
             }
         }
@@ -1080,11 +1248,9 @@ namespace AISystem.Editor
     // Phase 2 — Model Downloads
     // ─────────────────────────────────────────────────────────────────────────
 
-    private void DrawModelPhase()
+    private void DrawModelPhase(GuiLayoutState state)
     {
-        bool allModelsDone = AreAllModelsDownloaded();
-
-        if (allModelsDone)
+        if (state.AllModelsDone)
         {
             EditorGUILayout.HelpBox(
                 "All required model files are downloaded and ready! ✅\nYour local AI NPC system is fully configured and ready to use.",
@@ -1107,25 +1273,25 @@ namespace AISystem.Editor
             MessageType.None);
         EditorGUILayout.Space(4);
 
-        int missingCount = Models.Count(m => !m.IsDownloaded && !m.IsDownloading);
-        int downloadedCount = Models.Count(m => m.IsDownloaded);
-        int totalCount = Models.Count;
+        int missingCount = state.MissingCount;
+        int downloadedCount = state.DownloadedCount;
+        int totalCount = state.TotalCount;
 
         // Overall Models progress bar
-        float modelProgress = totalCount > 0 ? (float)downloadedCount / totalCount : 0f;
+        float modelProgress = state.ModelProgress;
         Rect mRect = EditorGUILayout.GetControlRect(false, 22);
-        string modelProgressText = allModelsDone
+        string modelProgressText = state.AllModelsDone
             ? $"Models  {downloadedCount} / {totalCount}  (All Complete ✅)"
-            : (_activeDownloads > 0
+            : (state.ActiveDownloads > 0
                 ? $"Models  {downloadedCount} / {totalCount}  ({(int)(modelProgress * 100)}%)"
                 : $"Models  {downloadedCount} / {totalCount}  ({missingCount} missing)");
         EditorGUI.ProgressBar(mRect, modelProgress, modelProgressText);
         EditorGUILayout.Space(6);
 
-        if (_activeDownloads > 0)
+        if (state.ActiveDownloads > 0)
         {
-            var activeModel = Models.FirstOrDefault(m => m.IsDownloading);
-            int queueRemaining = Models.Count(m => !m.IsDownloaded && !m.IsDownloading);
+            var activeModel = state.ActiveDownloadingModel;
+            int queueRemaining = state.MissingCount;
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
@@ -1140,6 +1306,7 @@ namespace AISystem.Editor
                     if (GUILayout.Button("⚡ Force Restart Downloads", restartTopBtnStyle, GUILayout.Width(190), GUILayout.Height(24)))
                     {
                         ForceRestartDownloads();
+                        GUIUtility.ExitGUI();
                     }
                 }
 
@@ -1185,6 +1352,7 @@ namespace AISystem.Editor
             if (GUILayout.Button($"⬇  Download All Models ({missingCount} missing)", dlAllBtnStyle, GUILayout.Height(30)))
             {
                 DownloadAllModels(isAutomatic: false, forceRedownload: false);
+                GUIUtility.ExitGUI();
             }
             EditorGUILayout.Space(4);
         }
@@ -1200,7 +1368,7 @@ namespace AISystem.Editor
                 EditorGUILayout.Space(4);
                 EditorGUILayout.LabelField(curGroup, EditorStyles.boldLabel);
             }
-            DrawModelRow(m);
+            DrawModelRow(m, state);
         }
 
         EditorGUILayout.EndScrollView();
@@ -1216,23 +1384,32 @@ namespace AISystem.Editor
 
             GUIStyle restartBtnStyle = new GUIStyle(GUI.skin.button)
             {
-                fontStyle = _activeDownloads > 0 ? FontStyle.Bold : FontStyle.Normal
+                fontStyle = state.ActiveDownloads > 0 ? FontStyle.Bold : FontStyle.Normal
             };
             if (GUILayout.Button("⚡ Force Restart Downloads", restartBtnStyle, GUILayout.Height(26), GUILayout.Width(190)))
+            {
                 ForceRestartDownloads();
+                GUIUtility.ExitGUI();
+            }
 
             if (GUILayout.Button("↻ Refresh", GUILayout.Height(26), GUILayout.Width(75)))
+            {
                 RefreshModelStatus();
+                GUIUtility.ExitGUI();
+            }
 
             GUILayout.FlexibleSpace();
 
-            if (_activeDownloads == 0 && missingCount > 0)
+            if (state.ActiveDownloads == 0 && missingCount > 0)
             {
                 GUIStyle dlQuickStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
                 if (GUILayout.Button("⬇ Download All Models", dlQuickStyle, GUILayout.Height(26), GUILayout.Width(180)))
+                {
                     DownloadAllModels(isAutomatic: false, forceRedownload: false);
+                    GUIUtility.ExitGUI();
+                }
             }
-            else if (allModelsDone)
+            else if (state.AllModelsDone)
             {
                 if (GUILayout.Button("↻ Re-download All Models", GUILayout.Height(26), GUILayout.Width(170)))
                 {
@@ -1250,33 +1427,40 @@ namespace AISystem.Editor
                     {
                         DownloadAllModels(isAutomatic: false, forceRedownload: true);
                     }
+                    GUIUtility.ExitGUI();
                 }
 
                 if (GUILayout.Button("Done / Close", GUILayout.Height(26), GUILayout.Width(110)))
+                {
                     Close();
+                    GUIUtility.ExitGUI();
+                }
             }
         }
         EditorGUILayout.Space(6);
     }
 
-    private void DrawModelRow(ModelEntry model)
+    private void DrawModelRow(ModelEntry model, GuiLayoutState state)
     {
+        var snap = state.GetModelSnapshot(model);
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
-            string icon = model.IsDownloading ? "⏳" : (model.IsDownloaded ? "✅" : "○");
+            string icon = snap.IsDownloading ? "⏳" : (snap.IsDownloaded ? "✅" : "○");
             EditorGUILayout.LabelField(icon, GUILayout.Width(22));
 
-            GUIStyle nameStyle = model.IsDownloading ? EditorStyles.boldLabel : EditorStyles.label;
+            GUIStyle nameStyle = snap.IsDownloading ? EditorStyles.boldLabel : EditorStyles.label;
             EditorGUILayout.LabelField($"{model.DisplayName}  ({model.SizeMB} MB)", nameStyle, GUILayout.MinWidth(180));
 
-            if (model.IsDownloading)
+            if (snap.IsDownloading)
             {
                 Rect r = GUILayoutUtility.GetRect(160, 18);
+                float curProgress = model.Progress > 0 ? model.Progress : snap.Progress;
+                long curBytes = model.DownloadedBytes > 0 ? model.DownloadedBytes : snap.DownloadedBytes;
                 string barText;
-                if (model.DownloadedBytes > 0)
+                if (curBytes > 0)
                 {
-                    float curMB = model.DownloadedBytes / (1024f * 1024f);
-                    barText = $"{curMB:0.1} / {model.SizeMB} MB ({(int)(model.Progress * 100)}%)";
+                    float curMB = curBytes / (1024f * 1024f);
+                    barText = $"{curMB:0.1} / {model.SizeMB} MB ({(int)(curProgress * 100)}%)";
                 }
                 else if (!string.IsNullOrEmpty(model.StatusDetail))
                 {
@@ -1284,37 +1468,40 @@ namespace AISystem.Editor
                 }
                 else
                 {
-                    barText = $"Starting… ({(int)(model.Progress * 100)}%)";
+                    barText = $"Starting… ({(int)(curProgress * 100)}%)";
                 }
-                EditorGUI.ProgressBar(r, model.Progress, barText);
+                EditorGUI.ProgressBar(r, curProgress, barText);
 
                 if (GUILayout.Button("⚡ Restart", GUILayout.Width(70), GUILayout.Height(18)))
                 {
                     ForceRestartDownloads();
+                    GUIUtility.ExitGUI();
                 }
             }
-            else if (!string.IsNullOrEmpty(model.Error))
+            else if (!string.IsNullOrEmpty(snap.Error))
             {
                 GUIStyle err = new GUIStyle(EditorStyles.miniLabel)
                     { normal = { textColor = new Color(0.9f, 0.2f, 0.2f) } };
-                EditorGUILayout.LabelField(model.Error, err, GUILayout.Width(100));
+                EditorGUILayout.LabelField(snap.Error, err, GUILayout.Width(100));
                 if (GUILayout.Button("Retry", GUILayout.Width(65)))
                 {
                     if (_downloadCts == null || _downloadCts.IsCancellationRequested)
                         _downloadCts = new CancellationTokenSource();
                     _ = DownloadModel(model, _downloadCts.Token);
+                    GUIUtility.ExitGUI();
                 }
             }
-            else if (model.IsDownloaded)
+            else if (snap.IsDownloaded)
             {
                 EditorGUILayout.LabelField("Ready", EditorStyles.miniLabel, GUILayout.Width(80));
-                if (File.Exists(model.FullPath))
+                if (snap.ExistsOnDisk)
                 {
                     if (GUILayout.Button("Delete", GUILayout.Width(55)))
                     {
-                        File.Delete(model.FullPath);
+                        if (File.Exists(model.FullPath)) File.Delete(model.FullPath);
                         model.Refresh();
                         AssetDatabase.Refresh();
+                        GUIUtility.ExitGUI();
                     }
                 }
             }
@@ -1325,6 +1512,7 @@ namespace AISystem.Editor
                     if (_downloadCts == null || _downloadCts.IsCancellationRequested)
                         _downloadCts = new CancellationTokenSource();
                     _ = DownloadModel(model, _downloadCts.Token);
+                    GUIUtility.ExitGUI();
                 }
             }
         }
@@ -1882,14 +2070,14 @@ public class AISystemDialogWindow : EditorWindow
                 State.Result = true;
                 Close();
                 Event.current.Use();
-                return;
+                GUIUtility.ExitGUI();
             }
             else if (Event.current.keyCode == KeyCode.Escape)
             {
                 State.Result = false;
                 Close();
                 Event.current.Use();
-                return;
+                GUIUtility.ExitGUI();
             }
         }
 
@@ -1952,6 +2140,7 @@ public class AISystemDialogWindow : EditorWindow
                 {
                     State.Result = false;
                     Close();
+                    GUIUtility.ExitGUI();
                 }
             }
 
@@ -1965,6 +2154,7 @@ public class AISystemDialogWindow : EditorWindow
             {
                 State.Result = true;
                 Close();
+                GUIUtility.ExitGUI();
             }
 
             EditorGUILayout.Space(16);

@@ -1,122 +1,82 @@
-# AI Driven NPCs System – Documentation & Setup Guide
+# AI Driven NPCs System — Documentation & Quick Start
 
-Adds **local AI-driven NPCs** (LLM + TTS + STT) to any Unity project via a single git URL.  
-No manual dependency management required.
+Adds **100% local, on-device AI NPCs** (LLM + Text-to-Speech + Speech-to-Text) to any Unity project.  
+Zero cloud subscriptions, zero network latency, complete data privacy.
 
 ---
 
-## Step 1 — Add the Package
+## 📦 Installation Options
 
-1. Open **Window → Package Manager**
+### Option A: Unity Asset Store Import (Recommended)
+1. Open **Window → Package Manager**.
+2. Switch to **Packages: My Assets**.
+3. Locate **AI Driven NPCs System** and click **Download / Import**.
+4. Import all package assets into your project.
+5. The **AI System Setup** window will automatically appear to configure dependencies and download models.
+
+### Option B: Add via Git URL (UPM Package)
+1. Open **Window → Package Manager**.
 2. Click **+** → **Add package from git URL…**
 3. Paste:
+   ```text
+   https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
    ```
-   https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller#packagetest
-   ```
-4. Click **Add**
+4. Click **Add**.
 
 **What happens automatically:**
-- `manifest.json` is patched to add a npm scoped registry for ONNX Runtime (prevents native crashes caused by git-URL LFS stub DLLs)
-- ONNX Runtime 0.4.4 is pinned in `manifest.json` via npm
-- LLMUnity, Piper TTS, and Whisper STT are installed via their git URLs
-- Unity reloads once (after the manifest patch), then installs remaining packages
+- `manifest.json` is configured with an NPM scoped registry for ONNX Runtime (preventing native stub crashes).
+- ONNX Runtime 0.4.4, LLMUnity, Piper TTS, and Whisper STT are installed automatically.
+- The **AI System Setup** window opens to verify packages and download the required local models.
 
-Watch **Window → General → Console** for progress:
-```
-[AI Package Installer] Initializing…
-[AI Package Installer] manifest.json patched (npm ONNX registry added). Unity will reload…
-[AI Package Installer] Checking git packages…
-[AI Package Installer] Installing: https://github.com/undreamai/LLMUnity.git…
-[AI Package Installer] ✅ Installed: ai.undream.llm@…
-…
-[AI Package Installer] All AI packages installed successfully! ✅
-```
-
-Installation takes **2–5 minutes** depending on connection speed.
-
-> ⚠️ **Important:** Keep the Unity Editor open and focused during package installation and model setup. Defocusing or switching to other apps can cause Unity to pause background tasks, which can interrupt LLMUnity's native server binary setup or model downloads.
+> ⚠️ **Important:** Keep the Unity Editor open and focused during initial setup. Switching away can cause Unity to pause background tasks, interrupting native binary resolution or model downloads.
 
 ---
 
-## Step 2 — Model Files
+## 🤖 Model Files
 
-After all packages finish installing, the **AI Model Downloader** window opens automatically to download required voice models (~265 MB). It will prompt you whether you want to download the default LLM model (`Qwen3.5-0.8B-Q4_K_M.gguf`, ~500 MB) or skip it to provide your own.
+The **AI System Setup** window automatically downloads the required lightweight voice and speech models (~265 MB) into `Assets/StreamingAssets/`:
 
-| File | Size | Purpose |
-|------|------|---------|
-| `Whisper/ggml-tiny.bin` | 74 MB | Speech recognition (Whisper - Required) |
-| `PiperTTS/model.onnx` | 59 MB | TTS phonemizer (Required) |
-| `PiperTTS/phoneme_dict.json` | 10 MB | TTS phonemizer dictionary (Required) |
-| `PiperTTS/tokenizer.json` | ~1 MB | TTS tokenizer (Required) |
-| `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice (Required) |
-| `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice (Required) |
-| `Qwen3.5-0.8B-Q4_K_M.gguf` | ~500 MB | LLM language model (Qwen3.5 0.8B - Optional) |
+| Component | Model File | Size | Purpose |
+| :--- | :--- | :--- | :--- |
+| **STT** | `Whisper/ggml-tiny.bin` | 74 MB | On-device speech recognition (Required) |
+| **TTS Core** | `PiperTTS/model.onnx` + dicts | 70 MB | Phonemizer and tokenizer dictionary (Required) |
+| **Female Voice** | `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice (Required) |
+| **Male Voice** | `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice (Required) |
+| **LLM (Default)** | `Qwen3.5-0.8B-Q4_K_M.gguf` | ~500 MB | Fast, lightweight on-device language model |
 
-All files save to `Assets/StreamingAssets/` automatically.  
-If the window doesn't open, trigger it manually: **Tools → AI Packages → Download Model Files**
-
-> **Default LLM Model:** `Qwen3.5-0.8B-Q4_K_M.gguf` (~500 MB) is preconfigured as the default model. It provides fast, lightweight, on-device chat inference with low memory overhead.
-
-### How to Try Different LLM Models or Add Custom Models
-
-You can easily switch to another model (e.g. Llama 3, Mistral, Gemma, Phi-3) or use your own custom GGUF file:
-1. In the Hierarchy, select the **`LLM`** GameObject (located under the `AISystem` prefab).
-2. In the Inspector, locate the **`LLM`** component.
-3. Click the **Model** dropdown:
-   - **Download Presets:** Choose from popular community models to download them directly inside Unity.
-   - **Custom Model:** Click to browse and select any `.gguf` file stored on your machine (or place it into `Assets/StreamingAssets/`).
-4. Hit **Play** — the NPCs will automatically converse using your selected LLM model!
+If the window ever needs to be reopened: **Tools → AI Packages → AI System Setup** (or **Download Model Files**).
 
 ---
 
-## Step 3 — Import the Ready Scene (Optional)
+## 🎮 How to Test the Demo Scene
 
-1. **Window → Package Manager** → select **AI Driven NPCs System** → **Samples** tab
-2. Click **Import** next to **AI Driven NPCs System**
-3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity`
-4. Press **Play**
+1. In the Project window, navigate to:  
+   `Assets/AI Driven NPCs System/Scenes/AIOScene.unity`  
+   *(Or if imported via UPM: `Assets/Samples/AI Driven NPCs System/<version>/Scenes/AIOScene.unity`)*
+2. Open the scene and press **Play**.
+3. Walk toward the NPC using **WASD**.
+4. Press **`E`** to start a voice or text conversation.
 
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Compile errors right after install | Wait — ONNX must compile before Piper. Watch Console for the ✅ message. |
-| "Package Manager is busy" | Packages still downloading. Wait and check Console. |
-| A package failed to install | **Tools → AI Packages → Force Install Dependencies** |
-| ONNX native crash on Play | Old git-URL ONNX is cached. Delete `Library/PackageCache/com.github.asus4.onnxruntime@*` and restart Unity. |
-| Any other error | Restart Unity completely. |
+For detailed instructions on adding NPCs to your own scenes, creating custom personality presets, or using different language models, please see [`SETUP_GUIDE_EN.md`](SETUP_GUIDE_EN.md).
 
 ---
 
-## Manual Install (Last Resort)
+## 🛠️ Menu Tools & Utilities
 
-If automatic installation fails entirely, add this to `Packages/manifest.json` by hand:
-
-```json
-{
-  "scopedRegistries": [
-    {
-      "name": "NPM",
-      "url": "https://registry.npmjs.org",
-      "scopes": ["com.github.asus4"]
-    }
-  ],
-  "dependencies": {
-    "com.github.asus4.onnxruntime":       "0.4.4",
-    "com.github.asus4.onnxruntime.unity": "0.4.4",
-    "ai.undream.llm":   "https://github.com/undreamai/LLMUnity.git",
-    "ai.lookbe.piper":  "https://github.com/lookbe/piper-no-espeak-unity.git",
-    "com.whisper.unity":"https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
-  }
-}
-```
-
-> ⚠️ **Do NOT use git URLs for ONNX Runtime.** The repository uses git LFS for DLLs; Unity will download only the pointer stubs, causing a native crash at runtime. Always use the npm version (`0.4.4`).
+Access all tools via **Tools → AI Packages**:
+- **AI System Setup**: View package status, verify ONNX/Whisper/Piper/LLM installations, and manage model downloads.
+- **Download Model Files**: Direct shortcut to trigger model verification and background download.
+- **Voice Browser**: Browse and download additional Piper TTS voices (Amy, Ibrahim, LJSpeech, Jenny, Ryan, etc.).
+- **System Health & GPU**: Inspect hardware specs (GPU, VRAM, CPU cores) and toggle GPU offloading layers for maximum LLM generation speed.
+- **Force Install Dependencies**: Re-run the automated dependency installer and registry patcher.
 
 ---
 
-**Version**: 2.4.2  
-**Last Updated**: 2026
+## 📄 Licensing & Third-Party Credits
 
+This project includes integrations and bindings for open-source AI libraries. Please see [`ThirdPartyNotices.md`](ThirdPartyNotices.md) for full license details:
+- **LLMUnity & llama.cpp**: MIT License (undreamai, Georgi Gerganov)
+- **Whisper.unity & whisper.cpp**: MIT License (Macoron, OpenAI, Georgi Gerganov)
+- **Piper TTS**: MIT License (lookbe, Rhasspy)
+- **ONNX Runtime Unity**: MIT License (asus4, Microsoft)
+- **Qwen Language Models**: Apache 2.0 / Qwen Community License

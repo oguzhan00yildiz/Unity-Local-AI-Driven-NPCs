@@ -106,6 +106,7 @@ namespace AISystem.Editor
         CheckAndPromptSetup(isDirectImport: true);
     }
 
+    [MenuItem("Tools/AI Packages/Force Install Dependencies", false, 30)]
     public static void ForceInstall()
     {
         Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");

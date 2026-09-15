@@ -67,7 +67,10 @@ namespace AISystem
         {
             // Wire events
             if (voiceInput != null)
+            {
                 voiceInput.OnTranscription += HandleTranscription;
+                voiceInput.OnMuteChanged   += HandleMuteChanged;
+            }
 
             if (voiceOutput != null)
             {
@@ -77,14 +80,19 @@ namespace AISystem
 
             if (chatUI != null)
             {
-                chatUI.OnSendMessage += HandleUserMessage;
-                chatUI.OnCloseChat   += CloseChat;
+                chatUI.OnSendMessage   += HandleUserMessage;
+                chatUI.OnCloseChat     += CloseChat;
+                chatUI.OnToggleMicMute += HandleToggleMicMute;
             }
         }
 
         void OnDestroy()
         {
-            if (voiceInput  != null) voiceInput.OnTranscription   -= HandleTranscription;
+            if (voiceInput != null)
+            {
+                voiceInput.OnTranscription -= HandleTranscription;
+                voiceInput.OnMuteChanged   -= HandleMuteChanged;
+            }
             if (voiceOutput != null)
             {
                 voiceOutput.OnSpeechStarted  -= HandleSpeechStarted;
@@ -92,8 +100,9 @@ namespace AISystem
             }
             if (chatUI != null)
             {
-                chatUI.OnSendMessage -= HandleUserMessage;
-                chatUI.OnCloseChat   -= CloseChat;
+                chatUI.OnSendMessage   -= HandleUserMessage;
+                chatUI.OnCloseChat     -= CloseChat;
+                chatUI.OnToggleMicMute -= HandleToggleMicMute;
             }
 
             if (Holder.Instance == this) Holder.Instance = null;
@@ -114,11 +123,14 @@ namespace AISystem
             _currentNPC           = npc;
             _isWaitingForResponse = false;
 
+            if (voiceInput != null && chatUI != null)
+                chatUI.SetMicMuted(voiceInput.IsMuted);
+
             chatUI?.Open(npc.NPCName);
             voiceInput?.StartListening();
 
             npc.SetChatActive(true);
-            npc.SetPromptText("Listening");
+            npc.SetPromptText(voiceInput != null && voiceInput.IsMuted ? "Muted" : "Listening");
 
             // Unlock cursor for interaction
             Cursor.visible   = true;
@@ -131,6 +143,7 @@ namespace AISystem
         {
             voiceInput?.StopListening();
             voiceOutput?.StopSpeaking();
+            chatUI?.SetWaiting(false);
             chatUI?.Close();
 
             _currentNPC?.SetChatActive(false);
@@ -189,15 +202,25 @@ namespace AISystem
             voiceInput?.StopListening();
             _currentNPC?.SetPromptText("Thinking");
 
+            // Display player message and indicate waiting state in Chat UI
+            chatUI?.AddMessage("Player", message);
+            chatUI?.SetWaiting(true);
+
             string fullResponse = string.Empty;
             var npcForCallback   = _currentNPC;   // capture before await
 
             await _currentNPC.Agent.Chat(
                 message,
-                partial => { fullResponse = partial; },
+                partial =>
+                {
+                    fullResponse = partial;
+                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", partial);
+                },
                 () =>
                 {
                     _isWaitingForResponse = false;
+                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", fullResponse);
+                    chatUI?.SetWaiting(false);
 
                     // Guard: session may have been closed while LLM was generating
                     // (e.g. player walked out of range during "Thinking" state)
@@ -232,15 +255,41 @@ namespace AISystem
                 return;
             }
 
-            _currentNPC?.SetPromptText("Listening");
+            _currentNPC?.SetPromptText(voiceInput != null && voiceInput.IsMuted ? "Muted" : "Listening");
             if (!_isWaitingForResponse)
                 voiceInput?.ResumeListening();
+        }
+
+        private void HandleToggleMicMute()
+        {
+            voiceInput?.ToggleMute();
+        }
+
+        private void HandleMuteChanged(bool isMuted)
+        {
+            chatUI?.SetMicMuted(isMuted);
+            if (_currentNPC != null && !_isWaitingForResponse && (voiceOutput == null || !voiceOutput.IsSpeaking))
+            {
+                _currentNPC.SetPromptText(isMuted ? "Muted" : "Listening");
+            }
         }
 
         private static void SetPlayerMovement(bool enabled)
         {
             var player = GameObject.FindWithTag("Player");
             if (player == null) return;
+
+            var tpp = player.GetComponentInChildren<ThirdPersonPlayer>();
+            if (tpp != null)
+                tpp.SetMovementEnabled(enabled);
+
+            var pih = player.GetComponentInChildren<PlayerInputHandler>();
+            if (pih != null)
+            {
+                pih.CursorLocked = !enabled ? false : pih.lockCursorOnStart;
+                pih.enabled = enabled;
+            }
+
             foreach (var mb in player.GetComponentsInChildren<MonoBehaviour>())
             {
                 if (mb == null) continue;

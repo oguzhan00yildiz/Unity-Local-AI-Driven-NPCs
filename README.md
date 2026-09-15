@@ -99,12 +99,12 @@ graph TD
 
 | Component | Role | Description |
 | :--- | :--- | :--- |
-| [`AISystemManager.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Core/AISystemManager.cs) | **Coordinator** | Central singleton. Manages chat lifecycle, cursor locking, character movement toggling, and event dispatch. |
-| [`NPCAgent.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/NPC/NPCAgent.cs) | **NPC Brain** | Attached to NPC GameObject. Handles proximity triggers, 3D prompt cues, and personality preset bindings. |
-| [`VoiceInputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Services/VoiceInputService.cs) | **Speech-to-Text** | Microphone audio capture, voice activity detection (VAD), silence filtering, and Whisper transcription. |
-| [`VoiceOutputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Services/VoiceOutputService.cs) | **Text-to-Speech** | Splits incoming LLM text into sentence batches and synthesizes speech seamlessly via Piper TTS. |
-| [`ChatUIController.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/UI/ChatUIController.cs) | **UI Display** | Pure UI controller. Renders streaming tokens, chat history, input field, and loading overlays. |
-| [`ModelBootstrapper.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Core/ModelBootstrapper.cs) | **Warmup** | Asynchronously warms up all LLM and Whisper models on startup in parallel. |
+| [`AISystemManager.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/AISystemManager.cs) | **Coordinator** | Central singleton. Manages chat lifecycle, cursor locking, character movement toggling, and event dispatch. |
+| [`NPCAgent.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCAgent.cs) | **NPC Brain** | Attached to NPC GameObject. Handles proximity triggers, 3D prompt cues, and personality preset bindings. |
+| [`VoiceInputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceInputService.cs) | **Speech-to-Text** | Microphone audio capture, voice activity detection (VAD), silence filtering, and Whisper transcription. |
+| [`VoiceOutputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceOutputService.cs) | **Text-to-Speech** | Splits incoming LLM text into sentence batches and synthesizes speech seamlessly via Piper TTS. |
+| [`ChatUIController.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/UI/ChatUIController.cs) | **UI Display** | Pure UI controller. Renders streaming tokens, chat history, input field, and loading overlays. |
+| [`ModelBootstrapper.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/ModelBootstrapper.cs) | **Warmup** | Asynchronously warms up all LLM and Whisper models on startup in parallel. |
 
 ---
 

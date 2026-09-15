@@ -38,21 +38,27 @@ namespace AISystem
         /// <summary>Fired when audio has been successfully transcribed to text.</summary>
         public event Action<string> OnTranscription;
 
+        /// <summary>Fired when microphone mute state changes.</summary>
+        public event Action<bool> OnMuteChanged;
+
         //  State 
         private bool _isListening;
         private bool _isPaused;
         private bool _isTranscribing;
+        private bool _isMuted;
 
         public bool IsListening    => _isListening;
         public bool IsTranscribing => _isTranscribing;
+        public bool IsMuted        => _isMuted;
 
         //  Lifecycle 
         void Awake()
         {
+            if (whisperManager == null)
+                whisperManager = GetComponent<WhisperManager>();
+
             if (microphoneRecord == null)
                 microphoneRecord = GetComponent<MicrophoneRecord>();
-            if (whisperManager == null)
-                whisperManager = GetComponentInParent<WhisperManager>(true);
         }
 
         void Start()
@@ -64,6 +70,7 @@ namespace AISystem
             }
 
             SetupMicrophoneDropdown();
+            SetVadIndicator(colorOff);
         }
 
         void OnDestroy()
@@ -77,8 +84,44 @@ namespace AISystem
 
         //  Public API 
 
+        /// <summary>Toggles microphone mute state.</summary>
+        public void ToggleMute()
+        {
+            SetMuted(!_isMuted);
+        }
+
+        /// <summary>Sets microphone mute state.</summary>
+        public void SetMuted(bool muted)
+        {
+            if (_isMuted == muted) return;
+            _isMuted = muted;
+
+            if (_isMuted)
+            {
+                if (microphoneRecord != null && microphoneRecord.IsRecording)
+                    microphoneRecord.StopRecord();
+                _isListening = false;
+                SetVadIndicator(colorOff);
+            }
+            else
+            {
+                if (!_isPaused && !_isTranscribing)
+                    StartListening();
+            }
+
+            OnMuteChanged?.Invoke(_isMuted);
+            Debug.Log($"[VoiceInput] Microphone muted: {_isMuted}");
+        }
+
         public void StartListening()
         {
+            if (_isMuted)
+            {
+                Debug.Log("[VoiceInput] Cannot start listening: microphone is muted.");
+                SetVadIndicator(colorOff);
+                return;
+            }
+
             if (microphoneRecord == null)
             {
                 Debug.LogWarning("[VoiceInput] Cannot start: microphoneRecord is null");
@@ -117,6 +160,8 @@ namespace AISystem
         /// <summary>Temporarily pauses listening while TTS is speaking (prevents silent captures).</summary>
         public void PauseListening()
         {
+            if (_isMuted) return;
+
             if (!_isListening)
             {
                 Debug.LogWarning("[VoiceInput] Cannot pause: not listening (_isListening=false)");
@@ -135,11 +180,17 @@ namespace AISystem
         {
             if (!_isPaused)
             {
+                if (_isMuted) return;
                 Debug.LogWarning("[VoiceInput] Cannot resume: not paused (_isPaused=false)");
                 return;
             }
             Debug.Log("[VoiceInput] Resuming from pause...");
             _isPaused = false;
+            if (_isMuted)
+            {
+                SetVadIndicator(colorOff);
+                return;
+            }
             StartListening();
         }
 
@@ -167,14 +218,14 @@ namespace AISystem
 
         private async void OnMicRecordStop(AudioChunk chunk)
         {
-            // Skip recordings that arrived from a TTS pause
-            if (_isPaused) return;
+            // Skip recordings that arrived from a TTS pause or when muted
+            if (_isPaused || _isMuted) return;
 
             _isListening = false;
 
             if (chunk.Data == null || chunk.Data.Length == 0)
             {
-                if (autoRestartAfterTranscribe && !_isPaused)
+                if (autoRestartAfterTranscribe && !_isPaused && !_isMuted)
                     StartListening();
                 return;
             }
@@ -182,14 +233,14 @@ namespace AISystem
             if (IsSilent(chunk.Data, out float avgEnergy))
             {
                 Debug.Log($"[VoiceInput] Silent audio (avg energy: {avgEnergy:F5} < threshold: {silenceThreshold:F5}), transcription skipped.");
-                if (autoRestartAfterTranscribe && !_isPaused)
+                if (autoRestartAfterTranscribe && !_isPaused && !_isMuted)
                     StartListening();
                 return;
             }
 
             await Transcribe(chunk);
 
-            if (autoRestartAfterTranscribe && !_isPaused)
+            if (autoRestartAfterTranscribe && !_isPaused && !_isMuted)
                 StartListening();
         }
 
