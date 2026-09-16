@@ -263,6 +263,11 @@ namespace AISystem.Editor
     private class WindowHolder
     {
         public AISystemSetupWindow Instance;
+        public CancellationTokenSource DownloadCts;
+        public System.Diagnostics.Process CurrentCurlProcess;
+        public WebClient CurrentWebClient;
+        public string CachedSampleScenePath;
+        public double LastScenePathCheckTime;
     }
     private static readonly WindowHolder Holder = new WindowHolder();
 
@@ -273,9 +278,6 @@ namespace AISystem.Editor
     private WindowPhase _phase = WindowPhase.PackageInstall;
     private Vector2     _modelScroll;
     private int         _activeDownloads;
-    private static CancellationTokenSource _downloadCts;
-    private static System.Diagnostics.Process _currentCurlProcess;
-    private static WebClient _currentWebClient;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Static API — called by AIPackageInstaller
@@ -479,34 +481,32 @@ namespace AISystem.Editor
     // ─────────────────────────────────────────────────────────────────────────
 
     private const string SetupCompleteNotifiedKey = "AISystemSetupWindow.SetupCompleteNotified";
-    private static string _cachedSampleScenePath;
-    private static double _lastScenePathCheckTime;
 
     /// <summary>
     /// Checks if sample demo scene (AIOScene or AIOTest) exists in the project.
     /// </summary>
     public static string FindSampleScenePath()
     {
-        if (_cachedSampleScenePath != null && EditorApplication.timeSinceStartup - _lastScenePathCheckTime < 2.0)
+        if (Holder.CachedSampleScenePath != null && EditorApplication.timeSinceStartup - Holder.LastScenePathCheckTime < 2.0)
         {
-            return _cachedSampleScenePath;
+            return Holder.CachedSampleScenePath;
         }
 
-        _lastScenePathCheckTime = EditorApplication.timeSinceStartup;
+        Holder.LastScenePathCheckTime = EditorApplication.timeSinceStartup;
         string[] guids = AssetDatabase.FindAssets("AIOScene t:Scene");
         if (guids != null && guids.Length > 0)
         {
-            _cachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return _cachedSampleScenePath;
+            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+            return Holder.CachedSampleScenePath;
         }
 
         guids = AssetDatabase.FindAssets("AIOTest t:Scene");
         if (guids != null && guids.Length > 0)
         {
-            _cachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return _cachedSampleScenePath;
+            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+            return Holder.CachedSampleScenePath;
         }
-        _cachedSampleScenePath = null;
+        Holder.CachedSampleScenePath = null;
         return null;
     }
 
@@ -737,31 +737,31 @@ namespace AISystem.Editor
         // 1. Cancel running CancellationTokenSource
         try
         {
-            _downloadCts?.Cancel();
-            _downloadCts?.Dispose();
+            Holder.DownloadCts?.Cancel();
+            Holder.DownloadCts?.Dispose();
         }
         catch { }
-        _downloadCts = null;
+        Holder.DownloadCts = null;
 
         // 2. Kill running curl process if any
         try
         {
-            if (_currentCurlProcess != null && !_currentCurlProcess.HasExited)
+            if (Holder.CurrentCurlProcess != null && !Holder.CurrentCurlProcess.HasExited)
             {
-                _currentCurlProcess.Kill();
+                Holder.CurrentCurlProcess.Kill();
             }
         }
         catch { }
-        _currentCurlProcess = null;
+        Holder.CurrentCurlProcess = null;
 
         // 3. Cancel WebClient if any
         try
         {
-            _currentWebClient?.CancelAsync();
-            _currentWebClient?.Dispose();
+            Holder.CurrentWebClient?.CancelAsync();
+            Holder.CurrentWebClient?.Dispose();
         }
         catch { }
-        _currentWebClient = null;
+        Holder.CurrentWebClient = null;
 
         // 4. Delete incomplete .download temp files to ensure clean state
         try
@@ -1485,9 +1485,9 @@ namespace AISystem.Editor
                 EditorGUILayout.LabelField(snap.Error, err, GUILayout.Width(100));
                 if (GUILayout.Button("Retry", GUILayout.Width(65)))
                 {
-                    if (_downloadCts == null || _downloadCts.IsCancellationRequested)
-                        _downloadCts = new CancellationTokenSource();
-                    _ = DownloadModel(model, _downloadCts.Token);
+                    if (Holder.DownloadCts == null || Holder.DownloadCts.IsCancellationRequested)
+                        Holder.DownloadCts = new CancellationTokenSource();
+                    _ = DownloadModel(model, Holder.DownloadCts.Token);
                     GUIUtility.ExitGUI();
                 }
             }
@@ -1509,9 +1509,9 @@ namespace AISystem.Editor
             {
                 if (GUILayout.Button("Download", GUILayout.Width(80)))
                 {
-                    if (_downloadCts == null || _downloadCts.IsCancellationRequested)
-                        _downloadCts = new CancellationTokenSource();
-                    _ = DownloadModel(model, _downloadCts.Token);
+                    if (Holder.DownloadCts == null || Holder.DownloadCts.IsCancellationRequested)
+                        Holder.DownloadCts = new CancellationTokenSource();
+                    _ = DownloadModel(model, Holder.DownloadCts.Token);
                     GUIUtility.ExitGUI();
                 }
             }
@@ -1525,10 +1525,10 @@ namespace AISystem.Editor
         if (_isDownloadingAll) return;
         _isDownloadingAll = true;
 
-        _downloadCts?.Cancel();
-        _downloadCts?.Dispose();
-        _downloadCts = new CancellationTokenSource();
-        var ct = _downloadCts.Token;
+        Holder.DownloadCts?.Cancel();
+        Holder.DownloadCts?.Dispose();
+        Holder.DownloadCts = new CancellationTokenSource();
+        var ct = Holder.DownloadCts.Token;
 
         try
         {
@@ -1622,7 +1622,7 @@ namespace AISystem.Editor
 
                     using (var process = new System.Diagnostics.Process { StartInfo = psi })
                     {
-                        _currentCurlProcess = process;
+                        Holder.CurrentCurlProcess = process;
                         process.Start();
                         var stderrTask = process.StandardError.ReadToEndAsync();
                         long targetBytes = (long)model.SizeMB * 1024 * 1024;
@@ -1655,7 +1655,7 @@ namespace AISystem.Editor
                         await Task.Run(() => process.WaitForExit()).ConfigureAwait(false);
                         string curlError = "";
                         try { curlError = await stderrTask.ConfigureAwait(false); } catch { }
-                        _currentCurlProcess = null;
+                        Holder.CurrentCurlProcess = null;
 
                         if (process.ExitCode == 0 && File.Exists(tempPath))
                         {
@@ -1681,7 +1681,7 @@ namespace AISystem.Editor
                 }
                 finally
                 {
-                    _currentCurlProcess = null;
+                    Holder.CurrentCurlProcess = null;
                 }
 
                 ct.ThrowIfCancellationRequested();
@@ -1691,7 +1691,7 @@ namespace AISystem.Editor
                 {
                     using (var client = new WebClient())
                     {
-                        _currentWebClient = client;
+                        Holder.CurrentWebClient = client;
                         using (ct.Register(() => { try { client.CancelAsync(); } catch { } }))
                         {
                             client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -1705,7 +1705,7 @@ namespace AISystem.Editor
                             };
                             await client.DownloadFileTaskAsync(new System.Uri(model.Url), tempPath).ConfigureAwait(false);
                         }
-                        _currentWebClient = null;
+                        Holder.CurrentWebClient = null;
                     }
                 }
             }
@@ -1781,8 +1781,8 @@ namespace AISystem.Editor
         {
             model.IsDownloading = false;
             _activeDownloads = Mathf.Max(0, _activeDownloads - 1);
-            _currentCurlProcess = null;
-            _currentWebClient = null;
+            Holder.CurrentCurlProcess = null;
+            Holder.CurrentWebClient = null;
 
             if (_activeDownloads == 0 && !_isDownloadingAll && !ct.IsCancellationRequested)
             {
