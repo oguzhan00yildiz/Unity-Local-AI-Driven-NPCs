@@ -368,7 +368,9 @@ namespace AISystem.Editor
         bool llmInstalled = CheckPackageInManifest("ai.undream.llm") ||
                             System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime") != null;
         bool piperInstalled = CheckPackageInManifest("ai.lookbe.piper") ||
-                              System.Type.GetType("Piper.PiperManager, ai.lookbe.piper") != null;
+                              System.Type.GetType("PiperTTS.PiperTTS, ai.lookbe.piper") != null ||
+                              System.Type.GetType("PiperTTS.PiperTTS, PiperTTS") != null ||
+                              System.Type.GetType("PiperTTS.PiperTTS") != null;
         bool whisperInstalled = CheckPackageInManifest("com.whisper.unity") ||
                                 System.Type.GetType("Whisper.WhisperManager, com.whisper.unity") != null;
 
@@ -500,12 +502,6 @@ namespace AISystem.Editor
             return Holder.CachedSampleScenePath;
         }
 
-        guids = AssetDatabase.FindAssets("AIOTest t:Scene");
-        if (guids != null && guids.Length > 0)
-        {
-            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return Holder.CachedSampleScenePath;
-        }
         Holder.CachedSampleScenePath = null;
         return null;
     }
