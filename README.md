@@ -71,7 +71,7 @@ Once packages are resolved, the **AI System Setup Window** automatically downloa
 ### 3. Import Ready Samples & Play
 1. In **Package Manager**, select **AI Driven NPCs System** → **Samples** tab.
 2. Click **Import** next to **AI Driven NPCs System**.
-3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOTest.unity`.
+3. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity`.
 4. Press **Play**!
 
 ---
@@ -99,12 +99,12 @@ graph TD
 
 | Component | Role | Description |
 | :--- | :--- | :--- |
-| [`AISystemManager.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Core/AISystemManager.cs) | **Coordinator** | Central singleton. Manages chat lifecycle, cursor locking, character movement toggling, and event dispatch. |
-| [`NPCAgent.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/NPC/NPCAgent.cs) | **NPC Brain** | Attached to NPC GameObject. Handles proximity triggers, 3D prompt cues, and personality preset bindings. |
-| [`VoiceInputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Services/VoiceInputService.cs) | **Speech-to-Text** | Microphone audio capture, voice activity detection (VAD), silence filtering, and Whisper transcription. |
-| [`VoiceOutputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Services/VoiceOutputService.cs) | **Text-to-Speech** | Splits incoming LLM text into sentence batches and synthesizes speech seamlessly via Piper TTS. |
-| [`ChatUIController.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/UI/ChatUIController.cs) | **UI Display** | Pure UI controller. Renders streaming tokens, chat history, input field, and loading overlays. |
-| [`ModelBootstrapper.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/Scripts/AISystem/Core/ModelBootstrapper.cs) | **Warmup** | Asynchronously warms up all LLM and Whisper models on startup in parallel. |
+| [`AISystemManager.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/AISystemManager.cs) | **Coordinator** | Central singleton. Manages chat lifecycle, cursor locking, character movement toggling, and event dispatch. |
+| [`NPCAgent.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCAgent.cs) | **NPC Brain** | Attached to NPC GameObject. Handles proximity triggers, 3D prompt cues, and personality preset bindings. |
+| [`VoiceInputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceInputService.cs) | **Speech-to-Text** | Microphone audio capture, voice activity detection (VAD), silence filtering, and Whisper transcription. |
+| [`VoiceOutputService.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceOutputService.cs) | **Text-to-Speech** | Splits incoming LLM text into sentence batches and synthesizes speech seamlessly via Piper TTS. |
+| [`ChatUIController.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/UI/ChatUIController.cs) | **UI Display** | Pure UI controller. Renders streaming tokens, chat history, input field, and loading overlays. |
+| [`ModelBootstrapper.cs`](file:///c:/Projects/Unity-Local-AI-Driven-NPCs/Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/ModelBootstrapper.cs) | **Warmup** | Asynchronously warms up all LLM and Whisper models on startup in parallel. |
 
 ---
 
@@ -217,3 +217,11 @@ This project is licensed under the **MIT License**.
 - [Whisper.unity](https://github.com/Macoron/whisper.unity) by Macoron (Whisper STT port).
 - [Piper TTS Unity](https://github.com/lookbe/piper-no-espeak-unity) by lookbe & Rhasspy.
 - [ONNX Runtime Unity](https://github.com/asus4/onnxruntime-unity) by asus4.
+
+---
+
+## 💬 Support & Contact
+
+- **Issues & Bug Reports:** [GitHub Issues](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs/issues)
+- **Email Support:** [oguzhan00yildiz@gmail.com](mailto:oguzhan00yildiz@gmail.com)
+- **Author:** Oguzhan Yildiz

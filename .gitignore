@@ -37,6 +37,7 @@ ExportedObj/
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -80,3 +81,7 @@ crashlytics-build.properties
 # Large asset folders
 /[Aa]ssets/[Mm]odels/
 /[Aa]ssets/[Ss]treamingAssets/
+
+# Temporary packaging and staging folders
+.staging~/
+**/.staging~/

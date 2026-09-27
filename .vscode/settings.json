@@ -66,5 +66,17 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj"
     },
-    "dotnet.defaultSolution": "Unity-Local-AI-Driven-NPCs.slnx"
+    "dotnet.defaultSolution": "Unity-Local-AI-Driven-NPCs.slnx",
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/Library/**": true,
+        "**/Temp/**": true,
+        "**/Logs/**": true,
+        "**/UserSettings/**": true,
+        "**/obj/**": true
+    },
+    "git.enabled": false,
+    "git.autorefresh": false
 }

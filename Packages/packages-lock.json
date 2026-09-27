@@ -8,13 +8,12 @@
       "hash": "00ae2db97d386d34bc4400b909f1bdf2e8400396"
     },
     "ai.lookbe.piper": {
-      "version": "https://github.com/lookbe/piper-no-espeak-unity.git",
+      "version": "file:ai.lookbe.piper",
       "depth": 0,
-      "source": "git",
+      "source": "embedded",
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.2.2"
-      },
-      "hash": "39b51ff434fc056056e40c648bd8774c78fda110"
+      }
     },
     "ai.undream.llm": {
       "version": "https://github.com/undreamai/LLMUnity.git",
@@ -66,6 +65,14 @@
         "com.unity.modules.ai": "1.0.0"
       },
       "url": "https://packages.unity.com"
+    },
+    "com.unity.asset-store-tools": {
+      "version": "file:com.unity.asset-store-tools",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.2.1"
+      }
     },
     "com.unity.burst": {
       "version": "1.8.27",
