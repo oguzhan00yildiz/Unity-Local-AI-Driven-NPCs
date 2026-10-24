@@ -3,11 +3,13 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+
 namespace AssetStoreTools.Api.Responses
 {
     internal class PackagesAdditionalDataResponse : AssetStoreResponse
     {
-        public List<PackageAdditionalData> Packages { get; set; } = new List<PackageAdditionalData>();
+        public List<PackageAdditionalData> Packages { get; set; }
+
         public PackagesAdditionalDataResponse() : base() { }
         public PackagesAdditionalDataResponse(Exception e) : base(e) { }
 
@@ -32,6 +34,7 @@ namespace AssetStoreTools.Api.Responses
             if (!packageDict.ContainsKey("packages"))
                 throw new Exception("Response did not not contain the list of packages");
 
+            Packages = new List<PackageAdditionalData>();
             var serializer = new JsonSerializer()
             {
                 ContractResolver = PackageAdditionalData.AssetStorePackageResolver.Instance
