@@ -48,12 +48,56 @@ LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT), Piper TTS (MIT, modified) and 
 
 ## Technical Details
 
-- Unity 6 (6000.0) or newer. Tested on 6000.3.
-- Windows 10/11, 64-bit.
-- Required packages: Input System, uGUI, Newtonsoft Json, Collections.
-- The demo scene and prefabs use URP. The scripts work in any render pipeline. In Built-in or HDRP, use your own scene and characters.
-- Speech recognition and voices: English.
-- Minimum hardware: 8 GB RAM, 4-core CPU. Runs on the CPU only.
-- Recommended hardware: 16 GB RAM, NVIDIA or AMD GPU with 4 GB VRAM or more.
-- Documentation: `README.md` and `SETUP_GUIDE_EN.md` in the package folder.
-- Full C# source code.
+```text
+PACKAGE CONTENTS
+
+- Full C# source code
+- Services: AISystemManager, VoiceInputService, VoiceOutputService, NPCAgent, ChatUIController
+- Prefabs: AISystem, NPC, LLM, Player
+- Personality presets as ScriptableObjects (2 samples included)
+- Chat panel with streaming text, voice input, microphone selection and mute
+- Editor windows: AI System Setup (model downloads), Voice Browser (extra voices), System Health (GPU offload)
+- Demo scene with a third-person player and an NPC
+- Documentation: README.md and SETUP_GUIDE_EN.md
+
+
+TECHNICAL SPECIFICATIONS
+
+- LLM: llama.cpp through LLMUnity 3.0.3, GGUF models
+- Speech to text: Whisper.unity, ggml models (default: tiny)
+- Text to speech: Piper TTS on ONNX Runtime 0.4.4
+- Language: English (speech recognition and voices)
+- Unity version: Unity 6 (6000.0) or newer, tested on 6000.3
+- Platform: Windows 10/11, 64-bit
+- Required packages: Input System, uGUI, Newtonsoft Json, Collections
+- Render pipeline: the demo scene and prefabs use URP. The scripts work in Built-in and HDRP with your own scene and characters.
+
+
+HARDWARE REQUIREMENTS
+
+- RAM: 8 GB minimum, 16 GB recommended
+- CPU: 4 cores minimum. Runs on the CPU only.
+- GPU: optional. NVIDIA or AMD with 4 GB VRAM or more for faster replies.
+- Storage: about 1 GB for the models
+
+
+MODELS AND DOWNLOADS
+
+The setup window downloads these files to Assets/StreamingAssets after the user agrees:
+- Whisper tiny (speech to text): 74 MB
+- Piper phonemizer and 2 voices: 190 MB
+- Qwen3.5-0.8B Q4_K_M (language model): 500 MB
+LLMUnity downloads the LlamaLib native libraries from GitHub on first use.
+Builds include these files, so players download nothing.
+Any other GGUF model can be selected in the LLM component.
+
+
+THIRD-PARTY SOFTWARE
+
+Included in ThirdParty/. Do not import a second copy.
+- LLMUnity 3.0.3 (Apache 2.0)
+- Whisper.unity (MIT)
+- Piper TTS (MIT, modified)
+- ONNX Runtime and ONNX Runtime Unity 0.4.4 (MIT)
+Full license texts are in ThirdPartyNotices.md.
+```
