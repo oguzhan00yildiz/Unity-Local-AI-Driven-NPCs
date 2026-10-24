@@ -90,6 +90,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+**Changes in this package**:
+- `PiperTTS.cs`: synthesized clips play from a queue, so the next sentence is made while the current one plays. Adds `IsPlaying`, `OnPlaybackFinished`, `StopPlayback` and a `lengthScale` setting. Text with no letters or digits is skipped.
+- `PiperModel.cs`: `Prompt` takes a length multiplier for the voice's `length_scale`.
+- `PhonemizerModel.cs`: words are also split on quotes, semicolons and hyphens, and quote apostrophes are trimmed before the dictionary lookup.
+
 ---
 
 ## 4. ONNX Runtime Unity Binding

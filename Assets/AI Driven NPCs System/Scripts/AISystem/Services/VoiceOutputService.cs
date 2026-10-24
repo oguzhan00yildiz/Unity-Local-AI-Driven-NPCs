@@ -22,9 +22,6 @@ namespace AISystem
         public bool voiceEnabled = true;
         public bool initOnStart  = true;
 
-        [Tooltip("Logs each queued and spoken sentence. PiperTTS logs its phonemes and clip lengths too.")]
-        [SerializeField] private bool debugLogs;
-
         [Header("Optional status label")]
         public UnityEngine.UI.Text statusLabel;
 
@@ -130,7 +127,6 @@ namespace AISystem
 
             FlushSentences(true);
             _streamOpen = false;
-            Log($"Stream closed, {_sentenceQueue.Count} sentences queued");
             TrySpeakNext();
 
             // Nothing left to say: the last clip already ended, or the text was only *actions*
@@ -140,9 +136,6 @@ namespace AISystem
 
         public void StopSpeaking()
         {
-            if (_isSpeaking || _sentenceQueue.Count > 0 || _streamBuffer.Length > 0)
-                Log($"Stop: dropped {_sentenceQueue.Count} queued sentences and buffer \"{_streamBuffer}\"");
-
             _sentenceQueue.Clear();
             _streamBuffer.Clear();
             _streamOpen = false;
@@ -204,33 +197,14 @@ namespace AISystem
         {
             string cleaned = CleanTextForSpeech(sentence);
             if (!string.IsNullOrWhiteSpace(cleaned))
-            {
                 _sentenceQueue.Enqueue(cleaned);
-                Log($"Queued: \"{cleaned}\"");
-            }
-            else
-            {
-                Log($"Skipped, nothing to speak: \"{sentence}\"");
-            }
         }
 
         /// <summary>Prompts the next sentence when the voice is free. Otherwise the Ready status does it.</summary>
         private void TrySpeakNext()
         {
             if (_sentenceQueue.Count > 0 && _activeTts.status == ModelStatus.Ready)
-                PromptNext(_activeTts);
-        }
-
-        private void PromptNext(PiperTTS.PiperTTS tts)
-        {
-            string sentence = _sentenceQueue.Dequeue();
-            Log($"Speak: \"{sentence}\" ({_sentenceQueue.Count} left)");
-            tts.Prompt(sentence);
-        }
-
-        private void Log(string msg)
-        {
-            if (debugLogs) Debug.Log($"[VoiceOutputService] {msg}");
+                _activeTts.Prompt(_sentenceQueue.Dequeue());
         }
 
         // ── Voices ────────────────────────────────────────────────────────────────
@@ -297,7 +271,6 @@ namespace AISystem
         {
             PiperTTS.PiperTTS.StatusChangedDelegate statusHandler = status => OnPiperStatusChanged(tts, status);
             Action playbackHandler = () => OnPiperPlaybackFinished(tts);
-            tts.debugLogs = debugLogs;
             tts.OnStatusChanged    += statusHandler;
             tts.OnPlaybackFinished += playbackHandler;
             _handlers[tts] = (statusHandler, playbackHandler);
@@ -429,7 +402,7 @@ namespace AISystem
                     // Next sentence (synthesized during playback), or sentences queued while the model was loading
                     if (_sentenceQueue.Count > 0)
                     {
-                        PromptNext(source);
+                        source.Prompt(_sentenceQueue.Dequeue());
                     }
                     else if (_isSpeaking && !_streamOpen && !source.IsPlaying)
                     {
@@ -471,7 +444,6 @@ namespace AISystem
 
         private void FinishSpeech()
         {
-            Log("Speech finished");
             _isSpeaking = false;
             SetStatus("Idle");
             OnSpeechFinished?.Invoke();
