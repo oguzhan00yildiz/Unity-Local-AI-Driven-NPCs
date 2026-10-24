@@ -14,7 +14,12 @@ Zero cloud subscriptions, zero network latency, complete data privacy.
 **Included in this package** (in `ThirdParty/`, see `ThirdPartyNotices.md`):
 - LLMUnity 3.0.3 (Apache 2.0), Piper TTS (MIT), Whisper Unity (MIT) and ONNX Runtime 0.4.4 (MIT).
 
-**Unity packages used:** Input System, Collections, Newtonsoft Json and uGUI.
+**Required Unity packages** (install them from the Package Manager before you import):
+- **Input System** (`com.unity.inputsystem`). The runtime assembly needs it. Set **Project Settings → Player → Active Input Handling** to **Input System Package** or **Both**.
+- **uGUI** (`com.unity.ugui`). The chat UI uses it.
+- **Universal RP** (`com.unity.render-pipelines.universal`). Only the demo scene and prefabs need it. See [Render Pipeline](#-compatibility--system-requirements).
+
+LLMUnity also uses Collections and Newtonsoft Json.
 
 > ⚠️ **Conflict:** Remove any separate LLM for Unity, Piper, Whisper or ONNX Runtime (`com.github.asus4.onnxruntime`) copies first. Two copies cause duplicate assembly errors.
 
@@ -63,7 +68,7 @@ Access all tools via **Tools → AI Packages**:
 ## 💻 Compatibility & System Requirements
 
 - **Unity Version:** Unity 2022.3 LTS or Unity 6 (6000.x)+
-- **Render Pipeline:** Universal Render Pipeline (URP) out of the box (Built-in and HDRP compatible by assigning pipeline-appropriate materials to the sample scene)
+- **Render Pipeline:** The demo scene and prefabs use URP. They use the URP `Lit` material and the URP camera and light components. In Built-in or HDRP projects the demo shows pink materials and missing scripts. The scripts work in all pipelines. In a Built-in or HDRP project, add `AISystem` to your own scene and put `NPCAgent` on your own characters.
 - **Supported Operating System:** Windows 10/11 (64-bit)
 - **Hardware Requirements:**
   - Minimum: 8 GB RAM, 4-core CPU (runs 100% on CPU if desired)
@@ -74,11 +79,11 @@ Access all tools via **Tools → AI Packages**:
 ## 📄 Licensing & Third-Party Credits
 
 This project includes integrations and bindings for open-source AI libraries. Please see [`ThirdPartyNotices.md`](ThirdPartyNotices.md) for full license details:
-- **LLMUnity & llama.cpp**: MIT License (undreamai, Georgi Gerganov)
+- **LLMUnity**: Apache 2.0 (undreamai). **llama.cpp**: MIT License (Georgi Gerganov)
 - **Whisper.unity & whisper.cpp**: MIT License (Macoron, OpenAI, Georgi Gerganov)
 - **Piper TTS**: MIT License (lookbe, Rhasspy)
 - **ONNX Runtime Unity**: MIT License (asus4, Microsoft)
-- **Qwen Language Models**: Apache 2.0 / Qwen Community License
+- **Qwen3.5-0.8B (default LLM, downloaded on request)**: Apache 2.0 (Alibaba Qwen team)
 
 ---
 

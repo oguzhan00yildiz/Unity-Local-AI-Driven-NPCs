@@ -4,6 +4,14 @@ Welcome to the **AI Driven NPCs System**! This framework allows you to add fully
 
 ---
 
+## ✅ Requirements
+
+- **Input System** package installed. Set **Project Settings → Player → Active Input Handling** to **Input System Package** or **Both**.
+- **uGUI** package installed.
+- **Universal RP** for the demo scene and prefabs. They use URP materials and the URP camera and light components. In Built-in or HDRP projects, use your own scene, camera and characters, and add the `AISystem` prefab and `NPCAgent` as shown below.
+
+---
+
 ## 🚀 Quick Start (Add AI NPCs to Any Scene)
 
 Setting up an interactive AI NPC in your scene takes less than 60 seconds:
