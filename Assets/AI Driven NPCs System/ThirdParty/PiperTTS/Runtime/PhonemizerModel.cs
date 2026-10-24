@@ -265,11 +265,11 @@ namespace PiperTTS
         string PhonemizeInternal(string prompt, string lang, CancellationToken cts)
         {
             // Simple split by punctuation
-            string pattern = @"([().,:?!/–\s])"; // Punctuation + whitespace
+            string pattern = @"([().,:;?!/""\-\s])"; // Punctuation, quotes, hyphens + whitespace
             string[] parts = Regex.Split(prompt, pattern);
 
             var resultParts = new List<string>();
-            var punctSet = new HashSet<string>() { "(", ")", ".", ",", ":", "?", "!", "/", "–", " ", "-" };
+            var punctSet = new HashSet<string>() { "(", ")", ".", ",", ":", ";", "?", "!", "/", " " };
 
             // Check dictionary availability for lang
             Dictionary<string, string> langDict = null;
@@ -287,12 +287,20 @@ namespace PiperTTS
                     continue;
                 }
 
+                // "well-known" is read as two words; quotes are not spoken
+                if (part == "-") { resultParts.Add(" "); continue; }
+                if (part == "\"") continue;
+
+                // Quoted words ('Halt') keep only inner apostrophes (guard's)
+                string word = part.Trim('\'');
+                if (word.Length == 0) continue;
+
                 // Dictionary Lookup
                 bool found = false;
                 if (langDict != null)
                 {
-                    if (langDict.TryGetValue(part, out string ph)) { resultParts.Add(ph); found = true; }
-                    else if (langDict.TryGetValue(part.ToLowerInvariant(), out ph)) { resultParts.Add(ph); found = true; }
+                    if (langDict.TryGetValue(word, out string ph)) { resultParts.Add(ph); found = true; }
+                    else if (langDict.TryGetValue(word.ToLowerInvariant(), out ph)) { resultParts.Add(ph); found = true; }
                 }
 
                 if (found) continue;
@@ -300,7 +308,7 @@ namespace PiperTTS
                 // Model Inference
                 try
                 {
-                    long[] inputTokens = _tokenizer.Tokenize(part, lang);
+                    long[] inputTokens = _tokenizer.Tokenize(word, lang);
 
                     var inputTensor = new DenseTensor<long>(inputTokens, new[] { 1, inputTokens.Length });
                     var inputs = new List<NamedOnnxValue>
@@ -344,8 +352,8 @@ namespace PiperTTS
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[OpenPhonemizer] Inference error for word '{part}': {e.Message}");
-                    resultParts.Add(part); // Fallback to original text? or empty?
+                    Debug.LogError($"[OpenPhonemizer] Inference error for word '{word}': {e.Message}");
+                    resultParts.Add(word); // Fallback to original text? or empty?
                 }
             }
 

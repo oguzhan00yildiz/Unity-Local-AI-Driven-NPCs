@@ -35,6 +35,14 @@ namespace PiperTTS
         [Range(0.0f, 1.0f)]
         public float questionExclamationDelay = 0.6f;
 
+        [Tooltip("Multiplies the voice's length_scale. Above 1 speaks slower.")]
+        [Range(0.5f, 2.0f)]
+        public float lengthScale = 1.0f;
+
+        [Header("Debug")]
+        [Tooltip("Logs each sentence, its phonemes and the clip length.")]
+        public bool debugLogs;
+
         protected PiperModel piper;
         protected PhonemizerModel phonemizer;
         protected AudioSource audioSource;
@@ -233,6 +241,15 @@ namespace PiperTTS
             // Clean non-standard characters while preserving letters, digits, whitespace, and punctuation [. , ? ! ; : ' - " ]
             string cleanedChunk = Regex.Replace(text, @"[^\w\s,.?!;:'""-]", " ").Trim();
 
+            // Emoji leftovers such as the variation selector U+FE0F match \w but have nothing to speak
+            if (!Regex.IsMatch(cleanedChunk, @"[\p{L}\p{N}]"))
+                cleanedChunk = string.Empty;
+
+            if (debugLogs)
+                Debug.Log(string.IsNullOrEmpty(cleanedChunk)
+                    ? $"[PiperTTS] Nothing to speak in \"{prompt}\""
+                    : $"[PiperTTS] Phonemize: \"{cleanedChunk}\"");
+
             if (!string.IsNullOrEmpty(cleanedChunk))
             {
                 phonemizer.Phonemize(cleanedChunk);
@@ -250,6 +267,9 @@ namespace PiperTTS
         /// <summary>Stops the current clip, clears queued clips and drops the clip being synthesized.</summary>
         public void StopPlayback()
         {
+            if (debugLogs && (_playback != null || _clipQueue.Count > 0 || status == ModelStatus.Generate))
+                Debug.Log($"[PiperTTS] StopPlayback: playing={_playback != null}, queued clips={_clipQueue.Count}, synthesizing={status == ModelStatus.Generate}");
+
             if (_playback != null)
                 StopCoroutine(_playback);
             _playback = null;
@@ -314,11 +334,18 @@ namespace PiperTTS
 
         void OnPhonemeResponse(string phonemeString)
         {
-            piper.Prompt(phonemeString);
+            if (debugLogs)
+                Debug.Log($"[PiperTTS] Phonemes: {phonemeString}");
+            piper.Prompt(phonemeString, lengthScale);
         }
 
         void OnResponseGenerated(float[] audioChunk, int sampleRate)
         {
+            if (debugLogs)
+                Debug.Log(_dropNextClip
+                    ? "[PiperTTS] Clip dropped (playback was stopped)"
+                    : $"[PiperTTS] Clip: {(float)audioChunk.Length / sampleRate:F2} s");
+
             if (_dropNextClip || audioChunk.Length == 0)
             {
                 _dropNextClip = false;

@@ -114,7 +114,7 @@ namespace PiperTTS
                     Debug.Log("Piper Model requires speaker ID (sid).");
                 }
 
-                PromptInternal("_", cts);
+                PromptInternal("_", 1f, cts);
 
                 Debug.Log("Load model done");
                 PostStatus(ModelStatus.Ready);
@@ -136,9 +136,11 @@ namespace PiperTTS
         private class PromptPayload : IBackgroundPayload
         {
             public string Prompt;
+            public float LengthMultiplier;
         }
 
-        public void Prompt(string prompt)
+        /// <param name="lengthMultiplier">Multiplies the voice's length_scale. Above 1 speaks slower.</param>
+        public void Prompt(string prompt, float lengthMultiplier = 1f)
         {
             if (string.IsNullOrEmpty(prompt))
             {
@@ -159,14 +161,14 @@ namespace PiperTTS
             }
 
             status = ModelStatus.Generate;
-            RunBackground(new PromptPayload() { Prompt = prompt }, RunPrompt);
+            RunBackground(new PromptPayload() { Prompt = prompt, LengthMultiplier = lengthMultiplier }, RunPrompt);
         }
 
         void RunPrompt(PromptPayload payload, CancellationToken cts)
         {
             try
             {
-                float[] response = PromptInternal(payload.Prompt, cts);
+                float[] response = PromptInternal(payload.Prompt, payload.LengthMultiplier, cts);
                 PostResponse(response);
             }
             catch (System.Exception ex)
@@ -180,7 +182,7 @@ namespace PiperTTS
             }
         }
 
-        float[] PromptInternal(string prompt, CancellationToken cts)
+        float[] PromptInternal(string prompt, float lengthMultiplier, CancellationToken cts)
         {
             // The OpenPhonemizer returns phonemes. We need to split them into individual characters for the tokenizer
             // e.g. "h@loU" -> ["h", "@", "l", "o", "U"]
@@ -190,7 +192,7 @@ namespace PiperTTS
             int[] phonemeTokensInt = Tokenize(phonemeArray);
             long[] phonemeTokens = phonemeTokensInt.Select(x => (long)x).ToArray();
 
-            float[] scales = _inferenceParams;
+            float[] scales = { _inferenceParams[0], _inferenceParams[1] * lengthMultiplier, _inferenceParams[2] };
             long[] inputLength = { phonemeTokens.Length };
             float[] audioData = new float[0];
 
