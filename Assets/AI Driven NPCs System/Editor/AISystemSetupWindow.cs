@@ -215,34 +215,34 @@ namespace AISystem.Editor
         },
         new ModelEntry
         {
-            Group = "Piper Voice – Amy (English Female)",
-            DisplayName = "en_US-amy-low.onnx",
-            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx",
-            DestRelPath = "PiperTTS/Amy/en_US-amy-low.onnx",
-            SizeMB = 60
-        },
-        new ModelEntry
-        {
-            Group = "Piper Voice – Amy (English Female)",
-            DisplayName = "en_US-amy-low.onnx.json",
-            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx.json",
-            DestRelPath = "PiperTTS/Amy/en_US-amy-low.onnx.json",
-            SizeMB = 1
-        },
-        new ModelEntry
-        {
-            Group = "Piper Voice – Ibrahim (English Male)",
-            DisplayName = "en_US-reza_ibrahim-medium.onnx",
-            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/reza_ibrahim/medium/en_US-reza_ibrahim-medium.onnx",
-            DestRelPath = "PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx",
+            Group = "Piper Voice – LJSpeech (English Female, public domain)",
+            DisplayName = "en_US-ljspeech-medium.onnx",
+            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx",
+            DestRelPath = "PiperTTS/ljspeech/en_US-ljspeech-medium.onnx",
             SizeMB = 61
         },
         new ModelEntry
         {
-            Group = "Piper Voice – Ibrahim (English Male)",
-            DisplayName = "en_US-reza_ibrahim-medium.onnx.json",
-            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/reza_ibrahim/medium/en_US-reza_ibrahim-medium.onnx.json",
-            DestRelPath = "PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx.json",
+            Group = "Piper Voice – LJSpeech (English Female, public domain)",
+            DisplayName = "en_US-ljspeech-medium.onnx.json",
+            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx.json",
+            DestRelPath = "PiperTTS/ljspeech/en_US-ljspeech-medium.onnx.json",
+            SizeMB = 1
+        },
+        new ModelEntry
+        {
+            Group = "Piper Voice – Bryce (English Male, public domain)",
+            DisplayName = "en_US-bryce-medium.onnx",
+            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/bryce/medium/en_US-bryce-medium.onnx",
+            DestRelPath = "PiperTTS/bryce/en_US-bryce-medium.onnx",
+            SizeMB = 61
+        },
+        new ModelEntry
+        {
+            Group = "Piper Voice – Bryce (English Male, public domain)",
+            DisplayName = "en_US-bryce-medium.onnx.json",
+            Url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/bryce/medium/en_US-bryce-medium.onnx.json",
+            DestRelPath = "PiperTTS/bryce/en_US-bryce-medium.onnx.json",
             SizeMB = 1
         },
         new ModelEntry

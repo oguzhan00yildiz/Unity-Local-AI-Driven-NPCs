@@ -849,7 +849,7 @@ MonoBehaviour:
     m_Alignment: 0
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 0
+    m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: 
@@ -3174,12 +3174,12 @@ MonoBehaviour:
   playerInputField: {fileID: 1145832909279371351}
   sendButton: {fileID: 6163799820209977876}
   closeButton: {fileID: 3833178119837971732}
+  chatScrollRect: {fileID: 2796579720164952333}
+  autoScrollDelay: 0.1
   micToggleButton: {fileID: 3210615681934511676}
   micToggleText: {fileID: 8238164295649756635}
   micUnmutedLabel: Mute
   micMutedLabel: Unmute
-  chatScrollRect: {fileID: 2796579720164952333}
-  autoScrollDelay: 0.1
   maxDisplayedMessages: 10
 --- !u!1 &8677453929366500036
 GameObject:
@@ -3426,11 +3426,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: piperModelPath
-      value: Assets/StreamingAssets/PiperTTS/Amy/en_US-amy-low.onnx
+      value: Assets/StreamingAssets/PiperTTS/ljspeech/en_US-ljspeech-medium.onnx
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: piperConfigPath
-      value: Assets/StreamingAssets/PiperTTS/Amy/en_US-amy-low.onnx.json
+      value: Assets/StreamingAssets/PiperTTS/ljspeech/en_US-ljspeech-medium.onnx.json
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: phonemizerDictPath

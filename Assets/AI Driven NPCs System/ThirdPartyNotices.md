@@ -124,11 +124,16 @@ SOFTWARE.
 
 The underlying Microsoft ONNX Runtime binaries are licensed by Microsoft Corporation under the MIT License.
 
+**Changes in this package**: version 0.4.4 copied from npm. The iOS framework (`Plugins/iOS~`) and its iOS post-build script (`Editor/OrtPostProcessBuild.cs`) are removed. Two plugin paths in `OrtUnityEnv.cs` point to `ThirdParty/OnnxRuntime`.
+
 ---
 
 ## 5. Model Attributions
 
 - **Qwen Language Models**: Preconfigured default `Qwen3.5-0.8B` / `Qwen2.5` language models are developed by the Alibaba Qwen team and licensed under the **Apache 2.0 License** / **Qwen Community License**.
-- **Piper Voice Checkpoints**: Piper neural voice checkpoints (e.g. `en_US-amy-low`, `en_US-reza_ibrahim-medium`, `en_US-jenny-dioco-medium`) are trained by the Rhasspy project using open datasets (LibriTTS, LJSpeech, VCTK) and released under open-access / Public Domain / CC0-compatible licenses.
+- **Piper Voices** (downloaded on request from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices), not included). Licenses as stated in each voice's MODEL_CARD:
+  - Setup default: `en_US-ljspeech-medium` (public domain, LJ Speech dataset) and `en_US-bryce-medium` (public domain).
+  - Voice Browser: `en_US-ljspeech-high`, `en_US-kristin-medium`, `en_US-john-medium`, `en_US-norman-medium` (public domain); `en_US-kathleen-low`, `en_US-joe-medium`, `en_US-reza_ibrahim-medium` (CC0).
+- **Phonemizer**: `model.onnx`, `phoneme_dict.json` and `tokenizer.json` from [lookbe/open-phonemizer-onnx](https://huggingface.co/lookbe/open-phonemizer-onnx) (downloaded on request).
 - **Whisper GGML Model**: `ggml-tiny.bin` weights converted from OpenAI Whisper (MIT License).
 

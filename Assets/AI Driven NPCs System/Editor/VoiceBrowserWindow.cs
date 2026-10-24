@@ -42,14 +42,11 @@ namespace AISystem.Editor
             return pathSub;
         }
 
+        // Piper names are "<locale>-<speaker>-<quality>"; files go to StreamingAssets/PiperTTS/<speaker>/
         private string GetSubfolder()
         {
-            if (Name.Contains("amy")) return "Amy";
-            if (Name.Contains("ibrahim")) return "ibrahim";
-            if (Name.Contains("ljspeech")) return "ljspeech";
-            if (Name.Contains("jenny")) return "jenny";
-            if (Name.Contains("ryan")) return "ryan";
-            return Name;
+            string[] parts = Name.Split('-');
+            return parts.Length >= 3 ? parts[1] : Name;
         }
 
         public bool IsDownloaded
@@ -67,12 +64,24 @@ namespace AISystem.Editor
 
     private List<VoiceEntry> voices = new List<VoiceEntry>
     {
-        new VoiceEntry { Name = "en_US-ljspeech-high", DisplayName = "LJSpeech (English Female, High)", UrlOnnx = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ljspeech/high/en_US-ljspeech-high.onnx", UrlJson = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ljspeech/high/en_US-ljspeech-high.onnx.json" },
-        new VoiceEntry { Name = "en_US-amy-low", DisplayName = "Amy (English Female, Low)", UrlOnnx = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx", UrlJson = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx.json" },
-        new VoiceEntry { Name = "en_US-reza_ibrahim-medium", DisplayName = "Ibrahim (English Male, Medium)", UrlOnnx = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/reza_ibrahim/medium/en_US-reza_ibrahim-medium.onnx", UrlJson = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/reza_ibrahim/medium/en_US-reza_ibrahim-medium.onnx.json" },
-        new VoiceEntry { Name = "en_US-jenny-dioco-medium", DisplayName = "Jenny (English Female, Medium)", UrlOnnx = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/jenny_dioco/medium/en_US-jenny_dioco-medium.onnx", UrlJson = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/jenny_dioco/medium/en_US-jenny_dioco-medium.onnx.json" },
-        new VoiceEntry { Name = "en_US-ryan-high", DisplayName = "Ryan (English Male, High)", UrlOnnx = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx", UrlJson = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx.json" }
+        // Only public domain and CC0 voices, so buyers can ship them in commercial games
+        Voice("en_US-ljspeech-medium", "LJSpeech (Female, public domain)"),
+        Voice("en_US-ljspeech-high", "LJSpeech High (Female, public domain)"),
+        Voice("en_US-kristin-medium", "Kristin (Female, public domain)"),
+        Voice("en_US-kathleen-low", "Kathleen (Female, CC0)"),
+        Voice("en_US-bryce-medium", "Bryce (Male, public domain)"),
+        Voice("en_US-john-medium", "John (Male, public domain)"),
+        Voice("en_US-norman-medium", "Norman (Male, public domain)"),
+        Voice("en_US-joe-medium", "Joe (Male, CC0)"),
+        Voice("en_US-reza_ibrahim-medium", "Ibrahim (Male, CC0)")
     };
+
+    private static VoiceEntry Voice(string name, string displayName)
+    {
+        string[] parts = name.Split('-');
+        string baseUrl = $"https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/{parts[1]}/{parts[2]}/{name}";
+        return new VoiceEntry { Name = name, DisplayName = displayName, UrlOnnx = baseUrl + ".onnx", UrlJson = baseUrl + ".onnx.json" };
+    }
 
     private Vector2 scrollPos;
     private int activeDownloads = 0;

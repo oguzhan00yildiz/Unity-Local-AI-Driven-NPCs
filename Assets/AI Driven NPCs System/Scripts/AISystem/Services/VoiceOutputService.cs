@@ -1,12 +1,15 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using PiperTTS;
 
 namespace AISystem
 {
     /// <summary>
     /// PiperTTS wrapper — splits text into sentences and speaks them in sequence.
+    /// Each voice gets its own PiperTTS copy, loaded on first use and cached.
+    /// Voices used by NPCs in the scene are loaded in Start.
     /// </summary>
     public class VoiceOutputService : MonoBehaviour
     {
@@ -29,6 +32,13 @@ namespace AISystem
         private Queue<string> _sentenceQueue = new Queue<string>();
         private bool   _isSpeaking;
         private string _pendingSpeech;
+        private string _pendingVoice;
+
+        // Voice name (e.g. en_US-bryce-medium) -> its own PiperTTS copy. piperTts is the default voice.
+        private readonly Dictionary<string, PiperTTS.PiperTTS> _voices = new Dictionary<string, PiperTTS.PiperTTS>();
+        private readonly Dictionary<PiperTTS.PiperTTS, PiperTTS.PiperTTS.StatusChangedDelegate> _statusHandlers =
+            new Dictionary<PiperTTS.PiperTTS, PiperTTS.PiperTTS.StatusChangedDelegate>();
+        private PiperTTS.PiperTTS _activeTts;
 
         public bool IsSpeaking => _isSpeaking;
 
@@ -38,33 +48,38 @@ namespace AISystem
         {
             if (piperTts == null)
                 piperTts = GetComponentInChildren<PiperTTS.PiperTTS>();
+
+            // Prefab paths are project-relative ("Assets/StreamingAssets/..."), which only exist in the Editor
+            piperTts.piperModelPath       = ToStreamingAssetsPath(piperTts.piperModelPath);
+            piperTts.piperConfigPath      = ToStreamingAssetsPath(piperTts.piperConfigPath);
+            piperTts.phonemizerModelPath  = ToStreamingAssetsPath(piperTts.phonemizerModelPath);
+            piperTts.phonemizerConfigPath = ToStreamingAssetsPath(piperTts.phonemizerConfigPath);
+            piperTts.phonemizerDictPath   = ToStreamingAssetsPath(piperTts.phonemizerDictPath);
+
+            _activeTts = piperTts;
+            _voices[Path.GetFileNameWithoutExtension(piperTts.piperModelPath)] = piperTts;
+            Subscribe(piperTts);
         }
 
         void Start()
         {
             if (!voiceEnabled) return;
-            if (initOnStart && piperTts != null && piperTts.status == ModelStatus.Init)
-                piperTts.InitModel();
+            if (initOnStart)
+            {
+                if (piperTts.status == ModelStatus.Init)
+                    piperTts.InitModel();
+                PreloadSceneVoices();
+            }
 
             SetStatus("Idle");
         }
 
-        void OnEnable()
-        {
-            if (piperTts != null)
-                piperTts.OnStatusChanged += OnPiperStatusChanged;
-        }
-
-        void OnDisable()
-        {
-            if (piperTts != null)
-                piperTts.OnStatusChanged -= OnPiperStatusChanged;
-        }
-
         void OnDestroy()
         {
-            if (piperTts != null)
-                piperTts.OnStatusChanged -= OnPiperStatusChanged;
+            foreach (var pair in _statusHandlers)
+                if (pair.Key != null)
+                    pair.Key.OnStatusChanged -= pair.Value;
+            _statusHandlers.Clear();
         }
 
         // ── Public API ────────────────────────────────────────────────────────────
@@ -76,26 +91,24 @@ namespace AISystem
             string cleanedText = CleanTextForSpeech(text);
             if (string.IsNullOrWhiteSpace(cleanedText)) return;
 
-            if (piperTts == null)
+            var tts = GetVoice(voiceModelName);
+            if (tts != _activeTts)
             {
-                piperTts = GetComponentInChildren<PiperTTS.PiperTTS>();
-                if (piperTts == null)
-                {
-                    SetStatus("No PiperTTS");
-                    return;
-                }
+                StopSpeaking();
+                _activeTts = tts;
             }
 
             // Model not ready yet — queue and initialize
-            if (piperTts.status == ModelStatus.Init || piperTts.status == ModelStatus.Loading)
+            if (tts.status == ModelStatus.Init || tts.status == ModelStatus.Loading)
             {
                 _pendingSpeech = cleanedText;
-                if (piperTts.status == ModelStatus.Init)
-                    piperTts.InitModel();
+                _pendingVoice  = voiceModelName;
+                if (tts.status == ModelStatus.Init)
+                    tts.InitModel();
                 return;
             }
 
-            if (piperTts.status == ModelStatus.Error)
+            if (tts.status == ModelStatus.Error)
             {
                 SetStatus("Voice error");
                 return;
@@ -111,7 +124,7 @@ namespace AISystem
             if (_sentenceQueue.Count > 0)
             {
                 var firstSentence = _sentenceQueue.Dequeue();
-                piperTts.Prompt(firstSentence);
+                tts.Prompt(firstSentence);
             }
         }
 
@@ -121,12 +134,75 @@ namespace AISystem
             _isSpeaking    = false;
             _pendingSpeech = string.Empty;
 
-            if (piperTts != null)
-            {
-                var audio = piperTts.GetComponent<AudioSource>();
-                audio?.Stop();
-            }
+            _activeTts.GetComponent<AudioSource>().Stop();
             SetStatus("Idle");
+        }
+
+        // ── Voices ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the PiperTTS for a voice, creating a copy of the default one on first use.
+        /// Falls back to the default voice when the name is empty or its files are not downloaded.
+        /// </summary>
+        private PiperTTS.PiperTTS GetVoice(string voiceModelName)
+        {
+            if (string.IsNullOrEmpty(voiceModelName))
+                return piperTts;
+
+            if (_voices.TryGetValue(voiceModelName, out var cached))
+                return cached;
+
+            string modelPath  = GetVoiceModelPath(voiceModelName);
+            string configPath = modelPath + ".json";
+            if (!File.Exists(modelPath) || !File.Exists(configPath))
+            {
+                Debug.LogWarning($"[VoiceOutputService] Voice '{voiceModelName}' not found at {modelPath}. Using the default voice. Download it in Tools → AI Packages → Voice Browser.");
+                _voices[voiceModelName] = piperTts;
+                return piperTts;
+            }
+
+            var copy = Instantiate(piperTts.gameObject, piperTts.transform.parent);
+            copy.name = $"{piperTts.gameObject.name} ({voiceModelName})";
+            var tts = copy.GetComponent<PiperTTS.PiperTTS>();
+            tts.piperModelPath  = modelPath;
+            tts.piperConfigPath = configPath;
+
+            _voices[voiceModelName] = tts;
+            Subscribe(tts);
+            return tts;
+        }
+
+        /// <summary>Piper names are "locale-speaker-quality"; files are in StreamingAssets/PiperTTS/speaker/.</summary>
+        private static string GetVoiceModelPath(string voiceModelName)
+        {
+            string[] parts = voiceModelName.Split('-');
+            string folder = parts.Length >= 3 ? parts[1] : voiceModelName;
+            return Path.Combine(Application.streamingAssetsPath, "PiperTTS", folder, voiceModelName + ".onnx");
+        }
+
+        private static string ToStreamingAssetsPath(string path)
+        {
+            const string prefix = "Assets/StreamingAssets/";
+            if (string.IsNullOrEmpty(path) || !path.Replace('\\', '/').StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return path;
+            return Path.Combine(Application.streamingAssetsPath, path.Substring(prefix.Length));
+        }
+
+        private void PreloadSceneVoices()
+        {
+            foreach (var npc in FindObjectsByType<NPCAgent>(FindObjectsSortMode.None))
+            {
+                var tts = GetVoice(npc.voiceModelName);
+                if (tts.status == ModelStatus.Init)
+                    tts.InitModel();
+            }
+        }
+
+        private void Subscribe(PiperTTS.PiperTTS tts)
+        {
+            PiperTTS.PiperTTS.StatusChangedDelegate handler = status => OnPiperStatusChanged(tts, status);
+            tts.OnStatusChanged += handler;
+            _statusHandlers[tts] = handler;
         }
 
         /// <summary>
@@ -229,9 +305,10 @@ namespace AISystem
 
         // ── Internal ──────────────────────────────────────────────────────────────
 
-        private void OnPiperStatusChanged(ModelStatus status)
+        private void OnPiperStatusChanged(PiperTTS.PiperTTS source, ModelStatus status)
         {
-            if (!voiceEnabled) return;
+            // Preloading voices report status too; only the speaking voice drives the queue
+            if (!voiceEnabled || source != _activeTts) return;
 
             switch (status)
             {
@@ -248,7 +325,7 @@ namespace AISystem
                         if (_sentenceQueue.Count > 0)
                         {
                             var nextSentence = _sentenceQueue.Dequeue();
-                            piperTts.Prompt(nextSentence);
+                            source.Prompt(nextSentence);
                             _isSpeaking = true;
                         }
                         else
@@ -267,7 +344,7 @@ namespace AISystem
                     {
                         var txt = _pendingSpeech;
                         _pendingSpeech = string.Empty;
-                        Speak(txt);
+                        Speak(txt, _pendingVoice);
                     }
                     break;
 

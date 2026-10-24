@@ -12,7 +12,8 @@ namespace AISystem
         [TextArea(5, 15)]
         public string systemPrompt = "You are a helpful assistant.";
 
-        [Tooltip("The PiperTTS voice model name (e.g., en_US-amy-low)")]
-        public string voiceModelName = "en_US-amy-low";
+        [Tooltip("Piper voice for this NPC. Download more voices in Tools > AI Packages > Voice Browser.")]
+        [VoiceName]
+        public string voiceModelName = "en_US-ljspeech-medium";
     }
 }

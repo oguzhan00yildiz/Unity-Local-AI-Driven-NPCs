@@ -59,7 +59,7 @@ Personalities are configured via **ScriptableObject presets**, allowing you to c
      You are Captain Valerie, a witty and fearless pirate captain.
      You speak with a maritime flair. Keep answers concise (under 2 sentences).
      ```
-   - **Voice Model Name**: The Piper TTS voice identifier (e.g., `en_US-amy-low`, `en_US-reza_ibrahim-medium`).
+   - **Voice Model Name**: The Piper TTS voice identifier (e.g., `en_US-ljspeech-medium`, `en_US-bryce-medium`).
 
 ### Applying the Preset:
 1. Select your NPC GameObject in the Hierarchy.
@@ -84,12 +84,9 @@ The system is preconfigured with **`Qwen3.5-0.8B-Q4_K_M.gguf`** (~500 MB) for ul
 
 Piper TTS includes high-performance neural voice models. To download more character voices:
 1. Open **Tools → AI Packages → Voice Browser**.
-2. Browse available voices:
-   - `Amy` (English Female, Low)
-   - `Ibrahim` (English Male, Medium)
-   - `LJSpeech` (English Female, High)
-   - `Jenny` (English Female, Medium)
-   - `Ryan` (English Male, High)
+2. Browse available voices (all public domain or CC0):
+   - Female: `LJSpeech`, `LJSpeech High`, `Kristin`, `Kathleen`
+   - Male: `Bryce`, `John`, `Norman`, `Joe`, `Ibrahim`
 3. Click **Download** next to any voice. Models are saved directly to `Assets/StreamingAssets/PiperTTS/`.
 4. Assign the voice name in your NPC's personality preset or `NPCAgent.voiceModelName`.
 

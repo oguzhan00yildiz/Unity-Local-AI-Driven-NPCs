@@ -24,14 +24,14 @@ Zero cloud subscriptions, zero network latency, complete data privacy.
 
 ## 🤖 Model Files
 
-The **AI System Setup** window automatically downloads the required lightweight voice and speech models (~265 MB) into `Assets/StreamingAssets/`:
+The **AI System Setup** window downloads the models (about 770 MB) into `Assets/StreamingAssets/`:
 
 | Component | Model File | Size | Purpose |
 | :--- | :--- | :--- | :--- |
 | **STT** | `Whisper/ggml-tiny.bin` | 74 MB | On-device speech recognition (Required) |
 | **TTS Core** | `PiperTTS/model.onnx` + dicts | 70 MB | Phonemizer and tokenizer dictionary (Required) |
-| **Female Voice** | `PiperTTS/Amy/en_US-amy-low.onnx` | 60 MB | English female voice (Required) |
-| **Male Voice** | `PiperTTS/ibrahim/en_US-reza_ibrahim-medium.onnx` | 61 MB | English male voice (Required) |
+| **Female Voice** | `PiperTTS/ljspeech/en_US-ljspeech-medium.onnx` | 61 MB | English female voice, public domain (Required) |
+| **Male Voice** | `PiperTTS/bryce/en_US-bryce-medium.onnx` | 61 MB | English male voice, public domain (Required) |
 | **LLM (Default)** | `Qwen3.5-0.8B-Q4_K_M.gguf` | ~500 MB | Fast, lightweight on-device language model |
 
 If the window ever needs to be reopened: **Tools → AI Packages → AI System Setup** (or **Download Model Files**).
@@ -56,7 +56,7 @@ For detailed instructions on adding NPCs to your own scenes, creating custom per
 Access all tools via **Tools → AI Packages**:
 - **AI System Setup**: Check that LLM for Unity is imported and manage model downloads.
 - **Download Model Files**: Direct shortcut to trigger model verification and background download.
-- **Voice Browser**: Browse and download additional Piper TTS voices (Amy, Ibrahim, LJSpeech, Jenny, Ryan, etc.).
+- **Voice Browser**: Browse and download additional Piper TTS voices. All listed voices are public domain or CC0.
 - **System Health & GPU**: Inspect hardware specs (GPU, VRAM, CPU cores) and toggle GPU offloading layers for maximum LLM generation speed.
 ---
 
