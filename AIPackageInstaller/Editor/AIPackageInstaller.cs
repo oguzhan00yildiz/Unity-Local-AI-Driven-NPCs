@@ -213,6 +213,10 @@ namespace AISystem.Editor
         if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false))
             return;
 
+        // Package development repository: open setup only via the Tools menu
+        if (IsPackageDevelopmentProject())
+            return;
+
         bool allPkgs = AISystemSetupWindow.AreAllPackagesInstalled();
         bool allModels = AISystemSetupWindow.AreAllModelsDownloaded();
         bool contentPresent = IsContentExtracted();
@@ -249,6 +253,15 @@ namespace AISystem.Editor
         {
             Debug.Log("<b>[AI Package Installer]</b> Setup postponed by user. You can start setup anytime via Tools → AI Packages → AI System Setup.");
         }
+    }
+
+    /// <summary>
+    /// True in the package source repository, which has the AIPackageInstaller folder at its root.
+    /// </summary>
+    private static bool IsPackageDevelopmentProject()
+    {
+        return Directory.Exists(Path.Combine(
+            Directory.GetParent(Application.dataPath).FullName, "AIPackageInstaller"));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
