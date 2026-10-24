@@ -5,30 +5,20 @@ Zero cloud subscriptions, zero network latency, complete data privacy.
 
 ---
 
-## 📦 Installation Options
+## 📦 Installation
 
-### Option A: Unity Asset Store Import (Recommended)
-1. Open **Window → Package Manager**.
-2. Switch to **Packages: My Assets**.
-3. Locate **AI Driven NPCs System** and click **Download / Import**.
-4. Import all package assets into your project.
-5. The **AI System Setup** window will automatically appear to configure dependencies and download models.
+1. Open **Window → Package Manager** and switch to **Packages: My Assets**.
+2. Import **AI Driven NPCs System**.
+3. The **AI System Setup** window asks for permission, then downloads the required models.
 
-### Option B: Add via Git URL (UPM Package)
-1. Open **Window → Package Manager**.
-2. Click **+** → **Add package from git URL…**
-3. Paste:
-   ```text
-   https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
-   ```
-4. Click **Add**.
+**Included in this package** (in `ThirdParty/`, see `ThirdPartyNotices.md`):
+- LLMUnity 3.0.3 (Apache 2.0), Piper TTS (MIT), Whisper Unity (MIT) and ONNX Runtime 0.4.4 (MIT).
 
-**What happens automatically:**
-- `manifest.json` is configured with an NPM scoped registry for ONNX Runtime (preventing native stub crashes).
-- ONNX Runtime 0.4.4, LLMUnity, Piper TTS, and Whisper STT are installed automatically.
-- The **AI System Setup** window opens to verify packages and download the required local models.
+**Unity packages used:** Input System, Collections, Newtonsoft Json and uGUI.
 
-> ⚠️ **Important:** Keep the Unity Editor open and focused during initial setup. Switching away can cause Unity to pause background tasks, interrupting native binary resolution or model downloads.
+> ⚠️ **Conflict:** Remove any separate LLM for Unity, Piper, Whisper or ONNX Runtime (`com.github.asus4.onnxruntime`) copies first. Two copies cause duplicate assembly errors.
+
+> ⚠️ **Important:** Keep the Unity Editor open and focused during model downloads. Unity can pause background downloads when it loses focus.
 
 ---
 
@@ -64,12 +54,10 @@ For detailed instructions on adding NPCs to your own scenes, creating custom per
 ## 🛠️ Menu Tools & Utilities
 
 Access all tools via **Tools → AI Packages**:
-- **AI System Setup**: View package status, verify ONNX/Whisper/Piper/LLM installations, and manage model downloads.
+- **AI System Setup**: Check that LLM for Unity is imported and manage model downloads.
 - **Download Model Files**: Direct shortcut to trigger model verification and background download.
 - **Voice Browser**: Browse and download additional Piper TTS voices (Amy, Ibrahim, LJSpeech, Jenny, Ryan, etc.).
 - **System Health & GPU**: Inspect hardware specs (GPU, VRAM, CPU cores) and toggle GPU offloading layers for maximum LLM generation speed.
-- **Force Install Dependencies**: Re-run the automated dependency installer and registry patcher.
-
 ---
 
 ## 💻 Compatibility & System Requirements

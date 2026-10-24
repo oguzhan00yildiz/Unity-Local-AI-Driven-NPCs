@@ -116,7 +116,7 @@ namespace AISystem.Editor
             }
             else if (voice.IsDownloaded)
             {
-                EditorGUILayout.LabelField("✅ Ready", EditorStyles.miniLabel, GUILayout.Width(80));
+                EditorGUILayout.LabelField("Ready", EditorStyles.miniLabel, GUILayout.Width(80));
                 if (GUILayout.Button("Delete", GUILayout.Width(60)))
                 {
                     File.Delete(voice.GetOnnxPath());

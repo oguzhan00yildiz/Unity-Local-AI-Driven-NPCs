@@ -1,40 +1,23 @@
 # Third-Party Software & Model Notices
 
-This package integrates or facilitates the installation of third-party open-source software, native libraries, and machine learning models. Each component is subject to its own respective license terms as outlined below.
+This package includes third-party open-source software and native libraries, and downloads machine learning models on request. Each component is subject to its own license terms as outlined below.
+
+- Included in `ThirdParty/`: LLMUnity, Whisper Unity, Piper TTS, ONNX Runtime and ONNX Runtime Unity. Each folder contains its original license file.
 
 ---
 
-## 1. LLMUnity & llama.cpp
+## 1. LLMUnity 3.0.3 (included, unmodified)
 
-- **Repository**: [https://github.com/undreamai/LLMUnity](https://github.com/undreamai/LLMUnity)
+- **Repository**: [https://github.com/undreamai/LLMUnity](https://github.com/undreamai/LLMUnity) (tag `v3.0.3`)
 - **Author**: undreamai
-- **License**: MIT License
+- **License**: Apache License 2.0. The full text is in `ThirdParty/LLMUnity/LICENSE.md`.
+- **Its own third-party notices**: `ThirdParty/LLMUnity/Third Party Notices.md` (llama.cpp MIT, llamafile Apache 2.0, USearch Apache 2.0).
+- **Changes**: none. The files are copied from the tag as published. The `Tests`, `Samples~` and repository files are left out.
+- **Native libraries**: LLMUnity downloads the LlamaLib libraries (Apache 2.0, built on llama.cpp) from its GitHub releases on first use.
 
-```text
-MIT License
+"LLM for Unity" and "LLMUnity" are names of undreamai. This package is not made or endorsed by undreamai.
 
-Copyright (c) 2023 undreamai
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-LLMUnity bundles binaries and source from **llama.cpp**:
+LLMUnity uses **llama.cpp**:
 - **Author**: Georgi Gerganov and contributors
 - **License**: MIT License (Copyright (c) 2023-2024 Georgi Gerganov)
 

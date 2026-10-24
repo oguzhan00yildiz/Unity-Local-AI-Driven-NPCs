@@ -124,7 +124,8 @@ The system works out of the box with both the **New Input System** and the **Leg
 | NPC does not respond to proximity | Player missing tag | Ensure your Player GameObject has the tag `"Player"`. |
 | Voice input not capturing speech | Microphone permissions or silent input | Verify your default microphone in Windows Sound Settings or select it in the chat UI dropdown. |
 | Audio has no speech output | TTS voice model missing | Open **Tools → AI Packages → AI System Setup** or **Voice Browser** to download the voice files. |
-| Re-run package or model installation | Need fresh dependencies | Open **Tools → AI Packages → AI System Setup** or click **Tools → AI Packages → Force Install Dependencies**. |
+| Duplicate assembly errors after import | A second copy of LLMUnity, Piper, Whisper or ONNX Runtime is in the project | Remove the separate copy. This package already includes all four in `ThirdParty/`. |
+| Re-run model installation | Need fresh model files | Open **Tools → AI Packages → AI System Setup**. |
 
 ---
 

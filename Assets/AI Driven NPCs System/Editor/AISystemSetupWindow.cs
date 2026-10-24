@@ -300,45 +300,19 @@ namespace AISystem.Editor
     public static bool ShowConsentDialog()
     {
         return AISystemDialogWindow.ShowDialog(
-            title: "AI Driven NPCs — Automatic Setup",
-            heading: "Automatic Setup Required",
-            message: "The AI Driven NPCs package has been imported.\n\n" +
-                     "Would you like to start the automatic setup now?\n\n" +
-                     "With your permission, this will:\n" +
-                     "  • Configure required packages (ONNX, LLMUnity, Piper, Whisper)\n" +
-                     "  • Unpack core assets, prefabs & demo scenes\n" +
-                     "  • Download required AI models (Whisper, Piper, and Qwen LLM)",
-            primaryBtn: "Yes, Start Setup",
-            secondaryBtn: "Later (Manual Setup)",
-            icon: "✅",
-            accentColor: EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.1f, 0.65f, 0.2f));
+            title: "AI Driven NPCs",
+            heading: "Download AI models",
+            message: "The speech, voice and language models (about 770 MB) download to Assets/StreamingAssets.",
+            primaryBtn: "Download",
+            secondaryBtn: "Later",
+            accentColor: EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.1f, 0.65f, 0.2f),
+            width: 420,
+            height: 170);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Package-install phase helpers
     // ─────────────────────────────────────────────────────────────────────────
-
-    public static void InitPackageSteps(List<InstallStep> steps)
-    {
-        Steps.Clear();
-        Steps.AddRange(steps);
-        Holder.Instance?.Repaint();
-    }
-
-    public static void UpdatePackageStep(string name, StepStatus status, string error = null)
-    {
-        var step = Steps.Find(s => s.Name == name);
-        if (step != null)
-        {
-            step.Status       = status;
-            step.ErrorMessage = error;
-        }
-        else
-        {
-            Steps.Add(new InstallStep { Name = name, Status = status, ErrorMessage = error });
-        }
-        Holder.Instance?.Repaint();
-    }
 
     public static bool AreAllPackagesInstalled()
     {
@@ -364,105 +338,25 @@ namespace AISystem.Editor
         if (!force && Steps.Exists(s => s.Status == StepStatus.InProgress))
             return;
 
-        bool onnxInstalled = CheckScopedRegistryAndOnnx();
-        bool llmInstalled = CheckPackageInManifest("ai.undream.llm") ||
-                            System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime") != null;
-        bool piperInstalled = CheckPackageInManifest("ai.lookbe.piper") ||
-                              System.Type.GetType("Piper.PiperManager, ai.lookbe.piper") != null;
-        bool whisperInstalled = CheckPackageInManifest("com.whisper.unity") ||
-                                System.Type.GetType("Whisper.WhisperManager, com.whisper.unity") != null;
-
+        // All components ship inside ThirdParty/. A missing type means its assembly failed to compile.
         Steps.Clear();
-
-        Steps.Add(new InstallStep
-        {
-            Name = "Scoped Registry & ONNX",
-            Description = onnxInstalled ? "NPM scoped registry and ONNX Runtime 0.4.4 installed" : "Configuring registry.npmjs.org and ONNX 0.4.4",
-            Status = onnxInstalled ? StepStatus.Completed : StepStatus.Pending
-        });
-
-        Steps.Add(new InstallStep
-        {
-            Name = "LLMUnity Package",
-            Description = llmInstalled ? "LLM inference engine installed and active" : "Installing LLMUnity package from Git (keep Unity focused during setup)",
-            Status = llmInstalled ? StepStatus.Completed : StepStatus.Pending
-        });
-
-        Steps.Add(new InstallStep
-        {
-            Name = "Piper TTS Package",
-            Description = piperInstalled ? "Local Piper text-to-speech runtime installed" : "Installing Piper TTS package from Git",
-            Status = piperInstalled ? StepStatus.Completed : StepStatus.Pending
-        });
-
-        Steps.Add(new InstallStep
-        {
-            Name = "Whisper Unity Package",
-            Description = whisperInstalled ? "Local Whisper speech recognition runtime installed" : "Installing Whisper Unity package from Git",
-            Status = whisperInstalled ? StepStatus.Completed : StepStatus.Pending
-        });
+        AddBundledStep("LLMUnity", "Language model", "LLMUnity.LLM, undream.llmunity.Runtime");
+        AddBundledStep("Piper TTS", "Text to speech", "PiperTTS.PiperTTS, PiperTTS");
+        AddBundledStep("Whisper", "Speech to text", "Whisper.WhisperManager, com.whisper.unity");
+        AddBundledStep("ONNX Runtime", "Inference for Piper", "Microsoft.ML.OnnxRuntime.InferenceSession, com.github.asus4.onnxruntime");
 
         Holder.Instance?.Repaint();
     }
 
-    private static bool CheckScopedRegistryAndOnnx()
+    private static void AddBundledStep(string name, string description, string typeName)
     {
-        try
+        bool loaded = System.Type.GetType(typeName) != null;
+        Steps.Add(new InstallStep
         {
-            string manifestPath = Path.Combine(
-                Directory.GetParent(Application.dataPath).FullName, "Packages", "manifest.json");
-            if (File.Exists(manifestPath))
-            {
-                string text = File.ReadAllText(manifestPath);
-                bool hasRegistry = text.Contains("registry.npmjs.org") && text.Contains("com.github.asus4");
-                bool hasOnnx = text.Contains("com.github.asus4.onnxruntime");
-                if (hasRegistry && hasOnnx) return true;
-            }
-        }
-        catch { }
-
-        return CheckPackageInManifest("com.github.asus4.onnxruntime");
-    }
-
-    private static bool CheckPackageInManifest(string packageId)
-    {
-        try
-        {
-            string manifestPath = Path.Combine(
-                Directory.GetParent(Application.dataPath).FullName, "Packages", "manifest.json");
-            if (File.Exists(manifestPath))
-            {
-                string text = File.ReadAllText(manifestPath);
-                if (text.Contains($"\"{packageId}\""))
-                    return true;
-
-                if (packageId == "ai.undream.llm" && (text.Contains("LLMUnity.git") || text.Contains("undreamai/LLMUnity")))
-                    return true;
-                if (packageId == "ai.lookbe.piper" && (text.Contains("piper-no-espeak-unity.git") || text.Contains("lookbe/piper")))
-                    return true;
-                if (packageId == "com.whisper.unity" && (text.Contains("whisper.unity.git") || text.Contains("Macoron/whisper.unity")))
-                    return true;
-            }
-        }
-        catch { }
-
-        try
-        {
-            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
-            string packagesDir = Path.Combine(projectRoot, "Packages");
-            if (Directory.Exists(Path.Combine(packagesDir, packageId)))
-                return true;
-
-            string cacheDir = Path.Combine(projectRoot, "Library", "PackageCache");
-            if (Directory.Exists(cacheDir))
-            {
-                var dirs = Directory.GetDirectories(cacheDir, packageId + "@*");
-                if (dirs.Length > 0) return true;
-            }
-        }
-        catch { }
-
-        return false;
+            Name = name,
+            Description = description,
+            Status = loaded ? StepStatus.Completed : StepStatus.Failed
+        });
     }
 
     private void SetPhase(WindowPhase newPhase)
@@ -516,7 +410,7 @@ namespace AISystem.Editor
     /// </summary>
     public static bool IsInstalledViaUPM()
     {
-        return CheckPackageInManifest("com.yildizoguzhan.ai-driven-npcs");
+        return UnityEditor.PackageManager.PackageInfo.FindForAssetPath("Packages/com.yildizoguzhan.ai-driven-npcs") != null;
     }
 
     /// <summary>
@@ -588,37 +482,30 @@ namespace AISystem.Editor
 
                 if (hasSampleScene)
                 {
-                    message = "All required packages and models are downloaded and ready!\n\n" +
-                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                              "Would you like to open the demo scene (AIOScene) to test it right away?";
+                    message = "Open the demo scene to try it.";
                     primaryBtn = "Open Demo Scene";
                 }
                 else if (isUpm)
                 {
-                    message = "All required packages and models are downloaded and ready!\n\n" +
-                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                              "You can now go to Package Manager to import the samples and open the demo scene to test it right away.";
+                    message = "Import the samples from the Package Manager to get the demo scene.";
                     primaryBtn = "Open Package Manager";
                 }
                 else
                 {
-                    message = "All required packages and models are downloaded and ready!\n\n" +
-                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                              "Your local AI NPC system is configured and ready to use.";
-                    primaryBtn = "Got It";
+                    message = "All models are downloaded.";
+                    primaryBtn = "Close";
                 }
 
                 bool showCancel = hasSampleScene || isUpm;
                 bool choosePrimary = AISystemDialogWindow.ShowDialog(
-                    title: "AI Driven NPCs — Setup Complete! 🎉",
-                    heading: "Setup Complete! Everything is Ready",
+                    title: "AI Driven NPCs",
+                    heading: "Setup complete",
                     message: message,
                     primaryBtn: primaryBtn,
-                    secondaryBtn: showCancel ? "Got It" : null,
-                    icon: "✅",
+                    secondaryBtn: showCancel ? "Close" : null,
                     accentColor: EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.1f, 0.65f, 0.2f),
-                    width: 530,
-                    height: 295);
+                    width: 420,
+                    height: 170);
 
                 if (choosePrimary)
                 {
@@ -1002,16 +889,7 @@ namespace AISystem.Editor
                 fontSize = 12,
                 normal = { textColor = EditorGUIUtility.isProSkin ? new Color(0.35f, 0.95f, 0.5f) : new Color(0.1f, 0.6f, 0.2f) }
             };
-            EditorGUILayout.LabelField("🎉 Everything is Downloaded & Ready!", headerStyle);
-            EditorGUILayout.Space(2);
-
-            string infoText = hasSampleScene
-                ? "All required packages and models are downloaded, and demo scenes are ready! You can open the demo scene (AIOScene) to test right away."
-                : (isUpm
-                    ? "All required packages and models are downloaded! Go to Package Manager to import the samples and open the demo scene to test."
-                    : "All required packages and models are downloaded! Your local AI NPC system is fully configured and ready to use.");
-
-            EditorGUILayout.LabelField(infoText, EditorStyles.wordWrappedLabel);
+            EditorGUILayout.LabelField("Setup complete", headerStyle);
             EditorGUILayout.Space(6);
 
             using (new EditorGUILayout.HorizontalScope())
@@ -1019,7 +897,7 @@ namespace AISystem.Editor
                 if (hasSampleScene)
                 {
                     GUIStyle playBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
-                    if (GUILayout.Button("▶ Open Demo Scene (AIOScene)", playBtnStyle, GUILayout.Height(26)))
+                    if (GUILayout.Button("Open Demo Scene", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();
                         GUIUtility.ExitGUI();
@@ -1027,7 +905,7 @@ namespace AISystem.Editor
                 }
                 else if (isUpm)
                 {
-                    if (GUILayout.Button("📦 Open Package Manager", GUILayout.Height(26)))
+                    if (GUILayout.Button("Open Package Manager", GUILayout.Height(26)))
                     {
                         OpenPackageManager();
                         GUIUtility.ExitGUI();
@@ -1074,7 +952,7 @@ namespace AISystem.Editor
             fontSize  = 16,
             alignment = TextAnchor.MiddleCenter
         };
-        EditorGUILayout.LabelField("AI Driven NPCs — System Setup", titleStyle);
+        EditorGUILayout.LabelField("AI Driven NPCs Setup", titleStyle);
         EditorGUILayout.Space(8);
 
         // Phase navigation bar with clickable breadcrumb tabs
@@ -1084,7 +962,7 @@ namespace AISystem.Editor
 
             // Step 1 tab
             bool pkgsDone = state.AllPackagesInstalled;
-            string step1Title = pkgsDone ? "① Package Install  ✓" : "① Package Install";
+            string step1Title = pkgsDone ? "1. Components  ✓" : "1. Components";
             GUIStyle step1Style = state.Phase == WindowPhase.PackageInstall 
                 ? GetActiveTabStyle(true) 
                 : EditorStyles.miniButtonLeft;
@@ -1096,7 +974,7 @@ namespace AISystem.Editor
 
             // Step 2 tab
             bool modelsDone = state.AllModelsDownloaded;
-            string step2Title = modelsDone ? "② Model Download  ✓" : "② Model Download";
+            string step2Title = modelsDone ? "2. Models  ✓" : "2. Models";
             GUIStyle step2Style = state.Phase == WindowPhase.ModelDownload 
                 ? GetActiveTabStyle(false) 
                 : EditorStyles.miniButtonRight;
@@ -1113,15 +991,8 @@ namespace AISystem.Editor
 
         // Overall System Setup progress bar
         Rect setupBarRect = EditorGUILayout.GetControlRect(false, 20);
-        string setupBarText = (state.TotalDone == state.TotalItems && state.TotalItems > 0)
-            ? $"Overall Setup  {state.TotalDone} / {state.TotalItems}  (Fully Ready ✅)"
-            : $"Overall Setup Progress  {state.TotalDone} / {state.TotalItems}  ({(int)(state.TotalProgress * 100)}%)";
+        string setupBarText = $"{state.TotalDone} / {state.TotalItems}";
         EditorGUI.ProgressBar(setupBarRect, state.TotalProgress, setupBarText);
-
-        EditorGUILayout.Space(6);
-        EditorGUILayout.HelpBox(
-            "💡 Keep Unity open and focused during setup. Switching to other apps can cause Unity to pause background tasks and interrupt LLM native library configuration.",
-            MessageType.None);
 
         EditorGUILayout.Space(6);
         DrawLine();
@@ -1134,28 +1005,11 @@ namespace AISystem.Editor
 
     private void DrawPackagePhase(GuiLayoutState state)
     {
-        if (state.AllPackagesCompleted)
+        if (!state.AllPackagesCompleted)
         {
-            EditorGUILayout.HelpBox(
-                "All required Unity packages are installed and up to date! ✅\nClick 'Next: Model Downloads ▶' to view or download voice and language models.",
-                MessageType.Info);
+            EditorGUILayout.HelpBox("A component failed to compile. Check the Console.", MessageType.Error);
+            EditorGUILayout.Space(8);
         }
-        else
-        {
-            EditorGUILayout.LabelField(
-                "Installing required Unity packages. Unity may reload between steps — the window will restore automatically.",
-                EditorStyles.wordWrappedMiniLabel);
-        }
-        EditorGUILayout.Space(8);
-
-        // Overall progress bar
-        float progress = state.StepSnapshots.Count > 0 ? (float)state.PkgCompletedCount / state.StepSnapshots.Count : 0f;
-        Rect pRect = EditorGUILayout.GetControlRect(false, 22);
-        string progressText = state.AllPackagesCompleted
-            ? $"Packages  {state.PkgCompletedCount} / {state.StepSnapshots.Count}  (All Complete ✅)"
-            : $"Packages  {state.PkgCompletedCount} / {state.StepSnapshots.Count}";
-        EditorGUI.ProgressBar(pRect, progress, progressText);
-        EditorGUILayout.Space(10);
 
         foreach (var step in state.StepSnapshots)
             DrawPackageRow(step);
@@ -1166,22 +1020,17 @@ namespace AISystem.Editor
 
         using (new EditorGUILayout.HorizontalScope())
         {
-            if (GUILayout.Button("↻ Re-check Status", GUILayout.Height(26), GUILayout.Width(130)))
+            if (GUILayout.Button("Refresh", GUILayout.Height(26), GUILayout.Width(80)))
             {
                 RefreshPackageSteps(force: true);
                 GUIUtility.ExitGUI();
             }
 
-            if (GUILayout.Button("Install / Repair Packages", GUILayout.Height(26), GUILayout.Width(170)))
-            {
-                AIPackageInstaller.ForceInstall();
-                GUIUtility.ExitGUI();
-            }
 
             GUILayout.FlexibleSpace();
 
             GUIStyle nextBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
-            if (GUILayout.Button("Next: Model Downloads ▶", nextBtnStyle, GUILayout.Height(26), GUILayout.Width(190)))
+            if (GUILayout.Button("Next", nextBtnStyle, GUILayout.Height(26), GUILayout.Width(90)))
             {
                 SetPhase(WindowPhase.ModelDownload);
             }
@@ -1193,21 +1042,6 @@ namespace AISystem.Editor
     {
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
-            // Icon
-            string icon;
-            switch (step.Status)
-            {
-                case StepStatus.InProgress:
-                    int dots = (int)(EditorApplication.timeSinceStartup * 3) % 4;
-                    icon = "⏳" + new string('.', dots);
-                    break;
-                case StepStatus.Completed: icon = "✅"; break;
-                case StepStatus.Failed:    icon = "❌"; break;
-                default:                   icon = "⚪"; break;
-            }
-
-            EditorGUILayout.LabelField(icon, GUILayout.Width(42));
-
             using (new EditorGUILayout.VerticalScope())
             {
                 EditorGUILayout.LabelField(step.Name, EditorStyles.boldLabel);
@@ -1235,11 +1069,7 @@ namespace AISystem.Editor
             }
             else if (step.Status == StepStatus.Failed)
             {
-                if (GUILayout.Button("Retry", GUILayout.Width(65)))
-                {
-                    AIPackageInstaller.ForceInstall();
-                    GUIUtility.ExitGUI();
-                }
+                EditorGUILayout.LabelField("Not loaded", EditorStyles.miniLabel, GUILayout.Width(70));
             }
         }
     }
@@ -1250,27 +1080,7 @@ namespace AISystem.Editor
 
     private void DrawModelPhase(GuiLayoutState state)
     {
-        if (state.AllModelsDone)
-        {
-            EditorGUILayout.HelpBox(
-                "All required model files are downloaded and ready! ✅\nYour local AI NPC system is fully configured and ready to use.",
-                MessageType.Info);
-        }
-        else
-        {
-            EditorGUILayout.HelpBox(
-                "Local AI models (Whisper STT, Piper TTS, and Qwen3.5 LLM) are required for on-device inference.\n" +
-                "Click 'Download All Models' below to download any missing files to StreamingAssets.",
-                MessageType.Info);
-        }
-
-        EditorGUILayout.HelpBox(
-            "💡 Default LLM Model: Qwen3.5-0.8B-Q4_K_M.gguf (~500 MB)\n\n" +
-            "How to try different LLM models or use a custom one:\n" +
-            "1. In the Hierarchy, select the 'LLM' GameObject (inside the AISystem prefab).\n" +
-            "2. In the Inspector, locate the 'LLM' component.\n" +
-            "3. Use the 'Model' dropdown to select & download other preset models (Mistral, Llama, Gemma, Phi-3, etc.) or choose/load your own custom .gguf file from disk.",
-            MessageType.None);
+        EditorGUILayout.LabelField("Files download to Assets/StreamingAssets. Change the language model on the LLM object in the AISystem prefab.", EditorStyles.wordWrappedMiniLabel);
         EditorGUILayout.Space(4);
 
         int missingCount = state.MissingCount;
@@ -1280,11 +1090,7 @@ namespace AISystem.Editor
         // Overall Models progress bar
         float modelProgress = state.ModelProgress;
         Rect mRect = EditorGUILayout.GetControlRect(false, 22);
-        string modelProgressText = state.AllModelsDone
-            ? $"Models  {downloadedCount} / {totalCount}  (All Complete ✅)"
-            : (state.ActiveDownloads > 0
-                ? $"Models  {downloadedCount} / {totalCount}  ({(int)(modelProgress * 100)}%)"
-                : $"Models  {downloadedCount} / {totalCount}  ({missingCount} missing)");
+        string modelProgressText = $"Models  {downloadedCount} / {totalCount}";
         EditorGUI.ProgressBar(mRect, modelProgress, modelProgressText);
         EditorGUILayout.Space(6);
 
@@ -1300,20 +1106,11 @@ namespace AISystem.Editor
                 {
                     string activeName = activeModel != null ? activeModel.DisplayName : "Model files";
                     GUIStyle titleStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 12 };
-                    EditorGUILayout.LabelField($"⏳ Downloading: {activeName}", titleStyle);
-
-                    GUIStyle restartTopBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
-                    if (GUILayout.Button("⚡ Force Restart Downloads", restartTopBtnStyle, GUILayout.Width(190), GUILayout.Height(24)))
-                    {
-                        ForceRestartDownloads();
-                        GUIUtility.ExitGUI();
-                    }
+                    EditorGUILayout.LabelField($"Downloading {activeName}", titleStyle);
                 }
 
                 if (activeModel != null)
                 {
-                    EditorGUILayout.LabelField($"Category: {activeModel.Group}  |  Target: StreamingAssets/{activeModel.DestRelPath}", EditorStyles.miniLabel);
-                    EditorGUILayout.Space(2);
 
                     float pct = activeModel.Progress;
                     string progressText;
@@ -1324,21 +1121,17 @@ namespace AISystem.Editor
                     }
                     else if (!string.IsNullOrEmpty(activeModel.StatusDetail))
                     {
-                        progressText = $"{activeModel.StatusDetail} (Expected ~{activeModel.SizeMB} MB)";
+                        progressText = activeModel.StatusDetail;
                     }
                     else
                     {
-                        progressText = $"Connecting to server… (~{activeModel.SizeMB} MB)";
+                        progressText = "Connecting…";
                     }
 
                     Rect pRect = EditorGUILayout.GetControlRect(false, 20);
                     EditorGUI.ProgressBar(pRect, pct, progressText);
                 }
 
-                EditorGUILayout.Space(2);
-                float batchPct = totalCount > 0 ? (float)downloadedCount / totalCount : 0f;
-                Rect bRect = EditorGUILayout.GetControlRect(false, 18);
-                EditorGUI.ProgressBar(bRect, batchPct, $"Batch Queue: {downloadedCount} / {totalCount} models ({queueRemaining} queued)");
                 EditorGUILayout.Space(2);
             }
             EditorGUILayout.Space(4);
@@ -1349,7 +1142,7 @@ namespace AISystem.Editor
             {
                 fontStyle = FontStyle.Bold
             };
-            if (GUILayout.Button($"⬇  Download All Models ({missingCount} missing)", dlAllBtnStyle, GUILayout.Height(30)))
+            if (GUILayout.Button($"Download All ({missingCount})", dlAllBtnStyle, GUILayout.Height(30)))
             {
                 DownloadAllModels(isAutomatic: false, forceRedownload: false);
                 GUIUtility.ExitGUI();
@@ -1379,20 +1172,16 @@ namespace AISystem.Editor
 
         using (new EditorGUILayout.HorizontalScope())
         {
-            if (GUILayout.Button("◀ Back: Package Install", GUILayout.Height(26), GUILayout.Width(170)))
+            if (GUILayout.Button("Back", GUILayout.Height(26), GUILayout.Width(70)))
                 SetPhase(WindowPhase.PackageInstall);
 
-            GUIStyle restartBtnStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontStyle = state.ActiveDownloads > 0 ? FontStyle.Bold : FontStyle.Normal
-            };
-            if (GUILayout.Button("⚡ Force Restart Downloads", restartBtnStyle, GUILayout.Height(26), GUILayout.Width(190)))
+            if (state.ActiveDownloads > 0 && GUILayout.Button("Restart Downloads", GUILayout.Height(26), GUILayout.Width(130)))
             {
                 ForceRestartDownloads();
                 GUIUtility.ExitGUI();
             }
 
-            if (GUILayout.Button("↻ Refresh", GUILayout.Height(26), GUILayout.Width(75)))
+            if (GUILayout.Button("Refresh", GUILayout.Height(26), GUILayout.Width(75)))
             {
                 RefreshModelStatus();
                 GUIUtility.ExitGUI();
@@ -1400,29 +1189,19 @@ namespace AISystem.Editor
 
             GUILayout.FlexibleSpace();
 
-            if (state.ActiveDownloads == 0 && missingCount > 0)
+            if (state.AllModelsDone)
             {
-                GUIStyle dlQuickStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
-                if (GUILayout.Button("⬇ Download All Models", dlQuickStyle, GUILayout.Height(26), GUILayout.Width(180)))
-                {
-                    DownloadAllModels(isAutomatic: false, forceRedownload: false);
-                    GUIUtility.ExitGUI();
-                }
-            }
-            else if (state.AllModelsDone)
-            {
-                if (GUILayout.Button("↻ Re-download All Models", GUILayout.Height(26), GUILayout.Width(170)))
+                if (GUILayout.Button("Re-download All", GUILayout.Height(26), GUILayout.Width(120)))
                 {
                     bool confirm = AISystemDialogWindow.ShowDialog(
-                        title: "Re-download All Models?",
-                        heading: "Re-download All Models?",
-                        message: "All models are already downloaded. Do you want to re-download all model files?",
-                        primaryBtn: "Yes, Re-download",
+                        title: "AI Driven NPCs",
+                        heading: "Re-download all models?",
+                        message: "Existing model files are replaced.",
+                        primaryBtn: "Re-download",
                         secondaryBtn: "Cancel",
-                        icon: "↻",
                         accentColor: EditorGUIUtility.isProSkin ? new Color(0.4f, 0.7f, 1f) : new Color(0.15f, 0.45f, 0.85f),
-                        width: 480,
-                        height: 230);
+                        width: 400,
+                        height: 160);
                     if (confirm)
                     {
                         DownloadAllModels(isAutomatic: false, forceRedownload: true);
@@ -1430,7 +1209,7 @@ namespace AISystem.Editor
                     GUIUtility.ExitGUI();
                 }
 
-                if (GUILayout.Button("Done / Close", GUILayout.Height(26), GUILayout.Width(110)))
+                if (GUILayout.Button("Close", GUILayout.Height(26), GUILayout.Width(80)))
                 {
                     Close();
                     GUIUtility.ExitGUI();
@@ -1445,9 +1224,6 @@ namespace AISystem.Editor
         var snap = state.GetModelSnapshot(model);
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
-            string icon = snap.IsDownloading ? "⏳" : (snap.IsDownloaded ? "✅" : "○");
-            EditorGUILayout.LabelField(icon, GUILayout.Width(22));
-
             GUIStyle nameStyle = snap.IsDownloading ? EditorStyles.boldLabel : EditorStyles.label;
             EditorGUILayout.LabelField($"{model.DisplayName}  ({model.SizeMB} MB)", nameStyle, GUILayout.MinWidth(180));
 
@@ -1468,15 +1244,10 @@ namespace AISystem.Editor
                 }
                 else
                 {
-                    barText = $"Starting… ({(int)(curProgress * 100)}%)";
+                    barText = "Starting…";
                 }
                 EditorGUI.ProgressBar(r, curProgress, barText);
 
-                if (GUILayout.Button("⚡ Restart", GUILayout.Width(70), GUILayout.Height(18)))
-                {
-                    ForceRestartDownloads();
-                    GUIUtility.ExitGUI();
-                }
             }
             else if (!string.IsNullOrEmpty(snap.Error))
             {
@@ -1807,43 +1578,18 @@ namespace AISystem.Editor
     /// </summary>
     public static void AutoConfigureLLM()
     {
-        string registeredName = null;
-
+        // Only the package's default model is assigned. Other .gguf files in the project are left alone.
         ModelEntry llmModel = Models.Find(m =>
             Path.GetExtension(m.DestRelPath).ToLower() == ".gguf" && m.IsDownloaded);
+        if (llmModel == null || !File.Exists(llmModel.FullPath)) return;
 
-        if (llmModel != null && File.Exists(llmModel.FullPath))
-        {
-            registeredName = RegisterWithLLMManager(llmModel.FullPath, llmModel.DisplayName);
-        }
-        else
-        {
-            // Fallback: search StreamingAssets or Assets for any available .gguf file
-            string streamingDir = Application.streamingAssetsPath;
-            if (Directory.Exists(streamingDir))
-            {
-                var streamingGgufs = Directory.GetFiles(streamingDir, "*.gguf", SearchOption.AllDirectories);
-                if (streamingGgufs.Length > 0)
-                {
-                    registeredName = RegisterWithLLMManager(streamingGgufs[0], Path.GetFileName(streamingGgufs[0]));
-                }
-            }
-
-            if (string.IsNullOrEmpty(registeredName) && Directory.Exists(Application.dataPath))
-            {
-                var assetGgufs = Directory.GetFiles(Application.dataPath, "*.gguf", SearchOption.AllDirectories);
-                if (assetGgufs.Length > 0)
-                {
-                    registeredName = RegisterWithLLMManager(assetGgufs[0], Path.GetFileName(assetGgufs[0]));
-                }
-            }
-        }
-
+        string registeredName = RegisterWithLLMManager(llmModel.FullPath, llmModel.DisplayName);
         if (string.IsNullOrEmpty(registeredName)) return;
 
         try
         {
-            // Search ALL prefab assets in the project for LLM components
+            // Only this package's prefabs and scenes (Asset Store or UPM sample folder) are changed
+            const string PackageFolder = "/AI Driven NPCs System/";
             var llmType = System.Type.GetType("LLMUnity.LLM, undream.llmunity.Runtime");
             int prefabsUpdated = 0;
 
@@ -1853,6 +1599,7 @@ namespace AISystem.Editor
                 foreach (string guid in prefabGuids)
                 {
                     string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!path.Contains(PackageFolder)) continue;
                     GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                     if (prefab == null) continue;
 
@@ -1872,7 +1619,7 @@ namespace AISystem.Editor
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
             {
                 var scene = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
-                if (!scene.isLoaded) continue;
+                if (!scene.isLoaded || !scene.path.Contains(PackageFolder)) continue;
 
                 foreach (var rootGo in scene.GetRootGameObjects())
                 {
@@ -2018,7 +1765,7 @@ public class AISystemDialogWindow : EditorWindow
         string message,
         string primaryBtn = "OK",
         string secondaryBtn = null,
-        string icon = "✅",
+        string icon = null,
         Color? accentColor = null,
         float width = 520f,
         float height = 285f)
@@ -2091,15 +1838,16 @@ public class AISystemDialogWindow : EditorWindow
             {
                 EditorGUILayout.Space(16);
 
-                // Icon (e.g. green checkmark badge)
-                GUIStyle iconStyle = new GUIStyle(EditorStyles.label)
+                if (!string.IsNullOrEmpty(_icon))
                 {
-                    fontSize = 36,
-                    alignment = TextAnchor.MiddleCenter
-                };
-                EditorGUILayout.LabelField(_icon, iconStyle, GUILayout.Width(46), GUILayout.Height(46));
-
-                EditorGUILayout.Space(12);
+                    GUIStyle iconStyle = new GUIStyle(EditorStyles.label)
+                    {
+                        fontSize = 36,
+                        alignment = TextAnchor.MiddleCenter
+                    };
+                    EditorGUILayout.LabelField(_icon, iconStyle, GUILayout.Width(46), GUILayout.Height(46));
+                    EditorGUILayout.Space(12);
+                }
 
                 using (new EditorGUILayout.VerticalScope())
                 {

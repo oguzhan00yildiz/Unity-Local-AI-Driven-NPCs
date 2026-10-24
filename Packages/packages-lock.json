@@ -7,39 +7,6 @@
       "dependencies": {},
       "hash": "00ae2db97d386d34bc4400b909f1bdf2e8400396"
     },
-    "ai.lookbe.piper": {
-      "version": "file:ai.lookbe.piper",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.2.2"
-      }
-    },
-    "ai.undream.llm": {
-      "version": "https://github.com/undreamai/LLMUnity.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.0.2"
-      },
-      "hash": "180b57d2f7f6a33f7729171cf3e32469a1be6451"
-    },
-    "com.github.asus4.onnxruntime": {
-      "version": "0.4.4",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {},
-      "url": "https://registry.npmjs.org"
-    },
-    "com.github.asus4.onnxruntime.unity": {
-      "version": "0.4.4",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.github.asus4.onnxruntime": "0.4.4"
-      },
-      "url": "https://registry.npmjs.org"
-    },
     "com.mopsicus.umi": {
       "version": "https://github.com/mopsicus/umi.git",
       "depth": 0,
@@ -52,8 +19,6 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.github.asus4.onnxruntime": "0.4.2",
-        "com.github.asus4.onnxruntime.unity": "0.4.2",
         "com.unity.modules.ui": "1.0.0"
       }
     },
@@ -164,6 +129,20 @@
       "depth": 0,
       "source": "registry",
       "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.pipeline": {
+      "version": "0.9.1-exp.1",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.test-framework": "1.1.33",
+        "com.unity.nuget.mono-cecil": "1.11.6",
+        "com.unity.modules.uielements": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0",
+        "com.unity.modules.screencapture": "1.0.0",
+        "com.unity.nuget.newtonsoft-json": "3.0.2"
+      },
       "url": "https://packages.unity.com"
     },
     "com.unity.render-pipelines.core": {

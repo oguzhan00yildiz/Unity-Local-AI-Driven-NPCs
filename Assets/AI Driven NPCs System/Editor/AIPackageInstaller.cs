@@ -1,93 +1,25 @@
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.PackageManager;
-using UnityEditor.PackageManager.Requests;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace AISystem.Editor
 {
     /// <summary>
-    /// Runs automatically when the package is first imported.
-    /// Phase 1: Edits manifest.json to add the npm scoped registry and ONNX 0.4.4 packages
-    ///          (git-URL ONNX lacks LFS DLLs → native crash; npm has real binaries).
-    ///          Calls Client.Resolve() which triggers a domain reload.
-    /// Phase 2: After reload, installs remaining git-URL packages one by one.
+    /// Runs when the package is imported or the Editor reloads.
+    /// LLMUnity, Piper TTS, Whisper and ONNX Runtime ship inside ThirdParty/, so no packages are installed.
+    /// With user consent it opens the setup window and downloads the AI model files.
     /// </summary>
     [InitializeOnLoad]
     public class AIPackageInstaller
     {
-    // ── NPM packages (need scoped registry) ──────────────────────────────────
-    // Key = package id, Value = version
-    private static readonly Dictionary<string, string> NpmPackages = new Dictionary<string, string>
-    {
-        { "com.github.asus4.onnxruntime",       "0.4.4" },
-        { "com.github.asus4.onnxruntime.unity",  "0.4.4" }
-    };
-
-    // ── Git-URL / Registry packages ───────────────────────────────────────────
-    private static readonly string[] GitPackages = new[]
-    {
-        "https://github.com/undreamai/LLMUnity.git",
-        "https://github.com/lookbe/piper-no-espeak-unity.git",
-        "https://github.com/Macoron/whisper.unity.git?path=Packages/com.whisper.unity"
-    };
-
-    // Known package ids for the git packages above (for installed-check)
-    private static readonly string[] GitPackageIds = new[]
-    {
-        "ai.undream.llm",
-        "ai.lookbe.piper",
-        "com.whisper.unity"
-    };
-
-    private static readonly string ManifestPath = Path.Combine(
-        Directory.GetParent(Application.dataPath).FullName, "Packages", "manifest.json");
-
-    private class InstallerState
-    {
-        public string CurrentPkgName;
-        public AddRequest AddRequest;
-        public ListRequest ListRequest;
-        public double CloseProjectSettingsUntil;
-    }
-
-    private static readonly InstallerState State = new InstallerState();
-    private static readonly Queue<string> _gitQueue = new Queue<string>();
-    private static readonly Queue<string> _gitNames = new Queue<string>();
-
     // ─────────────────────────────────────────────────────────────────────────
     static AIPackageInstaller()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
             return;
 
-        if (SessionState.GetBool("AIPackageInstaller.CloseProjectSettings", false))
-        {
-            SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", false);
-            StartProjectSettingsCloser(5f);
-        }
-
-        AssetDatabase.importPackageCompleted += OnImportPackageCompleted;
         EditorApplication.delayCall += Initialize;
-    }
-
-    private static void OnImportPackageCompleted(string packageName)
-    {
-        if (packageName.Contains("AI-Driven-NPCs-Content"))
-        {
-            EditorApplication.delayCall += () =>
-            {
-                if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false) &&
-                    !AISystemSetupWindow.AreAllModelsDownloaded())
-                {
-                    AISystemSetupWindow.AutoStartDownloads();
-                }
-            };
-        }
     }
 
     /// <summary>
@@ -106,96 +38,49 @@ namespace AISystem.Editor
         CheckAndPromptSetup(isDirectImport: true);
     }
 
-    [MenuItem("Tools/AI Packages/Force Install Dependencies", false, 30)]
-    public static void ForceInstall()
-    {
-        Debug.Log("<b>[AI Package Installer]</b> Force install triggered.");
-        StartAutomaticSetup();
-    }
-
     public static void StartAutomaticSetup()
     {
-        SessionState.SetBool("AIPackageInstaller.AutoSetupApproved", true);
         SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
         SessionState.SetBool("AIPackageInstaller.Done", false);
         string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
         EditorPrefs.DeleteKey(donePrefKey);
 
-        InitUI();
-        AISystemSetupWindow.ShowWindow();
+        ContinueAutomaticSetup();
+    }
 
-        bool manifestChanged = PatchManifest(out bool registryAdded);
-        if (registryAdded)
+    /// <summary>
+    /// Shows the bundled component check if any is missing, otherwise starts model downloads.
+    /// </summary>
+    private static void ContinueAutomaticSetup()
+    {
+        if (!AISystemSetupWindow.AreAllPackagesInstalled())
         {
-            SessionState.SetBool("AIPackageInstaller.CloseProjectSettings", true);
-            StartProjectSettingsCloser(6f);
-            ShowNpmRegistryExplanationDialog();
-            CloseProjectSettingsWindow();
-        }
-
-        if (manifestChanged)
-        {
-            AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.InProgress);
-            Debug.Log("<b>[AI Package Installer]</b> manifest.json updated (npm ONNX registry added) → resolving packages (Unity will reload).");
-            Client.Resolve();
+            Debug.LogError("<b>[AI Package Installer]</b> A bundled component in ThirdParty/ failed to load. Check the Console for compile errors, or re-import the package.");
+            AISystemSetupWindow.ShowWindow();
             return;
         }
 
-        AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
-        Debug.Log("<b>[AI Package Installer]</b> npm packages already present. Checking git packages…");
-        EnqueueAndInstallGitPackages(checkFirst: true);
-    }
-
-    private static void InitUI()
-    {
-        List<AISystemSetupWindow.InstallStep> steps = new List<AISystemSetupWindow.InstallStep>
+        if (!AISystemSetupWindow.AreAllModelsDownloaded())
         {
-            new AISystemSetupWindow.InstallStep { Name = "Scoped Registry & ONNX", Description = "Configuring registry.npmjs.org and ONNX 0.4.4" },
-            new AISystemSetupWindow.InstallStep { Name = "LLMUnity Package", Description = "Installing LLMUnity package from Git (keep Unity focused during setup)" },
-            new AISystemSetupWindow.InstallStep { Name = "Piper TTS Package", Description = "Installing Piper TTS package from Git" },
-            new AISystemSetupWindow.InstallStep { Name = "Whisper Unity Package", Description = "Installing Whisper Unity package from Git" }
-        };
-        AISystemSetupWindow.InitPackageSteps(steps);
+            AISystemSetupWindow.AutoStartDownloads();
+            return;
+        }
+
+        MarkSetupCompleted();
+        AISystemSetupWindow.CheckAndNotifyCompletion();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 1 — ensure npm registry + ONNX packages in manifest.json
     // ─────────────────────────────────────────────────────────────────────────
     private static void Initialize()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
             return;
 
-        // Resuming automatic setup across domain reloads (e.g. after manifest patch & resolve, or content unpack)
+        // Resuming automatic setup across domain reloads (e.g. a recompile during model downloads)
         if (SessionState.GetBool("AIPackageInstaller.AutoSetupRunning", false))
         {
             Debug.Log("<b>[AI Package Installer]</b> Resuming automatic setup after reload…");
-            InitUI();
-
-            if (!AISystemSetupWindow.AreAllPackagesInstalled())
-            {
-                AISystemSetupWindow.ShowWindow();
-                AISystemSetupWindow.UpdatePackageStep("Scoped Registry & ONNX", AISystemSetupWindow.StepStatus.Completed);
-                EnqueueAndInstallGitPackages(checkFirst: true);
-                return;
-            }
-
-            if (HasContentPackageToExtract() && !IsContentExtracted())
-            {
-                Debug.Log("<b>[AI Package Installer]</b> Packages verified. Unpacking content package…");
-                ExtractContentPackageIfPresent();
-                return;
-            }
-
-            if (!AISystemSetupWindow.AreAllModelsDownloaded())
-            {
-                Debug.Log("<b>[AI Package Installer]</b> Packages and content ready. Starting model downloads…");
-                AISystemSetupWindow.AutoStartDownloads();
-                return;
-            }
-
-            MarkSetupCompleted();
-            AISystemSetupWindow.CheckAndNotifyCompletion();
+            ContinueAutomaticSetup();
             return;
         }
 
@@ -219,9 +104,8 @@ namespace AISystem.Editor
 
         bool allPkgs = AISystemSetupWindow.AreAllPackagesInstalled();
         bool allModels = AISystemSetupWindow.AreAllModelsDownloaded();
-        bool contentPresent = IsContentExtracted();
 
-        if (allPkgs && allModels && contentPresent)
+        if (allPkgs && allModels)
         {
             if (isDirectImport)
             {
@@ -231,15 +115,8 @@ namespace AISystem.Editor
         }
 
         // Avoid repeated dialog popups on every script recompile during the same editor session
-        if (!isDirectImport)
-        {
-            if (SessionState.GetBool("AIPackageInstaller.PromptAnswered", false))
-                return;
-
-            string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
-            if (EditorPrefs.GetBool(donePrefKey, false) && (allPkgs && allModels && contentPresent))
-                return;
-        }
+        if (!isDirectImport && SessionState.GetBool("AIPackageInstaller.PromptAnswered", false))
+            return;
 
         SessionState.SetBool("AIPackageInstaller.PromptAnswered", true);
 
@@ -264,410 +141,12 @@ namespace AISystem.Editor
             Directory.GetParent(Application.dataPath).FullName, "AIPackageInstaller"));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Displays a popup informing the user about the npm scoped registry configuration
-    /// and why it is required for neural speech/voice inference.
-    /// </summary>
-    private static void ShowNpmRegistryExplanationDialog()
-    {
-        AISystemDialogWindow.ShowDialog(
-            title: "AI Driven NPCs — NPM Registry Configured",
-            heading: "NPM Scoped Registry Configured",
-            message: "An NPM scoped registry (registry.npmjs.org) was added to your project's Packages/manifest.json.\n\n" +
-                     "• What was done:\n" +
-                     "Configured the scoped registry for 'com.github.asus4' and added ONNX Runtime 0.4.4 dependencies.\n\n" +
-                     "• Why we did that:\n" +
-                     "Piper TTS and Whisper Unity require ONNX Runtime to execute local voice synthesis and speech recognition models. These packages are distributed via NPM, so Unity needs this scoped registry to resolve and download them automatically.\n\n" +
-                     "The Project Settings window opened by Unity will be automatically closed.",
-            primaryBtn: "OK",
-            secondaryBtn: null,
-            icon: "✅",
-            width: 530,
-            height: 310);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Project Settings window closer
-    // Unity automatically opens the Project Settings window whenever a scoped registry
-    // is added to manifest.json. We monitor and close it to keep focus on setup.
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public static void StartProjectSettingsCloser(float duration = 6f)
-    {
-        State.CloseProjectSettingsUntil = EditorApplication.timeSinceStartup + duration;
-        CloseProjectSettingsWindow();
-        EditorApplication.update -= CloseProjectSettingsUpdate;
-        EditorApplication.update += CloseProjectSettingsUpdate;
-    }
-
-    private static void CloseProjectSettingsUpdate()
-    {
-        CloseProjectSettingsWindow();
-        if (EditorApplication.timeSinceStartup > State.CloseProjectSettingsUntil)
-        {
-            EditorApplication.update -= CloseProjectSettingsUpdate;
-        }
-    }
-
-    public static void CloseProjectSettingsWindow()
-    {
-        try
-        {
-            var windows = Resources.FindObjectsOfTypeAll<EditorWindow>();
-            for (int i = 0; i < windows.Length; i++)
-            {
-                var w = windows[i];
-                if (w == null) continue;
-                string typeName = w.GetType().Name;
-                string title = w.titleContent != null ? w.titleContent.text : string.Empty;
-
-                if (typeName == "ProjectSettingsWindow" ||
-                    title == "Project Settings" ||
-                    title.StartsWith("Project Settings"))
-                {
-                    w.Close();
-                }
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning("<b>[AI Package Installer]</b> Failed to close Project Settings window: " + ex.Message);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Edits manifest.json to:
-    ///   1. Add "com.github.asus4" scoped registry pointing to registry.npmjs.org (if absent).
-    ///   2. Add/update ONNX packages to version 0.4.4 in dependencies.
-    ///   3. Remove any old git-URL entries for onnxruntime.
-    /// Returns true if the file was changed.
-    /// </summary>
-    private static bool PatchManifest()
-    {
-        return PatchManifest(out _);
-    }
-
-    private static bool PatchManifest(out bool registryAdded)
-    {
-        registryAdded = false;
-        if (!File.Exists(ManifestPath))
-        {
-            Debug.LogError("<b>[AI Package Installer]</b> manifest.json not found at: " + ManifestPath);
-            return false;
-        }
-
-        string text = File.ReadAllText(ManifestPath);
-        bool changed = false;
-
-        // ── 1. Remove old git-URL ONNX entries ───────────────────────────────
-        string gitOnnxPattern =
-            @",?\s*""[^""]*""\s*:\s*""https://github\.com/asus4/onnxruntime-unity[^""]*""";
-        if (Regex.IsMatch(text, gitOnnxPattern))
-        {
-            text = Regex.Replace(text, gitOnnxPattern, "");
-            changed = true;
-        }
-
-        // ── 2. Add scoped registry if missing ────────────────────────────────
-        if (!text.Contains("registry.npmjs.org"))
-        {
-            const string npmRegistryEntry =
-                "    {\n" +
-                "      \"name\": \"NPM\",\n" +
-                "      \"url\": \"https://registry.npmjs.org\",\n" +
-                "      \"scopes\": [\n" +
-                "        \"com.github.asus4\"\n" +
-                "      ]\n" +
-                "    }";
-
-            if (text.Contains("\"scopedRegistries\""))
-            {
-                text = Regex.Replace(text, @"""scopedRegistries""\s*:\s*\[", "\"scopedRegistries\": [\n" + npmRegistryEntry + ",");
-            }
-            else
-            {
-                const string registryBlock =
-                    "\"scopedRegistries\": [\n" +
-                    npmRegistryEntry + "\n" +
-                    "  ],\n  ";
-                text = Regex.Replace(text, @"""dependencies""\s*:", registryBlock + "\"dependencies\":");
-            }
-            changed = true;
-            registryAdded = true;
-        }
-
-        // ── 3. Add/update npm packages in dependencies ────────────────────────
-        foreach (var kv in NpmPackages)
-        {
-            string desiredEntry = $"\"{kv.Key}\": \"{kv.Value}\"";
-
-            // Package id already present (any version)?
-            var existingMatch = Regex.Match(text, $@"""{Regex.Escape(kv.Key)}""\s*:\s*""([^""]+)""");
-            if (existingMatch.Success)
-            {
-                if (existingMatch.Value != desiredEntry)
-                {
-                    text = text.Replace(existingMatch.Value, desiredEntry);
-                    changed = true;
-                }
-            }
-            else
-            {
-                // Insert at top of dependencies block
-                text = Regex.Replace(text,
-                    @"""dependencies""\s*:\s*\{",
-                    "\"dependencies\": {\n    " + desiredEntry + ",");
-                changed = true;
-            }
-        }
-
-        if (changed)
-            File.WriteAllText(ManifestPath, text);
-
-        return changed;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 2 — install git packages that are not yet installed
-    // ─────────────────────────────────────────────────────────────────────────
-    private static void EnqueueAndInstallGitPackages(bool checkFirst)
-    {
-        _gitQueue.Clear();
-        _gitNames.Clear();
-
-        string[] names = new[] { "LLMUnity Package", "Piper TTS Package", "Whisper Unity Package" };
-
-        if (!checkFirst)
-        {
-            for (int i = 0; i < GitPackages.Length; i++)
-            {
-                _gitQueue.Enqueue(GitPackages[i]);
-                _gitNames.Enqueue(names[i]);
-            }
-            AISystemSetupWindow.ShowWindow();
-            InstallNext();
-            return;
-        }
-
-        State.ListRequest = Client.List(true, false);
-        EditorApplication.update += OnListComplete;
-    }
-
-    private static void OnListComplete()
-    {
-        if (!State.ListRequest.IsCompleted) return;
-        EditorApplication.update -= OnListComplete;
-
-        if (State.ListRequest.Status != StatusCode.Success)
-        {
-            Debug.LogError("<b>[AI Package Installer]</b> Failed to list packages: " + State.ListRequest.Error.message);
-            return;
-        }
-
-        var installed = State.ListRequest.Result
-            .Select(p => p.packageId.ToLower())
-            .ToList();
-
-        string[] names = new[] { "LLMUnity Package", "Piper TTS Package", "Whisper Unity Package" };
-
-        _gitQueue.Clear();
-        _gitNames.Clear();
-        for (int i = 0; i < GitPackages.Length; i++)
-        {
-            bool found = installed.Any(p => p.StartsWith(GitPackageIds[i]));
-            if (!found)
-            {
-                _gitQueue.Enqueue(GitPackages[i]);
-                _gitNames.Enqueue(names[i]);
-            }
-            else
-            {
-                AISystemSetupWindow.UpdatePackageStep(names[i], AISystemSetupWindow.StepStatus.Completed);
-            }
-        }
-
-        if (_gitQueue.Count > 0)
-        {
-            AISystemSetupWindow.ShowWindow();
-            Debug.Log($"<b>[AI Package Installer]</b> Installing {_gitQueue.Count} missing package(s)…");
-            InstallNext();
-        }
-        else
-        {
-            Debug.Log("<b>[AI Package Installer]</b> All packages already installed! ✅");
-            OnPackagesCompleted();
-        }
-    }
-
     public static void MarkSetupCompleted()
     {
         SessionState.SetBool("AIPackageInstaller.Done", true);
         SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", false);
         string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
         EditorPrefs.SetBool(donePrefKey, true);
-    }
-
-    public static bool HasContentPackageToExtract()
-    {
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (Directory.Exists(stagingDir)) return false; // Author dev staging mode
-
-        string[] candidates = new[]
-        {
-            "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage",
-            "Assets/AI-Driven-NPCs-Content.unitypackage"
-        };
-
-        foreach (string relPath in candidates)
-        {
-            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, relPath);
-            if (File.Exists(fullPath)) return true;
-        }
-        return false;
-    }
-
-    private static void OnPackagesCompleted()
-    {
-        bool contentExtracted = IsContentExtracted();
-        bool hasContentPackage = HasContentPackageToExtract();
-
-        if (hasContentPackage && !contentExtracted)
-        {
-            SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
-            Debug.Log("<b>[AI Package Installer]</b> All packages installed! Unpacking core content package…");
-            ExtractContentPackageIfPresent();
-            return;
-        }
-
-        // If installed via UPM, automatically import package samples
-        ImportUPMSamplesIfAvailable();
-
-        // Ensure default personality sample presets are created automatically
-        EnsureDefaultSamplePresets();
-
-        SessionState.SetBool("AIPackageInstaller.AutoSetupRunning", true);
-        EditorApplication.delayCall += AISystemSetupWindow.AutoStartDownloads;
-    }
-
-    private static void InstallNext()
-    {
-        if (_gitQueue.Count == 0)
-        {
-            Debug.Log("<b>[AI Package Installer]</b> All AI packages installed successfully! ✅");
-            OnPackagesCompleted();
-            return;
-        }
-
-        string pkg = _gitQueue.Dequeue();
-        State.CurrentPkgName = _gitNames.Dequeue();
-
-        AISystemSetupWindow.UpdatePackageStep(State.CurrentPkgName, AISystemSetupWindow.StepStatus.InProgress);
-
-        Debug.Log($"<b>[AI Package Installer]</b> Installing: {pkg}…");
-        State.AddRequest = Client.Add(pkg);
-        EditorApplication.update += OnAddComplete;
-    }
-
-    private static void OnAddComplete()
-    {
-        if (!State.AddRequest.IsCompleted) return;
-        EditorApplication.update -= OnAddComplete;
-
-        if (State.AddRequest.Status == StatusCode.Success)
-        {
-            Debug.Log($"<b>[AI Package Installer]</b> ✅ Installed: {State.AddRequest.Result.packageId}");
-            AISystemSetupWindow.UpdatePackageStep(State.CurrentPkgName, AISystemSetupWindow.StepStatus.Completed);
-        }
-        else
-        {
-            Debug.LogError($"<b>[AI Package Installer]</b> ❌ Failed: {State.AddRequest.Error.message}");
-            AISystemSetupWindow.UpdatePackageStep(State.CurrentPkgName, AISystemSetupWindow.StepStatus.Failed, State.AddRequest.Error.message);
-        }
-
-        InstallNext();
-    }
-
-    // ── Asset Store Content Packaging & Auto-Extraction ───────────────────────
-
-    /// <summary>
-    /// Checks if core sample / content assets have already been extracted.
-    /// </summary>
-    public static bool IsContentExtracted()
-    {
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (Directory.Exists(stagingDir)) return true; // Author dev staging mode
-
-        string managerScript = Path.Combine(Application.dataPath, "AI Driven NPCs System", "Scripts", "AISystem", "Core", "AISystemManager.cs");
-        if (File.Exists(managerScript)) return true;
-
-        string[] guids = AssetDatabase.FindAssets("AISystemManager t:MonoScript");
-        return guids != null && guids.Length > 0;
-    }
-
-    /// <summary>
-    /// Automatically extracts the bundled content package if present in the project.
-    /// Ensures scripts and prefabs are only imported AFTER packages are installed,
-    /// preventing CS0246 missing namespace errors and broken nested prefabs on first import.
-    /// </summary>
-    public static void ExtractContentPackageIfPresent()
-    {
-        string stagingDir = Path.Combine(Application.dataPath, "AI Driven NPCs System", ".staging~");
-        if (Directory.Exists(stagingDir))
-        {
-            return; // In author dev project during upload prep — do not extract
-        }
-
-        if (IsContentExtracted())
-        {
-            return;
-        }
-
-        string[] candidates = new[]
-        {
-            "Assets/AI Driven NPCs System/AI-Driven-NPCs-Content.unitypackage",
-            "Assets/AI-Driven-NPCs-Content.unitypackage"
-        };
-
-        foreach (string relPath in candidates)
-        {
-            string fullPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, relPath);
-            if (File.Exists(fullPath))
-            {
-                Debug.Log($"<b>[AI Package Installer]</b> 📦 Unpacking content package: {relPath}...");
-                AssetDatabase.ImportPackage(relPath, false);
-                break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// If the package was installed via Unity Package Manager, auto-imports its sample assets.
-    /// </summary>
-    public static bool ImportUPMSamplesIfAvailable()
-    {
-        try
-        {
-            var samples = UnityEditor.PackageManager.UI.Sample.FindByPackage("com.yildizoguzhan.ai-driven-npcs", null);
-            if (samples != null)
-            {
-                foreach (var sample in samples)
-                {
-                    if (!sample.isImported)
-                    {
-                        Debug.Log("<b>[AI Package Installer]</b> 📦 Automatically importing package samples…");
-                        sample.Import(UnityEditor.PackageManager.UI.Sample.ImportOptions.OverridePreviousImports);
-                        return true;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning("[AI Package Installer] Note: Auto-import of UPM samples skipped: " + ex.Message);
-        }
-        return false;
     }
 
     /// <summary>
@@ -677,8 +156,7 @@ namespace AISystem.Editor
     {
         try
         {
-            var type = Type.GetType("AISystem.SamplePresetGenerator, Assembly-CSharp-Editor")
-                       ?? Type.GetType("AISystem.SamplePresetGenerator");
+            var type = Type.GetType("AISystem.SamplePresetGenerator, AIDrivenNPCs.Editor");
             if (type != null)
             {
                 var method = type.GetMethod("EnsureDefaultPresets", new Type[] { typeof(bool) });
@@ -713,7 +191,6 @@ public class AIPackagePostprocessor : AssetPostprocessor
         {
             if (asset.Contains("AIPackageInstaller") ||
                 asset.Contains("AISystemSetupWindow") ||
-                asset.Contains("AI-Driven-NPCs-Content.unitypackage") ||
                 asset.StartsWith("Assets/AI Driven NPCs System"))
             {
                 packageImported = true;
@@ -728,4 +205,3 @@ public class AIPackagePostprocessor : AssetPostprocessor
     }
 }
 }
-
