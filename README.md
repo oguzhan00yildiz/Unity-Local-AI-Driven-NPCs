@@ -1,6 +1,6 @@
 # 🤖 Unity Local AI-Driven NPCs
 
-[![Unity Version](https://img.shields.io/badge/Unity-2021.3%20|%202022.3%20|%206-blue.svg?logo=unity)](https://unity.com/)
+[![Unity Version](https://img.shields.io/badge/Unity-6-blue.svg?logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg?logo=windows)](https://unity.com/)
 [![Local AI](https://img.shields.io/badge/AI-100%25%20Offline%20%26%20Local-purple.svg)](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs)
@@ -201,7 +201,7 @@ The package includes built-in tools under the **Tools → AI Packages** menu:
 
 ## 🔧 System Requirements
 
-- **Unity**: `2021.3 LTS`, `2022.3 LTS`, or `Unity 6+` (URP, HDRP, or Built-in RP).
+- **Unity**: Unity 6 (6000.0) or newer. The demo scene needs URP. The scripts work in any render pipeline.
 - **Operating System**: Windows 10/11 64-bit.
 - **RAM**: 8 GB minimum (16 GB recommended).
 - **VRAM (Optional GPU Acceleration)**: 4 GB+ dedicated NVIDIA/AMD GPU for near-instant response times.

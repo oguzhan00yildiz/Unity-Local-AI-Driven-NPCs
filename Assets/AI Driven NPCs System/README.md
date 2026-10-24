@@ -68,7 +68,7 @@ Access all tools via **Tools → AI Packages**:
 
 ## 💻 Compatibility & System Requirements
 
-- **Unity Version:** Unity 2022.3 LTS or Unity 6 (6000.x)+
+- **Unity Version:** Unity 6 (6000.0) or newer. Tested on 6000.3.
 - **Render Pipeline:** The demo scene and prefabs use URP. They use the URP `Lit` material and the URP camera and light components. In Built-in or HDRP projects the demo shows pink materials and missing scripts. The scripts work in all pipelines. In a Built-in or HDRP project, add `AISystem` to your own scene and put `NPCAgent` on your own characters.
 - **Supported Operating System:** Windows 10/11 (64-bit)
 - **Hardware Requirements:**
