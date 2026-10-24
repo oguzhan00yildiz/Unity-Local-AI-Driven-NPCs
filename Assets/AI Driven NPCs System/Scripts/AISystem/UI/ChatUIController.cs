@@ -40,7 +40,16 @@ namespace AISystem
         public string micMutedLabel   = "Unmute";
 
         [Header("Settings")]
+        [Tooltip("Messages kept per NPC conversation")]
         public int maxDisplayedMessages = 10;
+
+        [Header("Message Style")]
+        [Tooltip("Sender name used by AISystemManager for the player's messages")]
+        public string playerSenderName = "Player";
+        public Color  playerNameColor  = new Color(0.45f, 0.75f, 1f);
+        public Color  npcNameColor     = new Color(1f, 0.8f, 0.4f);
+        [Tooltip("Text placed between two messages")]
+        public string messageSeparator = "\n\n";
 
         //  Events 
         /// <summary>Fired when the user submits a message (text field or Enter key).</summary>
@@ -56,8 +65,13 @@ namespace AISystem
         private bool               _isOpen;
         private bool               _isMicMuted;
         private string             _currentNPCName  = string.Empty;
-        private readonly List<string> _chatHistory      = new();
         private string             _streamingResponse = string.Empty;
+
+        // One history per conversation partner. The key is passed to Open (AISystemManager uses the NPCAgent).
+        private readonly Dictionary<object, List<string>> _histories = new();
+        private object       _currentKey;
+        private List<string> _chatHistory = new();
+        private readonly System.Text.StringBuilder _displayBuilder = new();
 
         public bool IsOpen     => _isOpen;
         public bool IsMicMuted => _isMicMuted;
@@ -171,7 +185,8 @@ namespace AISystem
 
         //  Public API 
 
-        public void Open(string npcName)
+        /// <summary>Opens the panel and shows the history stored for historyKey (npcName when null).</summary>
+        public void Open(string npcName, object historyKey = null)
         {
             EnsureEventSystem();
             EnsureInputFieldWiring();
@@ -180,6 +195,8 @@ namespace AISystem
 
             _currentNPCName    = npcName;
             _streamingResponse = string.Empty;
+            _currentKey        = historyKey ?? npcName;
+            _chatHistory       = GetHistory(_currentKey);
 
             if (npcNameText != null) npcNameText.text = npcName;
             if (chatPanel   != null)
@@ -213,33 +230,55 @@ namespace AISystem
             // Note: Cursor lock and player movement are managed by AISystemManager.
         }
 
-        /// <summary>Adds a completed message to the chat history.</summary>
-        public void AddMessage(string sender, string text)
-        {
-            _chatHistory.Add($"{sender}: {text}");
-            if (_chatHistory.Count > maxDisplayedMessages)
-                _chatHistory.RemoveAt(0);
+        /// <summary>Adds a completed message to the open conversation.</summary>
+        public void AddMessage(string sender, string text) => AddMessage(sender, text, _currentKey);
 
+        /// <summary>
+        /// Adds a completed message to the conversation for historyKey.
+        /// A reply that finishes after the player switched NPCs goes to its own NPC's history.
+        /// </summary>
+        public void AddMessage(string sender, string text, object historyKey)
+        {
+            var history = GetHistory(historyKey ?? _currentKey);
+            history.Add(FormatLine(sender, text));
+            if (history.Count > maxDisplayedMessages)
+                history.RemoveAt(0);
+
+            if (history != _chatHistory) return;
             _streamingResponse = string.Empty;
             RefreshDisplay();
         }
 
         /// <summary>Updates the NPC response in real-time during LLM streaming.</summary>
-        public void UpdateStreamingResponse(string sender, string partial)
+        public void UpdateStreamingResponse(string sender, string partial, object historyKey = null)
         {
+            if (historyKey != null && !Equals(historyKey, _currentKey)) return;
             _currentNPCName    = sender;
             _streamingResponse = partial;
             RefreshDisplay();
         }
 
         /// <summary>Finalizes the LLM response  closes the stream and adds it to history.</summary>
-        public void FinalizeResponse(string sender, string finalText)
+        public void FinalizeResponse(string sender, string finalText, object historyKey = null)
         {
-            _streamingResponse = string.Empty;
+            bool isCurrent = historyKey == null || Equals(historyKey, _currentKey);
+            if (isCurrent) _streamingResponse = string.Empty;
+
             if (!string.IsNullOrWhiteSpace(finalText))
-                AddMessage(sender, finalText);
-            else
+                AddMessage(sender, finalText, historyKey);
+            else if (isCurrent)
                 RefreshDisplay();
+        }
+
+        /// <summary>Deletes the stored conversation for historyKey.</summary>
+        public void ClearHistory(object historyKey)
+        {
+            _histories.Remove(historyKey);
+            if (Equals(historyKey, _currentKey))
+            {
+                _chatHistory = GetHistory(historyKey);
+                RefreshDisplay();
+            }
         }
 
         /// <summary>Sets the input field text (used for transcription preview).</summary>
@@ -311,16 +350,38 @@ namespace AISystem
 
         private void OnCloseClicked() => OnCloseChat?.Invoke();
 
+        private List<string> GetHistory(object key)
+        {
+            if (key == null) return _chatHistory;
+            if (!_histories.TryGetValue(key, out var history))
+            {
+                history = new List<string>();
+                _histories[key] = history;
+            }
+            return history;
+        }
+
+        private string FormatLine(string sender, string text)
+        {
+            if (chatDisplayText == null || !chatDisplayText.supportRichText)
+                return $"{sender}: {text}";
+
+            Color color = sender == playerSenderName ? playerNameColor : npcNameColor;
+            return $"<b><color=#{ColorUtility.ToHtmlStringRGB(color)}>{sender}</color></b>\n{text}";
+        }
+
         private void RefreshDisplay()
         {
             if (chatDisplayText == null) return;
 
-            chatDisplayText.text = string.Empty;
+            _displayBuilder.Clear();
             foreach (var line in _chatHistory)
-                chatDisplayText.text += line + "\n";
+                _displayBuilder.Append(line).Append(messageSeparator);
 
             if (!string.IsNullOrEmpty(_streamingResponse))
-                chatDisplayText.text += $"{_currentNPCName}: {_streamingResponse}\n";
+                _displayBuilder.Append(FormatLine(_currentNPCName, _streamingResponse));
+
+            chatDisplayText.text = _displayBuilder.ToString();
 
             if (chatScrollRect != null)
                 StartCoroutine(ScrollToBottom());

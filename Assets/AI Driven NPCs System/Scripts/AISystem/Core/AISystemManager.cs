@@ -126,7 +126,7 @@ namespace AISystem
             if (voiceInput != null && chatUI != null)
                 chatUI.SetMicMuted(voiceInput.IsMuted);
 
-            chatUI?.Open(npc.NPCName);
+            chatUI?.Open(npc.NPCName, npc);
             voiceInput?.StartListening();
 
             npc.SetChatActive(true);
@@ -203,7 +203,7 @@ namespace AISystem
             _currentNPC?.SetPromptText("Thinking");
 
             // Display player message and indicate waiting state in Chat UI
-            chatUI?.AddMessage("Player", message);
+            chatUI?.AddMessage(chatUI.playerSenderName, message);
             chatUI?.SetWaiting(true);
 
             string fullResponse = string.Empty;
@@ -214,12 +214,12 @@ namespace AISystem
                 partial =>
                 {
                     fullResponse = partial;
-                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", partial);
+                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", partial, npcForCallback);
                 },
                 () =>
                 {
                     _isWaitingForResponse = false;
-                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", fullResponse);
+                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", fullResponse, npcForCallback);
                     chatUI?.SetWaiting(false);
 
                     // Guard: session may have been closed while LLM was generating
