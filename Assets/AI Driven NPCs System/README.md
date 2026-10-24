@@ -19,7 +19,8 @@ Zero cloud subscriptions, zero network latency, complete data privacy.
 - **uGUI** (`com.unity.ugui`). The chat UI uses it.
 - **Universal RP** (`com.unity.render-pipelines.universal`). Only the demo scene and prefabs need it. See [Render Pipeline](#-compatibility--system-requirements).
 
-LLMUnity also uses Collections and Newtonsoft Json.
+- **Newtonsoft Json** (`com.unity.nuget.newtonsoft-json`). LLMUnity uses it.
+- **Collections** (`com.unity.collections`). ONNX Runtime Unity uses it for Piper TTS.
 
 > ⚠️ **Conflict:** Remove any separate LLM for Unity, Piper, Whisper or ONNX Runtime (`com.github.asus4.onnxruntime`) copies first. Two copies cause duplicate assembly errors.
 
