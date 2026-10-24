@@ -101,3 +101,22 @@ Included in ThirdParty/. Do not import a second copy.
 - ONNX Runtime and ONNX Runtime Unity 0.4.4 (MIT)
 Full license texts are in ThirdPartyNotices.md.
 ```
+
+---
+
+## AI Use Disclosure
+
+```text
+This package runs open-source AI models locally inside Unity. No cloud service is used.
+
+* Language model: llama.cpp (MIT) through LLMUnity (Apache 2.0). The default model is Qwen3.5-0.8B (Apache 2.0). Users can load other GGUF models, which have their own licenses.
+* Speech to text: whisper.cpp through Whisper.unity (MIT), with OpenAI Whisper weights (MIT).
+* Text to speech: Piper TTS (MIT). The listed voices are public domain or CC0.
+
+
+No models are included in the package. The setup window downloads them from Hugging Face after the user agrees. Model sources and licenses are in ThirdPartyNotices.md.
+
+AI IN THE CREATION OF THE PACKAGE
+
+AI coding assistants helped write and edit C# code, editor windows, documentation and license notices, and helped find bugs. The author chose the design and features, reviewed the changes, and tested the package in Unity. No AI-generated art, audio or 3D models are included. No proprietary data was used.
+```
