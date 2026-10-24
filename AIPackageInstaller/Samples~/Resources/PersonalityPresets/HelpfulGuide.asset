@@ -13,5 +13,6 @@ MonoBehaviour:
   m_Name: HelpfulGuide
   m_EditorClassIdentifier: 
   npcName: Helpful Guide
-  systemPrompt: You are a helpful and polite guide in a video game. Keep your answers short and friendly.
-  voiceModelName: en_US-amy-low
+  systemPrompt: You are a helpful and polite guide in a video game. Keep your answers
+    short and friendly.
+  voiceModelName: en_US-ljspeech-medium

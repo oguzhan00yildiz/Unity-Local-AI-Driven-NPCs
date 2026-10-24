@@ -35,8 +35,9 @@ namespace AISystem
         public KeyCode interactionKey   = KeyCode.E;
         
         [Header("Voice")]
-        [Tooltip("Name of the PiperTTS model (e.g., en_US-amy-low)")]
-        public string voiceModelName = "en_US-amy-low";
+        [Tooltip("Piper voice for this NPC. Download more voices in Tools > AI Packages > Voice Browser.")]
+        [VoiceName]
+        public string voiceModelName = "en_US-ljspeech-medium";
 
         [Header("Interaction Prompt")]
         [Tooltip("TextMesh (3D Text) shown above NPC. Auto-found in children if left null.")]

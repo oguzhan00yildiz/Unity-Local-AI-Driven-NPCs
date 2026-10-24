@@ -62,6 +62,6 @@ MonoBehaviour:
   _loraWeights: 
   dontDestroyOnLoad: 1
   _embeddingsOnly: 0
-  _embeddingLength: 1024
+  _embeddingLength: 4096
   minContextLength: 0
-  maxContextLength: 262144
+  maxContextLength: 131072

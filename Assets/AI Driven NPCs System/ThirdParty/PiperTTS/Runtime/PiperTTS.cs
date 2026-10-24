@@ -42,6 +42,16 @@ namespace PiperTTS
         public delegate void StatusChangedDelegate(ModelStatus status);
         public event StatusChangedDelegate OnStatusChanged;
 
+        /// <summary>Fires when the last queued clip has finished playing.</summary>
+        public event Action OnPlaybackFinished;
+
+        // Synthesized clips waiting to play
+        private readonly Queue<AudioClip> _clipQueue = new Queue<AudioClip>();
+        private Coroutine _playback;
+        private bool _dropNextClip;
+
+        public bool IsPlaying => _playback != null;
+
         private ModelStatus _status = ModelStatus.Init;
 
         // Public getter, no public setter
@@ -229,12 +239,41 @@ namespace PiperTTS
 
                 yield return new WaitUntil(() => phonemizer.status == ModelStatus.Ready);
                 yield return new WaitUntil(() => piper.status == ModelStatus.Ready);
-
-                // Wait for all audio samples to finish playing
-                yield return new WaitUntil(() => !audioSource.isPlaying);
             }
 
+            // Ready while the clip still plays, so the next prompt is synthesized during playback.
+            // The clip was queued before piper reported Ready, so the drop flag is no longer needed.
+            _dropNextClip = false;
             status = ModelStatus.Ready;
+        }
+
+        /// <summary>Stops the current clip, clears queued clips and drops the clip being synthesized.</summary>
+        public void StopPlayback()
+        {
+            if (_playback != null)
+                StopCoroutine(_playback);
+            _playback = null;
+
+            foreach (var clip in _clipQueue)
+                Destroy(clip);
+            _clipQueue.Clear();
+
+            audioSource.Stop();
+            _dropNextClip = status == ModelStatus.Generate;
+        }
+
+        IEnumerator PlayQueue()
+        {
+            while (_clipQueue.Count > 0)
+            {
+                var clip = _clipQueue.Dequeue();
+                audioSource.PlayOneShot(clip);
+                yield return new WaitWhile(() => audioSource.isPlaying);
+                Destroy(clip);
+            }
+
+            _playback = null;
+            OnPlaybackFinished?.Invoke();
         }
 
         private void Awake()
@@ -267,6 +306,8 @@ namespace PiperTTS
             if (status == ModelStatus.Error)
             {
                 StopAllCoroutines();
+                _playback = null;
+                _clipQueue.Clear();
                 this.status = ModelStatus.Error;
             }
         }
@@ -278,10 +319,19 @@ namespace PiperTTS
 
         void OnResponseGenerated(float[] audioChunk, int sampleRate)
         {
+            if (_dropNextClip || audioChunk.Length == 0)
+            {
+                _dropNextClip = false;
+                return;
+            }
+
             AudioClip clip = AudioClip.Create("GeneratedSpeech", audioChunk.Length, 1, sampleRate, false);
             clip.SetData(audioChunk, 0);
 
-            audioSource.PlayOneShot(clip);
+            // Clips play in order; a clip made during playback waits for the current one
+            _clipQueue.Enqueue(clip);
+            if (_playback == null)
+                _playback = StartCoroutine(PlayQueue());
         }
     }
 }

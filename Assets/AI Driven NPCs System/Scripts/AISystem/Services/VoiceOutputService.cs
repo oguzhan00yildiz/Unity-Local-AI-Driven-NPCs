@@ -8,6 +8,7 @@ namespace AISystem
 {
     /// <summary>
     /// PiperTTS wrapper — splits text into sentences and speaks them in sequence.
+    /// Streamed text (AppendSpeech) starts speaking at the first full sentence; EndSpeech closes the stream.
     /// Each voice gets its own PiperTTS copy, loaded on first use and cached.
     /// Voices used by NPCs in the scene are loaded in Start.
     /// </summary>
@@ -30,14 +31,16 @@ namespace AISystem
 
         // ── Internal ──────────────────────────────────────────────────────────────
         private Queue<string> _sentenceQueue = new Queue<string>();
-        private bool   _isSpeaking;
-        private string _pendingSpeech;
-        private string _pendingVoice;
+        private bool _isSpeaking;
+
+        // Streamed text that does not end in a full sentence yet
+        private readonly System.Text.StringBuilder _streamBuffer = new System.Text.StringBuilder();
+        private bool _streamOpen;
 
         // Voice name (e.g. en_US-bryce-medium) -> its own PiperTTS copy. piperTts is the default voice.
         private readonly Dictionary<string, PiperTTS.PiperTTS> _voices = new Dictionary<string, PiperTTS.PiperTTS>();
-        private readonly Dictionary<PiperTTS.PiperTTS, PiperTTS.PiperTTS.StatusChangedDelegate> _statusHandlers =
-            new Dictionary<PiperTTS.PiperTTS, PiperTTS.PiperTTS.StatusChangedDelegate>();
+        private readonly Dictionary<PiperTTS.PiperTTS, (PiperTTS.PiperTTS.StatusChangedDelegate status, Action playback)> _handlers =
+            new Dictionary<PiperTTS.PiperTTS, (PiperTTS.PiperTTS.StatusChangedDelegate, Action)>();
         private PiperTTS.PiperTTS _activeTts;
 
         public bool IsSpeaking => _isSpeaking;
@@ -76,66 +79,132 @@ namespace AISystem
 
         void OnDestroy()
         {
-            foreach (var pair in _statusHandlers)
-                if (pair.Key != null)
-                    pair.Key.OnStatusChanged -= pair.Value;
-            _statusHandlers.Clear();
+            foreach (var pair in _handlers)
+            {
+                if (pair.Key == null) continue;
+                pair.Key.OnStatusChanged    -= pair.Value.status;
+                pair.Key.OnPlaybackFinished -= pair.Value.playback;
+            }
+            _handlers.Clear();
         }
 
         // ── Public API ────────────────────────────────────────────────────────────
 
+        /// <summary>Speaks a complete text. Replaces any current speech.</summary>
         public void Speak(string text, string voiceModelName = null)
         {
-            if (!voiceEnabled || string.IsNullOrWhiteSpace(text)) return;
+            StopSpeaking();
+            AppendSpeech(text, voiceModelName);
+            EndSpeech();
+        }
 
-            string cleanedText = CleanTextForSpeech(text);
-            if (string.IsNullOrWhiteSpace(cleanedText)) return;
+        /// <summary>
+        /// Adds streamed text (e.g. new LLM tokens). The first call starts a new speech and replaces the current one.
+        /// Each full sentence is spoken as soon as it arrives. Call EndSpeech when the text is complete.
+        /// </summary>
+        public void AppendSpeech(string chunk, string voiceModelName = null)
+        {
+            if (!voiceEnabled || string.IsNullOrEmpty(chunk)) return;
 
-            var tts = GetVoice(voiceModelName);
-            if (tts != _activeTts)
-            {
-                StopSpeaking();
-                _activeTts = tts;
-            }
+            if (!_streamOpen)
+                BeginStream(voiceModelName);
 
-            // Model not ready yet — queue and initialize
-            if (tts.status == ModelStatus.Init || tts.status == ModelStatus.Loading)
-            {
-                _pendingSpeech = cleanedText;
-                _pendingVoice  = voiceModelName;
-                if (tts.status == ModelStatus.Init)
-                    tts.InitModel();
-                return;
-            }
-
-            if (tts.status == ModelStatus.Error)
+            if (_activeTts.status == ModelStatus.Error)
             {
                 SetStatus("Voice error");
                 return;
             }
 
-            // Clear previous speech and enqueue new sentences
-            _sentenceQueue.Clear();
-            var sentences = SplitIntoSentences(cleanedText);
-            foreach (var s in sentences)
-                if (!string.IsNullOrWhiteSpace(s))
-                    _sentenceQueue.Enqueue(s.Trim());
+            _streamBuffer.Append(chunk);
+            FlushSentences(false);
+            TrySpeakNext();
+        }
 
-            if (_sentenceQueue.Count > 0)
-            {
-                var firstSentence = _sentenceQueue.Dequeue();
-                tts.Prompt(firstSentence);
-            }
+        /// <summary>Speaks the remaining text. OnSpeechFinished fires after the last sentence.</summary>
+        public void EndSpeech()
+        {
+            if (!_streamOpen) return;
+
+            FlushSentences(true);
+            _streamOpen = false;
+            TrySpeakNext();
+
+            // Nothing left to say: the last clip already ended, or the text was only *actions*
+            if (_sentenceQueue.Count == 0 && _activeTts.status != ModelStatus.Generate && !_activeTts.IsPlaying)
+                FinishSpeech();
         }
 
         public void StopSpeaking()
         {
             _sentenceQueue.Clear();
-            _isSpeaking    = false;
-            _pendingSpeech = string.Empty;
+            _streamBuffer.Clear();
+            _streamOpen = false;
+            _isSpeaking = false;
 
-            _activeTts.GetComponent<AudioSource>().Stop();
+            _activeTts.StopPlayback();
             SetStatus("Idle");
+        }
+
+        private void BeginStream(string voiceModelName)
+        {
+            StopSpeaking();
+            _activeTts  = GetVoice(voiceModelName);
+            _streamOpen = true;
+
+            // Sentences wait in the queue until the model reports Ready
+            if (_activeTts.status == ModelStatus.Init)
+                _activeTts.InitModel();
+        }
+
+        /// <summary>
+        /// Moves full sentences from the stream buffer to the queue.
+        /// Sentence ends inside *actions* do not count. With final = true the rest is queued too.
+        /// </summary>
+        private void FlushSentences(bool final)
+        {
+            int start = 0;
+            bool inAction = false;
+
+            for (int i = 0; i < _streamBuffer.Length; i++)
+            {
+                char c = _streamBuffer[i];
+                if (c == '*')
+                {
+                    inAction = !inAction;
+                    continue;
+                }
+
+                bool isSentenceEnd = !inAction && (c == '.' || c == '!' || c == '?');
+                bool hasSpaceAfter = i + 1 < _streamBuffer.Length && char.IsWhiteSpace(_streamBuffer[i + 1]);
+
+                if (isSentenceEnd && hasSpaceAfter)
+                {
+                    EnqueueSentence(_streamBuffer.ToString(start, i + 1 - start));
+                    start = i + 1;
+                }
+            }
+
+            if (final && start < _streamBuffer.Length)
+            {
+                EnqueueSentence(_streamBuffer.ToString(start, _streamBuffer.Length - start));
+                start = _streamBuffer.Length;
+            }
+
+            _streamBuffer.Remove(0, start);
+        }
+
+        private void EnqueueSentence(string sentence)
+        {
+            string cleaned = CleanTextForSpeech(sentence);
+            if (!string.IsNullOrWhiteSpace(cleaned))
+                _sentenceQueue.Enqueue(cleaned);
+        }
+
+        /// <summary>Prompts the next sentence when the voice is free. Otherwise the Ready status does it.</summary>
+        private void TrySpeakNext()
+        {
+            if (_sentenceQueue.Count > 0 && _activeTts.status == ModelStatus.Ready)
+                _activeTts.Prompt(_sentenceQueue.Dequeue());
         }
 
         // ── Voices ────────────────────────────────────────────────────────────────
@@ -200,9 +269,11 @@ namespace AISystem
 
         private void Subscribe(PiperTTS.PiperTTS tts)
         {
-            PiperTTS.PiperTTS.StatusChangedDelegate handler = status => OnPiperStatusChanged(tts, status);
-            tts.OnStatusChanged += handler;
-            _statusHandlers[tts] = handler;
+            PiperTTS.PiperTTS.StatusChangedDelegate statusHandler = status => OnPiperStatusChanged(tts, status);
+            Action playbackHandler = () => OnPiperPlaybackFinished(tts);
+            tts.OnStatusChanged    += statusHandler;
+            tts.OnPlaybackFinished += playbackHandler;
+            _handlers[tts] = (statusHandler, playbackHandler);
         }
 
         /// <summary>
@@ -210,16 +281,26 @@ namespace AISystem
         /// </summary>
         public static string CleanTextForSpeech(string text)
         {
+            // Expand contractions (I'm -> I am, don't -> do not)
+            return NormalizeContractions(CleanTextForDisplay(text));
+        }
+
+        /// <summary>
+        /// Removes asterisks/actions (*smiles*) and Markdown symbols. Used for the chat panel.
+        /// An unclosed action at the end (*smi while streaming) is removed too.
+        /// </summary>
+        public static string CleanTextForDisplay(string text)
+        {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
             // Remove text inside asterisks (roleplay cues like *laughs*, *sighs*)
             string result = System.Text.RegularExpressions.Regex.Replace(text, @"\*.*?\*", "");
 
+            // Remove an unclosed action at the end
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\*[^*]*$", "");
+
             // Remove markdown symbols (#, _, ~, `, [, ])
             result = System.Text.RegularExpressions.Regex.Replace(result, @"[#_`~\[\]]", "");
-
-            // Expand contractions (I'm -> I am, don't -> do not)
-            result = NormalizeContractions(result);
 
             // Normalize multiple whitespace to single space
             result = System.Text.RegularExpressions.Regex.Replace(result, @"\s+", " ").Trim();
@@ -317,35 +398,21 @@ namespace AISystem
                     break;
 
                 case ModelStatus.Ready:
-                    if (_isSpeaking)
+                    // Ready comes when synthesis ends, while the clip still plays.
+                    // Next sentence (synthesized during playback), or sentences queued while the model was loading
+                    if (_sentenceQueue.Count > 0)
                     {
-                        _isSpeaking = false;
-
-                        // Speak next sentence in queue if available
-                        if (_sentenceQueue.Count > 0)
-                        {
-                            var nextSentence = _sentenceQueue.Dequeue();
-                            source.Prompt(nextSentence);
-                            _isSpeaking = true;
-                        }
-                        else
-                        {
-                            SetStatus("Idle");
-                            OnSpeechFinished?.Invoke();
-                        }
+                        source.Prompt(_sentenceQueue.Dequeue());
                     }
-                    else
+                    else if (_isSpeaking && !_streamOpen && !source.IsPlaying)
+                    {
+                        FinishSpeech();
+                    }
+                    else if (!_isSpeaking)
                     {
                         SetStatus("Voice ready");
                     }
-
-                    // Speak any pending text that arrived before the model was ready
-                    if (!string.IsNullOrWhiteSpace(_pendingSpeech))
-                    {
-                        var txt = _pendingSpeech;
-                        _pendingSpeech = string.Empty;
-                        Speak(txt, _pendingVoice);
-                    }
+                    // Else wait for the playback to end or for the next streamed sentence
                     break;
 
                 case ModelStatus.Generate:
@@ -366,37 +433,20 @@ namespace AISystem
             }
         }
 
-        private static List<string> SplitIntoSentences(string text)
+        private void OnPiperPlaybackFinished(PiperTTS.PiperTTS source)
         {
-            var result  = new List<string>();
-            var current = new System.Text.StringBuilder();
+            if (!voiceEnabled || source != _activeTts) return;
 
-            for (int i = 0; i < text.Length; i++)
-            {
-                char c = text[i];
-                current.Append(c);
+            // Last clip ended and nothing else is coming
+            if (_isSpeaking && !_streamOpen && _sentenceQueue.Count == 0 && source.status == ModelStatus.Ready)
+                FinishSpeech();
+        }
 
-                bool isSentenceEnd = (c == '.' || c == '!' || c == '?');
-                bool hasSpaceAfter  = i + 1 < text.Length && (text[i + 1] == ' ' || text[i + 1] == '\n');
-
-                if (isSentenceEnd && hasSpaceAfter)
-                {
-                    string sentence = current.ToString().Trim();
-                    if (!string.IsNullOrEmpty(sentence))
-                        result.Add(sentence);
-                    current.Clear();
-                    i++; // skip the whitespace
-                }
-            }
-
-            if (current.Length > 0)
-            {
-                string sentence = current.ToString().Trim();
-                if (!string.IsNullOrEmpty(sentence))
-                    result.Add(sentence);
-            }
-
-            return result;
+        private void FinishSpeech()
+        {
+            _isSpeaking = false;
+            SetStatus("Idle");
+            OnSpeechFinished?.Invoke();
         }
 
         private void SetStatus(string msg)
