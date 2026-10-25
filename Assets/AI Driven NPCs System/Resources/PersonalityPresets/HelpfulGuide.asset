@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   npcName: Helpful Guide
   systemPrompt: You are a helpful and polite guide in a video game. Keep your answers
-    short and friendly.
+    short and friendly. Do not use emojis.
   voiceModelName: en_US-ljspeech-medium

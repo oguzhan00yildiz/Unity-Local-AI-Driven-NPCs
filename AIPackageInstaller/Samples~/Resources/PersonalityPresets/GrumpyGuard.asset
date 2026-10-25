@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   npcName: Grumpy Guard
   systemPrompt: You are a grumpy city guard. You do not like adventurers. Speak abruptly
-    and tell people to move along.
+    and tell people to move along. Do not use emojis.
   voiceModelName: en_US-bryce-medium

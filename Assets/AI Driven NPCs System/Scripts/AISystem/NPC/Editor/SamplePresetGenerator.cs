@@ -35,10 +35,10 @@ namespace AISystem
                 AssetDatabase.Refresh();
             }
 
-            if (CreatePresetIfMissing("Helpful Guide", "You are a helpful and polite guide in a video game. Keep your answers short and friendly.", "en_US-ljspeech-medium", $"{folderPath}/HelpfulGuide.asset"))
+            if (CreatePresetIfMissing("Helpful Guide", "You are a helpful and polite guide in a video game. Keep your answers short and friendly. Do not use emojis.", "en_US-ljspeech-medium", $"{folderPath}/HelpfulGuide.asset"))
                 createdAny = true;
 
-            if (CreatePresetIfMissing("Grumpy Guard", "You are a grumpy city guard. You do not like adventurers. Speak abruptly and tell people to move along.", "en_US-bryce-medium", $"{folderPath}/GrumpyGuard.asset"))
+            if (CreatePresetIfMissing("Grumpy Guard", "You are a grumpy city guard. You do not like adventurers. Speak abruptly and tell people to move along. Do not use emojis.", "en_US-bryce-medium", $"{folderPath}/GrumpyGuard.asset"))
                 createdAny = true;
 
             if (createdAny)
