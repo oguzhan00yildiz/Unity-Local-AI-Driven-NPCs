@@ -261,6 +261,12 @@ namespace Whisper.Utils
             
             RecordStartMicDevice = SelectedMicDevice;
             _clip = Microphone.Start(RecordStartMicDevice, loop, maxLengthSec, frequency);
+            if (_clip == null)
+            {
+                // No microphone, or the device is busy. Stay idle so StopRecord does not run on a null clip.
+                Debug.LogWarning("[MicrophoneRecord] Microphone failed to start.");
+                return;
+            }
             IsRecording = true;
 
             _lastMicPos = 0;

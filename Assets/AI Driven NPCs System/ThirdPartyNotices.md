@@ -57,6 +57,9 @@ Whisper.unity bundles bindings and model architecture based on:
 - **whisper.cpp**: Georgi Gerganov and contributors (MIT License)
 - **OpenAI Whisper**: OpenAI (MIT License)
 
+**Changes in this package**:
+- `MicrophoneRecord.cs`: if `Microphone.Start` returns no clip (no microphone, or the device is busy), recording does not start and a warning is logged.
+
 ---
 
 ## 3. Piper TTS (piper-no-espeak-unity)

@@ -37,7 +37,7 @@ AI Driven NPCs System adds NPCs that listen, think and answer with a voice. Ever
 3. Open the demo scene and press Play.
 
 **Included**
-LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT), Piper TTS (MIT, modified) and ONNX Runtime 0.4.4 (MIT) are included in `ThirdParty/`. Do not import a second copy of these packages. See `ThirdPartyNotices.md` for licenses.
+LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT, modified), Piper TTS (MIT, modified) and ONNX Runtime 0.4.4 (MIT) are included in `ThirdParty/`. Do not import a second copy of these packages. See `ThirdPartyNotices.md` for licenses.
 
 **Downloads**
 - Model files come from Hugging Face during setup, after the user agrees: the Whisper tiny model, the phonemizer, 2 Piper voices and the Qwen3.5-0.8B model, about 770 MB in total.
@@ -96,7 +96,7 @@ THIRD-PARTY SOFTWARE
 
 Included in ThirdParty/. Do not import a second copy.
 - LLMUnity 3.0.3 (Apache 2.0)
-- Whisper.unity (MIT)
+- Whisper.unity (MIT, modified)
 - Piper TTS (MIT, modified)
 - ONNX Runtime and ONNX Runtime Unity 0.4.4 (MIT)
 Full license texts are in ThirdPartyNotices.md.
