@@ -158,7 +158,7 @@ namespace AISystem
 
         /// <summary>
         /// Moves full sentences from the stream buffer to the queue.
-        /// Sentence ends inside *actions* do not count. With final = true the rest is queued too.
+        /// Sentence ends inside *actions* do not count. A line break ends a sentence. With final = true the rest is queued too.
         /// </summary>
         private void FlushSentences(bool final)
         {
@@ -170,7 +170,19 @@ namespace AISystem
                 char c = _streamBuffer[i];
                 if (c == '*')
                 {
+                    // Wait for the next character to know what this asterisk is
+                    if (i + 1 >= _streamBuffer.Length) { if (!final) break; continue; }
+                    char next = _streamBuffer[i + 1];
+                    if (next == '*') { i++; continue; }                 // **bold** marker
+                    if (!inAction && char.IsWhiteSpace(next)) continue; // list bullet
                     inAction = !inAction;
+                    continue;
+                }
+
+                if (c == '\n' && !inAction)
+                {
+                    EnqueueSentence(_streamBuffer.ToString(start, i + 1 - start));
+                    start = i + 1;
                     continue;
                 }
 
@@ -291,11 +303,18 @@ namespace AISystem
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
-            // Remove text inside asterisks (roleplay cues like *laughs*, *sighs*)
-            string result = System.Text.RegularExpressions.Regex.Replace(text, @"\*.*?\*", "");
+            // Keep **bold** text, drop the markers
+            string result = System.Text.RegularExpressions.Regex.Replace(text, @"\*\*(.+?)\*\*", "$1");
 
-            // Remove an unclosed action at the end
-            result = System.Text.RegularExpressions.Regex.Replace(result, @"\*[^*]*$", "");
+            // Remove roleplay cues like *laughs*. A cue starts with * and a non-space and stays on one line,
+            // so list bullets ("* item") are not cues.
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\*[^*\s][^*\n]*?\*", "");
+
+            // Remove an unclosed cue at the end
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\*[^*\s][^*\n]*$", "");
+
+            // Remove list bullets and other leftover asterisks
+            result = result.Replace("*", "");
 
             // Remove markdown symbols (#, _, ~, `, [, ])
             result = System.Text.RegularExpressions.Regex.Replace(result, @"[#_`~\[\]]", "");
