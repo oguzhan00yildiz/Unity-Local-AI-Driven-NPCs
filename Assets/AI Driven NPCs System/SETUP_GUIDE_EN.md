@@ -1,6 +1,6 @@
-# AI Driven NPCs System — Setup Guide & User Manual
+# Local AI Driven NPCs System — Setup Guide & User Manual
 
-Welcome to the **AI Driven NPCs System**! This framework allows you to add fully local, on-device AI characters (Large Language Models, Speech-to-Text, and Text-to-Speech) into any Unity scene with zero manual cross-Inspector wiring.
+Welcome to the **Local AI Driven NPCs System**! This framework allows you to add fully local, on-device AI characters (Large Language Models, Speech-to-Text, and Text-to-Speech) into any Unity scene with zero manual cross-Inspector wiring.
 
 ---
 

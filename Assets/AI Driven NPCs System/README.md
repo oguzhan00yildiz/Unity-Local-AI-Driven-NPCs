@@ -1,4 +1,4 @@
-# AI Driven NPCs System — Documentation & Quick Start
+# Local AI Driven NPCs System — Documentation & Quick Start
 
 Adds **100% local, on-device AI NPCs** (LLM + Text-to-Speech + Speech-to-Text) to any Unity project.  
 Zero cloud subscriptions, zero network latency, complete data privacy.
@@ -8,7 +8,7 @@ Zero cloud subscriptions, zero network latency, complete data privacy.
 ## 📦 Installation
 
 1. Open **Window → Package Manager** and switch to **Packages: My Assets**.
-2. Import **AI Driven NPCs System**.
+2. Import **Local AI Driven NPCs System**.
 3. The **AI System Setup** window asks for permission, then downloads the required models.
 
 **Included in this package** (in `ThirdParty/`, see `ThirdPartyNotices.md`):

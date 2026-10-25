@@ -12,7 +12,7 @@ Talking NPCs that run fully on the player's PC. Local LLM, speech recognition an
 
 ## Description
 
-AI Driven NPCs System adds NPCs that listen, think and answer with a voice. Everything runs on the player's PC. No internet connection is needed after setup, and no player data leaves the machine.
+Local AI Driven NPCs System adds NPCs that listen, think and answer with a voice. Everything runs on the player's PC. No internet connection is needed after setup, and no player data leaves the machine.
 
 **How it works**
 - The player speaks or types. Whisper turns speech into text.
