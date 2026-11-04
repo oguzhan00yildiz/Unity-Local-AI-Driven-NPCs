@@ -14,11 +14,10 @@ Zero cloud subscriptions, zero network latency, complete data privacy.
 **Included in this package** (in `ThirdParty/`, see `ThirdPartyNotices.md`):
 - LLMUnity 3.0.3 (Apache 2.0), Piper TTS (MIT), Whisper Unity (MIT) and ONNX Runtime 0.4.4 (MIT).
 
-**Required Unity packages** (install them from the Package Manager before you import):
+**Required Unity packages** (listed as dependencies of the package, so Unity installs them on import):
 - **Input System** (`com.unity.inputsystem`). The runtime assembly needs it. Set **Project Settings → Player → Active Input Handling** to **Input System Package** or **Both**.
 - **uGUI** (`com.unity.ugui`). The chat UI uses it.
 - **Universal RP** (`com.unity.render-pipelines.universal`). Only the demo scene and prefabs need it. See [Render Pipeline](#-compatibility--system-requirements).
-
 - **Newtonsoft Json** (`com.unity.nuget.newtonsoft-json`). LLMUnity uses it.
 - **Collections** (`com.unity.collections`). ONNX Runtime Unity uses it for Piper TTS.
 
