@@ -1,240 +1,150 @@
-# 🤖 Local AI Driven NPCs System
+# Local AI Driven NPCs System
 
 [![Unity Version](https://img.shields.io/badge/Unity-6-blue.svg?logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg?logo=windows)](https://unity.com/)
-[![Local AI](https://img.shields.io/badge/AI-100%25%20Offline%20%26%20Local-purple.svg)](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs)
 [![Package Version](https://img.shields.io/badge/Package-v2.4.2-orange.svg)](AIPackageInstaller/package.json)
 
-A free, **100% on-device AI NPC system** for Unity. NPCs listen to the player, think and answer with a voice. Speech-to-Text (Whisper), a Large Language Model (LLMUnity) and Text-to-Speech (Piper) run as one chain on the player's computer.
+A free Unity package for NPCs that listen, think and talk. Three models run on the player's computer:
 
-> 🔒 **100% Local & Private**: No cloud APIs and no API fees. The package collects no data. It only connects to Hugging Face to download the models during setup.
+- **Whisper** turns the player's speech into text ([whisper.unity](https://github.com/Macoron/whisper.unity)).
+- **An LLM** writes the answer ([LLMUnity](https://github.com/undreamai/LLMUnity), any GGUF model).
+- **Piper** speaks the answer ([piper-no-espeak-unity](https://github.com/lookbe/piper-no-espeak-unity)).
 
----
+No cloud API and no API fees. The package collects no data. It only connects to Hugging Face to download the models.
 
-## 🌟 Key Features
+## Install
 
-- 💬 **Local LLMs on CPU/GPU**: [LLMUnity](https://github.com/undreamai/LLMUnity) (llama.cpp) runs any GGUF model (**Qwen 3.5**, **Llama 3**, **Mistral**, **Phi-3**, etc.). GPU mode uses CUDA or Vulkan and falls back to the CPU.
-- 🎙️ **Local Speech Recognition (STT)**: [Whisper Unity](https://github.com/Macoron/whisper.unity) with voice activity detection. Recording stops after 1 second of silence.
-- 🗣️ **Neural Text-to-Speech (TTS)**: [Piper TTS](https://github.com/lookbe/piper-no-espeak-unity) speaks the answer sentence by sentence while the LLM is still writing. Each NPC can have its own voice.
-- 🎭 **ScriptableObject Personality Presets**: Set the NPC name, system prompt and voice in the Inspector. Two presets come ready: **Grumpy Guard** and **Helpful Guide**.
-- ⚡ **One-Click Setup Window**: Downloads all models, installs what is needed and sets the default model on the LLM prefab.
-- 🎯 **Modular Architecture**: Separate services (`AISystemManager`, `VoiceInputService`, `VoiceOutputService`, `ChatUIController`, `NPCAgent`) bind at runtime. Use only the parts you need, for example the chat panel without the microphone.
-- ⌨️ **Text Chat**: Players can also type to the NPC in the chat panel.
+### Asset Store (recommended)
 
----
+LLMUnity, Whisper, Piper and ONNX Runtime come bundled in `ThirdParty/`.
 
-## ⚡ Quick Setup
-
-### Option A: Unity Asset Store (recommended)
-
-The Asset Store version bundles LLMUnity, Whisper, Piper and ONNX Runtime in `ThirdParty/`. No Git or npm setup is needed.
-
-1. Get the package from the [Unity Asset Store](https://assetstore.unity.com/packages/slug/405036) and import it. Confirm the required Unity packages when Unity asks.
-2. Click **Import** in the import window.
-3. Click **Download** when the **AI System Setup** window asks to download the models. You can cancel the download.
+1. Import the package from the [Unity Asset Store](https://assetstore.unity.com/packages/slug/405036). Confirm the Unity packages when asked.
+2. Click **Import**.
+3. Click **Download** in the **AI System Setup** window. You can cancel the download.
 4. Open `Assets/AI Driven NPCs System/Scenes/AIOScene.unity`.
 5. Press **Play**, walk to an NPC and press **E**.
 
-> ⚠️ **Conflict:** Remove any separate copies of LLM for Unity, Piper, Whisper or ONNX Runtime (`com.github.asus4.onnxruntime`) first. Two copies cause duplicate assembly errors.
+Remove other copies of LLMUnity, Piper, Whisper or ONNX Runtime first. Two copies cause duplicate assembly errors.
 
-### Option B: Git URL (Unity Package Manager)
+### Git URL
 
-1. In Unity, open **Window → Package Manager**.
-2. Click **+** → **Add package from git URL…** and paste:
+1. In **Window → Package Manager**, click **+** → **Add package from git URL…** and paste:
    ```text
    https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
    ```
-3. The installer adds the npm registry for ONNX Runtime and installs LLMUnity, Piper and Whisper from Git.
-4. In **Package Manager**, select **AI Driven NPCs System** → **Samples** → **Import**.
-5. Open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity` and press **Play**.
+2. The installer adds the npm registry for ONNX Runtime and installs LLMUnity, Piper and Whisper from Git.
+3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity`.
 
-> ⚠️ **Important:** Keep the Unity Editor open and focused during setup. Unity can pause background downloads when it loses focus.
+Keep Unity focused during setup. Unity can pause downloads in the background.
 
-### Downloaded Models
+### Downloaded models
 
-The setup window downloads 9 files to `Assets/StreamingAssets/` and assigns them to the prefabs:
+The setup downloads 9 files to `Assets/StreamingAssets/`:
 
-| Component | Model / Asset | Size | Purpose |
-| :--- | :--- | :--- | :--- |
-| **STT** | `Whisper/ggml-tiny.bin` | 74 MB | Speech-to-text |
-| **TTS Core** | `PiperTTS/model.onnx` + `phoneme_dict.json` + `tokenizer.json` | ~70 MB | Phonemizer and tokenizer |
-| **Voices** | `en_US-bryce-medium` (male) and `en_US-ljspeech-medium` (female) | 61 MB each | Voices of the two demo NPCs |
-| **LLM** | `Qwen3.5-0.8B-Q4_K_M.gguf` | 508 MB | Default language model |
+| Stage | Files | Size |
+| :--- | :--- | :--- |
+| STT | `Whisper/ggml-tiny.bin` | 74 MB |
+| TTS core | `PiperTTS/model.onnx`, `phoneme_dict.json`, `tokenizer.json` | ~70 MB |
+| Voices | `en_US-bryce-medium`, `en_US-ljspeech-medium` (+ `.json`) | 61 MB each |
+| LLM | `Qwen3.5-0.8B-Q4_K_M.gguf` | 508 MB |
 
-The default LLM is small and fast. It works on the CPU alone. For a real game, use a bigger model and a stronger system prompt. Small models drop out of their role more often.
+The default LLM is small and runs on the CPU. Small models drop out of their role more often. For a real game, use a bigger model: select the `LLM` object in the `AISystem` prefab and pick a model in the **Model** dropdown.
 
-#### 🔄 Use a Different LLM
-1. In the scene, expand the `AISystem` prefab and select the **`LLM`** GameObject.
-2. On the **`LLM`** component, open the **Model** dropdown:
-   - **Download Presets:** Download popular models in Unity (Llama 3, Mistral, Gemma, Phi-3, etc.).
-   - **Custom Model:** Select or drag any `.gguf` file.
-3. Press **Play**.
-
----
-
-## 🏗️ Architecture Overview
-
-`AISystemManager` sits in the middle and passes data between the services. Whisper returns an event, LLMUnity streams tokens and Piper plays a queue of sentences.
+## How it works
 
 ```mermaid
 graph TD
-    Player[Player Character] -->|Press E| NPCAgent[NPCAgent Component]
-    NPCAgent -->|OpenChat| Manager[AISystemManager Singleton]
-
-    Manager -->|Listening| VoiceIn[VoiceInputService - Whisper STT]
-    VoiceIn -->|OnTranscription| Manager
-    UI[ChatUIController] -->|OnSendMessage typed text| Manager
-
-    Manager -->|Prompt + personality preset| LLM[LLMAgent / LLMUnity]
-    LLM -->|Thinking: streamed tokens| Manager
-    Manager -->|Streamed text| UI
-    Manager -->|Streamed text| VoiceOut[VoiceOutputService - Piper TTS]
-    VoiceOut -->|Talking: sentence queue| Audio[3D AudioSource]
-    Audio -->|Finished| Manager
+    Player -->|Press E| NPCAgent
+    NPCAgent -->|OpenChat| Manager[AISystemManager]
+    VoiceIn[VoiceInputService / Whisper] -->|OnTranscription| Manager
+    UI[ChatUIController] -->|Typed text| Manager
+    Manager -->|Prompt + preset| LLM[LLMAgent]
+    LLM -->|Streamed tokens| Manager
+    Manager --> UI
+    Manager --> VoiceOut[VoiceOutputService / Piper]
+    VoiceOut -->|Finished| Manager
 ```
 
-The chat panel shows the NPC state: **Listening**, **Thinking** or **Talking**. The microphone is off while the NPC thinks and talks, so the NPC does not hear its own voice. Whisper and the LLM warm up when the scene loads, so the first answer has no extra delay. The player can end a conversation by walking away.
+- The chat panel shows the NPC state: **Listening**, **Thinking** or **Talking**.
+- Recording stops after 1 second of silence. The microphone is off while the NPC thinks and talks.
+- Piper speaks each sentence while the LLM still writes the next one.
+- Whisper and the LLM load when the scene starts, so the first answer has no extra delay.
+- The player can type in the chat panel. The chat panel works without the microphone.
+- Walking away ends the conversation.
 
-### Core Scripts
+| Script | Job |
+| :--- | :--- |
+| [`AISystemManager`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/AISystemManager.cs) | Passes data between the services. Handles the chat, cursor and player movement. |
+| [`ModelBootstrapper`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/ModelBootstrapper.cs) | Loads Whisper and the LLM when the scene starts. |
+| [`NPCAgent`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCAgent.cs) | Interaction area, prompt cue and personality preset of one NPC. |
+| [`VoiceInputService`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceInputService.cs) | Microphone, silence detection and Whisper. |
+| [`VoiceOutputService`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceOutputService.cs) | Splits text at `.` `!` `?` and plays it through Piper. |
+| [`ChatUIController`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/UI/ChatUIController.cs) | Chat history, text input, microphone choice and mute. |
 
-| Component | Role | Description |
-| :--- | :--- | :--- |
-| [`AISystemManager.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/AISystemManager.cs) | **Coordinator** | Central singleton. Manages the chat lifecycle, cursor lock, player movement and events. |
-| [`ModelBootstrapper.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Core/ModelBootstrapper.cs) | **Warmup** | Warms up the LLM and Whisper models in the background when the scene loads. |
-| [`NPCAgent.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCAgent.cs) | **NPC** | On the NPC GameObject. Handles the interaction area, the prompt cue and the personality preset. |
-| [`NPCPersonalityPreset.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCPersonalityPreset.cs) | **Preset** | ScriptableObject with the NPC name, system prompt and voice. |
-| [`VoiceInputService.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceInputService.cs) | **Speech-to-Text** | Microphone capture, silence detection and Whisper transcription. |
-| [`VoiceOutputService.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceOutputService.cs) | **Text-to-Speech** | Cleans the text, splits it at `.` `!` `?` and plays the sentences through Piper. |
-| [`ChatUIController.cs`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/UI/ChatUIController.cs) | **UI** | Chat history, streamed text, input field, microphone selection and mute button. |
+## NPC personalities
 
----
+1. **Create → AI System → Personality Preset**.
+2. Set **NPC Name**, **System Prompt** and **Voice**:
+   ```text
+   You are Captain Valerie, a sky pirate. Speak with confidence.
+   Keep your answers under 2 sentences. Do not use emojis.
+   ```
+3. Drag the preset into the **Personality Preset** field of `NPCAgent`. It sets the prompt and the voice.
 
-## 🎭 Creating Custom NPC Personalities
+The package ships two presets: Grumpy Guard (voice bryce) and Helpful Guide (voice ljspeech). Give each NPC a name in the prompt. Without one, small models answer with their own model name.
 
-1. Right-click in the Project view: **Create → AI System → Personality Preset**.
-2. Set the fields:
-   - **NPC Name**: e.g., `Captain Valerie`
-   - **System Prompt**:
-     ```text
-     You are Captain Valerie, a battle-hardened sky pirate.
-     Speak with confidence and a pirate flair. Keep your answers under 2 sentences. Do not use emojis.
-     ```
-   - **Voice**: e.g., `en_US-bryce-medium` or `en_US-ljspeech-medium`.
-3. Drag the preset into the **Personality Preset** field of the NPC's `NPCAgent`. The preset sets both the system prompt and the voice.
+## C# API
 
-Give the NPC a name in the prompt. Without a name, small models answer with their own model name.
-
----
-
-## 💻 C# API Reference
-
-### 1. Start a Conversation From Code
 ```csharp
-using AISystem;
-using UnityEngine;
+// Open a conversation with an NPC
+AISystemManager.Instance.OpenChat(targetNPC);
 
-public class QuestDialogueTrigger : MonoBehaviour
-{
-    [SerializeField] private NPCAgent targetNPC;
+// Ask the LLM directly, with streaming
+string reply = await llmAgent.Chat(prompt,
+    callback: partial => Debug.Log(partial),
+    completionCallback: () => Debug.Log("Done"));
 
-    public void OnQuestTargetReached()
-    {
-        // Opens the chat panel, locks player controls and starts listening
-        AISystemManager.Instance.OpenChat(targetNPC);
-    }
-}
+// Speak any text with a Piper voice
+voiceOutput.Speak("Welcome, traveller.", "en_US-bryce-medium");
 ```
 
-### 2. Direct LLM Query (Streaming)
-```csharp
-using LLMUnity;
-using UnityEngine;
+## Editor tools
 
-public class CustomAIQuery : MonoBehaviour
-{
-    [SerializeField] private LLMAgent llmAgent;
+Menu **Tools → AI Packages**:
 
-    public async void AskQuestion(string prompt)
-    {
-        string reply = await llmAgent.Chat(
-            prompt,
-            callback: partial => Debug.Log($"Streamed: {partial}"),
-            completionCallback: () => Debug.Log("Response completed!")
-        );
-    }
-}
-```
+- **AI System Setup**: setup status and model downloads. Opens after import.
+- **Download Model Files**: downloads missing models.
+- **Voice Browser**: downloads or deletes 9 Piper voices. All are public domain or CC0, so they can ship in commercial games.
+- **System Health & GPU**: shows GPU, VRAM, CPU and RAM. One switch moves the LLM to the GPU.
+- **Force Install Dependencies**: Git URL version only.
 
-### 3. Speak Custom Text
-```csharp
-using AISystem;
-using UnityEngine;
+## Requirements
 
-public class AnnouncerSystem : MonoBehaviour
-{
-    [SerializeField] private VoiceOutputService voiceOutput;
+- Unity 6 (6000.0) or newer.
+- Windows 10/11 64-bit. Other platforms are not supported.
+- English. Whisper and Piper are set up for English only.
+- URP for the demo scene. The scripts also work in Built-in and HDRP.
+- 8 GB RAM, 16 GB recommended.
+- Optional GPU with 4 GB+ VRAM: NVIDIA (CUDA) or AMD (Vulkan). Without one, the LLM runs on the CPU.
 
-    public void Announce(string message)
-    {
-        // Splits the text into sentences and plays them through Piper
-        voiceOutput.Speak(message, "en_US-bryce-medium");
-    }
-}
-```
+## Responsible use
 
----
+The package does not filter model answers. Put your rules in the preset's system prompt or add a filter. Tell players that NPC answers come from an LLM.
 
-## 🛠️ Editor Tools
+## Roadmap
 
-All tools are under **Tools → AI Packages**:
+- NPC actions: the LLM turns the player's words into game commands, for example "give drink".
 
-- **AI System Setup**: Opens on its own after import. Shows the setup status and downloads the models.
-- **Download Model Files**: Downloads the missing model files.
-- **Voice Browser**: Downloads or deletes Piper voices with one click. All 9 listed voices are public domain or CC0, so they can ship in commercial games: LJSpeech, LJSpeech High, Kristin, Kathleen, Bryce, John, Norman, Joe and Ibrahim.
-- **System Health & GPU**: Shows the GPU, VRAM, CPU and RAM. One switch moves all LLM layers to the GPU.
-- **Force Install Dependencies** (Git URL version only): Runs the package installer again.
+## License
 
----
+MIT. Bundled tools keep their own licences, listed in [ThirdPartyNotices.md](Assets/AI%20Driven%20NPCs%20System/ThirdPartyNotices.md):
+[LLMUnity](https://github.com/undreamai/LLMUnity) (Apache 2.0),
+[whisper.unity](https://github.com/Macoron/whisper.unity) (MIT),
+[piper-no-espeak-unity](https://github.com/lookbe/piper-no-espeak-unity) (MIT) with [Piper](https://github.com/rhasspy/piper) voices,
+[ONNX Runtime Unity](https://github.com/asus4/onnxruntime-unity) (MIT),
+[Qwen3.5-0.8B GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF) (Apache 2.0).
 
-## 🔧 System Requirements & Scope
+## Contact
 
-- **Unity**: Unity 6 (6000.0) or newer. Most work was done on 6000.3.
-- **Render Pipeline**: The demo scene and prefabs use URP. The scripts also work in Built-in and HDRP with your own scene.
-- **Unity packages**: Input System, uGUI, URP, Newtonsoft Json and Collections. Unity installs them as dependencies.
-- **Operating System**: Windows 10/11 64-bit. Other platforms are not supported.
-- **Language**: Whisper and Piper are set up for English. The LLM can answer in other languages, but the full chain was tested in English only.
-- **RAM**: 8 GB minimum (16 GB recommended).
-- **GPU (optional)**: NVIDIA (CUDA) or AMD (Vulkan) with 4 GB+ VRAM for faster answers.
-
----
-
-## ⚖️ Responsible Use
-
-The package does not filter model answers. The developer is responsible for what the NPC says. Write your rules into the preset's system prompt or add your own filter. Tell players that NPC answers are generated at runtime by an LLM.
-
----
-
-## 🗺️ Roadmap
-
-- **NPC actions**: The LLM turns the player's words into game commands, for example "give drink".
-
----
-
-## 📄 License & Attributions
-
-This project uses the **MIT License**. The bundled tools keep their own licences. See [ThirdPartyNotices.md](Assets/AI%20Driven%20NPCs%20System/ThirdPartyNotices.md).
-
-- [LLMUnity](https://github.com/undreamai/LLMUnity) by undreamai (Apache 2.0).
-- [whisper.unity](https://github.com/Macoron/whisper.unity) by Macoron (MIT).
-- [piper-no-espeak-unity](https://github.com/lookbe/piper-no-espeak-unity) by lookbe (MIT). [Piper](https://github.com/rhasspy/piper) voices by Rhasspy.
-- [ONNX Runtime Unity](https://github.com/asus4/onnxruntime-unity) by asus4 (MIT).
-- [Qwen3.5-0.8B GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF) by Qwen Team and Unsloth (Apache 2.0).
-
----
-
-## 💬 Support & Contact
-
-- **Issues & Bug Reports:** [GitHub Issues](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs/issues)
-- **Email Support:** [oguzhan00yildiz@gmail.com](mailto:oguzhan00yildiz@gmail.com)
-- **Author:** Oguzhan Yildiz
+[GitHub Issues](https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs/issues) · [oguzhan00yildiz@gmail.com](mailto:oguzhan00yildiz@gmail.com) · Oguzhan Yildiz
