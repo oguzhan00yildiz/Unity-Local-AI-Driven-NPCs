@@ -51,11 +51,11 @@ namespace AISystem.Editor
         
         if (hasWhisper)
         {
-            EditorGUILayout.LabelField("Whisper DLLs:", $"✅ Found ({whisperLocation})");
+            EditorGUILayout.LabelField("Whisper DLLs:", $"Found ({whisperLocation})");
         }
         else
         {
-            EditorGUILayout.LabelField("Whisper DLLs:", "❌ Missing (Did package install correctly?)");
+            EditorGUILayout.LabelField("Whisper DLLs:", "Missing. Re-import the package.");
         }
 
         EditorGUILayout.Space();
@@ -188,8 +188,8 @@ namespace AISystem.Editor
             }
         }
 
-        // 4. Check Assets/ folder (legacy / embedded package)
-        string assetPath = Path.Combine(Application.dataPath, "com.whisper.unity", "Plugins", "Windows", "libwhisper.dll");
+        // 4. Check the bundled copy under the asset root
+        string assetPath = Path.Combine(Application.dataPath, "AI Driven NPCs System", "ThirdParty", "Whisper", "Plugins", "Windows", "libwhisper.dll");
         if (File.Exists(assetPath)) return "Assets";
 
         // 5. Fallback: check if Whisper assembly is compiled & loaded

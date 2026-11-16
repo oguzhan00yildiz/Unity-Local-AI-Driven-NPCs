@@ -92,8 +92,8 @@ namespace AISystem
                 if (Directory.Exists(playerPlugins)) return playerPlugins;
             }
 
-            // Direct Assets folder
-            string assetPlugins = Path.Combine(Application.dataPath, "com.whisper.unity", "Plugins", "Windows");
+            // Bundled copy under the asset root
+            string assetPlugins = Path.Combine(Application.dataPath, "AI Driven NPCs System", "ThirdParty", "Whisper", "Plugins", "Windows");
             if (Directory.Exists(assetPlugins)) return assetPlugins;
 
             string projectRoot = Directory.GetParent(Application.dataPath)?.FullName;

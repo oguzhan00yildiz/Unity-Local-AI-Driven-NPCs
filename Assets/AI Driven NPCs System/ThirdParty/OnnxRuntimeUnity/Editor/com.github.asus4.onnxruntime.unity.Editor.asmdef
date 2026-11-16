@@ -1,0 +1,24 @@
+{
+    "name": "com.github.asus4.onnxruntime.unity.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:effe5775fa53c49a39f54ea0433a395b"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.sentis",
+            "expression": "",
+            "define": "ORT_UNITY_SENTIS_ENABLED"
+        }
+    ],
+    "noEngineReferences": false
+}

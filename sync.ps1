@@ -1,5 +1,6 @@
-# Sync-DirectoryContents helper: mirrors files from $src to $dst and prunes deletions
-function Sync-DirectoryContents ($src, $dst) {
+# Sync-DirectoryContents helper: mirrors files from $src to $dst and prunes deletions.
+# $exclude lists paths relative to $src that are neither copied nor pruned (the $dst copy is kept).
+function Sync-DirectoryContents ($src, $dst, [string[]]$exclude = @()) {
     if (-not (Test-Path $src)) { return }
     if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
 
@@ -21,12 +22,28 @@ function Sync-DirectoryContents ($src, $dst) {
         }
     }
 
-    Copy-Item -Path "$src\*" -Destination "$dst\" -Recurse -Force
+    if ($exclude.Count -eq 0) {
+        Copy-Item -Path "$src\*" -Destination "$dst\" -Recurse -Force
+        return
+    }
+
+    Get-ChildItem -Path $src -Recurse -File | ForEach-Object {
+        $rel = $_.FullName.Substring($srcResolved.Length).TrimStart('\', '/')
+        if ($exclude -contains $rel) { return }
+        $target = Join-Path $dstResolved $rel
+        New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+        Copy-Item -Path $_.FullName -Destination $target -Force
+    }
 }
 
 # 1. Sync internal package
+# AIPackageInstaller\Editor is not synced: it keeps the git installer for the UPM version.
+# The Asset Store Editor folder has no git installer.
 Write-Host 'Syncing to AIPackageInstaller...'
-Sync-DirectoryContents -src 'Assets\AI Driven NPCs System\Editor' -dst 'AIPackageInstaller\Editor'
+
+# Files that use the modified ThirdParty PiperTTS (clip queue, IsPlaying, OnPlaybackFinished, StopPlayback).
+# The UPM version installs Piper from git without these members, so it keeps its own copy.
+$upmExcludedScripts = @('AISystem\Services\VoiceOutputService.cs')
 
 $srcBase = 'Assets\AI Driven NPCs System'
 if (-not (Test-Path "$srcBase\Scripts") -and (Test-Path "$srcBase\.staging~\Scripts")) {
@@ -34,7 +51,7 @@ if (-not (Test-Path "$srcBase\Scripts") -and (Test-Path "$srcBase\.staging~\Scri
 }
 
 if (Test-Path "$srcBase\Scripts") {
-    Sync-DirectoryContents -src "$srcBase\Scripts" -dst 'AIPackageInstaller\Samples~\Scripts'
+    Sync-DirectoryContents -src "$srcBase\Scripts" -dst 'AIPackageInstaller\Samples~\Scripts' -exclude $upmExcludedScripts
 }
 if (Test-Path "$srcBase\Prefabs") {
     Sync-DirectoryContents -src "$srcBase\Prefabs" -dst 'AIPackageInstaller\Samples~\Prefabs'

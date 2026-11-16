@@ -1,0 +1,20 @@
+{
+    "name": "AIDrivenNPCs.Runtime",
+    "rootNamespace": "AISystem",
+    "references": [
+        "undream.llmunity.Runtime",
+        "PiperTTS",
+        "com.whisper.unity",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,6 +1,14 @@
-# AI Driven NPCs System — Setup Guide & User Manual
+# Local AI Driven NPCs System — Setup Guide & User Manual
 
-Welcome to the **AI Driven NPCs System**! This framework allows you to add fully local, on-device AI characters (Large Language Models, Speech-to-Text, and Text-to-Speech) into any Unity scene with zero manual cross-Inspector wiring.
+Welcome to the **Local AI Driven NPCs System**! This framework allows you to add fully local, on-device AI characters (Large Language Models, Speech-to-Text, and Text-to-Speech) into any Unity scene with zero manual cross-Inspector wiring.
+
+---
+
+## ✅ Requirements
+
+- **Input System** package installed. Set **Project Settings → Player → Active Input Handling** to **Input System Package** or **Both**.
+- **uGUI** package installed.
+- **Universal RP** for the demo scene and prefabs. They use URP materials and the URP camera and light components. In Built-in or HDRP projects, use your own scene, camera and characters, and add the `AISystem` prefab and `NPCAgent` as shown below.
 
 ---
 

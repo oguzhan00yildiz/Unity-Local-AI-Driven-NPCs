@@ -1,0 +1,18 @@
+{
+    "name": "com.github.asus4.onnxruntime.unity",
+    "rootNamespace": "",
+    "references": [
+        "GUID:8600c83db57f44fe2aa05f4cf22420bf",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:d8b63aba1907145bea998dd612889d6b"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

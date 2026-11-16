@@ -63,8 +63,12 @@ namespace AISystem
 
             GUILayout.Space(10);
             
-            // Draw default inspector for remaining fields
-            DrawDefaultInspector();
+            // Draw remaining fields; the template field is drawn above
+            serializedObject.Update();
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"));
+            DrawPropertiesExcluding(serializedObject, "m_Script", nameof(NPCAgent.personalityPreset));
+            serializedObject.ApplyModifiedProperties();
         }
     }
 }

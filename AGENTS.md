@@ -10,6 +10,10 @@ The runtime scripts and package assets exist in two mirrored locations:
 > **CRITICAL INSTRUCTION FOR AI AGENTS:**
 > Whenever you create, modify, or delete any script in `Assets/AI Driven NPCs System/`, you **MUST** immediately apply the exact same changes to `AIPackageInstaller/` (or run `.\sync.ps1`). Never leave one location updated while the other is outdated.
 
+> **Asset Store vs UPM:** The Asset Store build bundles Piper, Whisper and ONNX in `ThirdParty/` and has no git installer. `AIPackageInstaller/` keeps the old git installer for the UPM version. `.\sync.ps1` handles this:
+> - `AIPackageInstaller/Editor/` is never synced. It keeps the git installer.
+> - Scripts listed in `$upmExcludedScripts` keep their UPM copy. They use the modified `ThirdParty/PiperTTS` (clip queue, `IsPlaying`, `OnPlaybackFinished`, `StopPlayback`), which the git Piper does not have. Edit the UPM copy of these files by hand.
+
 ### 2. Live Synchronization to Local Test Project (`c:\Projects\AITest\`)
 To allow immediate testing in `AITest` without requiring re-pulling or reinstalling the package:
 - **Package & Editor Changes:** Whenever any file in `Assets/AI Driven NPCs System/Editor/` or `AIPackageInstaller/` is modified, immediately sync it to the active package cache directory in `c:\Projects\AITest\Library\PackageCache\com.yildizoguzhan.ai-driven-npcs@*\`.

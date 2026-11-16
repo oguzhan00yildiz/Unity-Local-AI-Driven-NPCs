@@ -1,6 +1,14 @@
-# AI Driven NPCs System — Setup Guide & User Manual
+# Local AI Driven NPCs System — Setup Guide & User Manual
 
-Welcome to the **AI Driven NPCs System**! This framework allows you to add fully local, on-device AI characters (Large Language Models, Speech-to-Text, and Text-to-Speech) into any Unity scene with zero manual cross-Inspector wiring.
+Welcome to the **Local AI Driven NPCs System**! This framework allows you to add fully local, on-device AI characters (Large Language Models, Speech-to-Text, and Text-to-Speech) into any Unity scene with zero manual cross-Inspector wiring.
+
+---
+
+## ✅ Requirements
+
+- **Input System** package installed. Set **Project Settings → Player → Active Input Handling** to **Input System Package** or **Both**.
+- **uGUI** package installed.
+- **Universal RP** for the demo scene and prefabs. They use URP materials and the URP camera and light components. In Built-in or HDRP projects, use your own scene, camera and characters, and add the `AISystem` prefab and `NPCAgent` as shown below.
 
 ---
 
@@ -59,7 +67,7 @@ Personalities are configured via **ScriptableObject presets**, allowing you to c
      You are Captain Valerie, a witty and fearless pirate captain.
      You speak with a maritime flair. Keep answers concise (under 2 sentences).
      ```
-   - **Voice Model Name**: The Piper TTS voice identifier (e.g., `en_US-amy-low`, `en_US-reza_ibrahim-medium`).
+   - **Voice Model Name**: The Piper TTS voice identifier (e.g., `en_US-ljspeech-medium`, `en_US-bryce-medium`).
 
 ### Applying the Preset:
 1. Select your NPC GameObject in the Hierarchy.
@@ -84,12 +92,9 @@ The system is preconfigured with **`Qwen3.5-0.8B-Q4_K_M.gguf`** (~500 MB) for ul
 
 Piper TTS includes high-performance neural voice models. To download more character voices:
 1. Open **Tools → AI Packages → Voice Browser**.
-2. Browse available voices:
-   - `Amy` (English Female, Low)
-   - `Ibrahim` (English Male, Medium)
-   - `LJSpeech` (English Female, High)
-   - `Jenny` (English Female, Medium)
-   - `Ryan` (English Male, High)
+2. Browse available voices (all public domain or CC0):
+   - Female: `LJSpeech`, `LJSpeech High`, `Kristin`, `Kathleen`
+   - Male: `Bryce`, `John`, `Norman`, `Joe`, `Ibrahim`
 3. Click **Download** next to any voice. Models are saved directly to `Assets/StreamingAssets/PiperTTS/`.
 4. Assign the voice name in your NPC's personality preset or `NPCAgent.voiceModelName`.
 
@@ -124,7 +129,8 @@ The system works out of the box with both the **New Input System** and the **Leg
 | NPC does not respond to proximity | Player missing tag | Ensure your Player GameObject has the tag `"Player"`. |
 | Voice input not capturing speech | Microphone permissions or silent input | Verify your default microphone in Windows Sound Settings or select it in the chat UI dropdown. |
 | Audio has no speech output | TTS voice model missing | Open **Tools → AI Packages → AI System Setup** or **Voice Browser** to download the voice files. |
-| Re-run package or model installation | Need fresh dependencies | Open **Tools → AI Packages → AI System Setup** or click **Tools → AI Packages → Force Install Dependencies**. |
+| Duplicate assembly errors after import | A second copy of LLMUnity, Piper, Whisper or ONNX Runtime is in the project | Remove the separate copy. This package already includes all four in `ThirdParty/`. |
+| Re-run model installation | Need fresh model files | Open **Tools → AI Packages → AI System Setup**. |
 
 ---
 

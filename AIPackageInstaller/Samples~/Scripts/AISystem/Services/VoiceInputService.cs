@@ -139,8 +139,9 @@ namespace AISystem
                 return;
             }
 
-            _isListening = true;
             microphoneRecord.StartRecord();
+            if (!microphoneRecord.IsRecording) return;
+            _isListening = true;
             SetVadIndicator(colorReady);
             Debug.Log("[VoiceInput] Listening started.");
         }

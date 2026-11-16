@@ -126,7 +126,7 @@ namespace AISystem
             if (voiceInput != null && chatUI != null)
                 chatUI.SetMicMuted(voiceInput.IsMuted);
 
-            chatUI?.Open(npc.NPCName);
+            chatUI?.Open(npc.NPCName, npc);
             voiceInput?.StartListening();
 
             npc.SetChatActive(true);
@@ -203,10 +203,11 @@ namespace AISystem
             _currentNPC?.SetPromptText("Thinking");
 
             // Display player message and indicate waiting state in Chat UI
-            chatUI?.AddMessage("Player", message);
+            chatUI?.AddMessage(chatUI.playerSenderName, message);
             chatUI?.SetWaiting(true);
 
             string fullResponse = string.Empty;
+            int spokenLength     = 0;             // chars of the response already sent to TTS
             var npcForCallback   = _currentNPC;   // capture before await
 
             await _currentNPC.Agent.Chat(
@@ -214,12 +215,19 @@ namespace AISystem
                 partial =>
                 {
                     fullResponse = partial;
-                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", partial);
+                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", VoiceOutputService.CleanTextForDisplay(partial), npcForCallback);
+
+                    // Speak each sentence as soon as it is generated; skip if the session was closed
+                    if (_currentNPC != null && partial.Length > spokenLength)
+                    {
+                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npcForCallback?.voiceModelName);
+                        spokenLength = partial.Length;
+                    }
                 },
                 () =>
                 {
                     _isWaitingForResponse = false;
-                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", fullResponse);
+                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", VoiceOutputService.CleanTextForDisplay(fullResponse), npcForCallback);
                     chatUI?.SetWaiting(false);
 
                     // Guard: session may have been closed while LLM was generating
@@ -227,7 +235,7 @@ namespace AISystem
                     if (_currentNPC == null) return;
 
                     if (!string.IsNullOrWhiteSpace(fullResponse))
-                        voiceOutput?.Speak(fullResponse, npcForCallback?.voiceModelName);
+                        voiceOutput?.EndSpeech();
                     else
                     {
                         npcForCallback?.SetPromptText("Listening");
