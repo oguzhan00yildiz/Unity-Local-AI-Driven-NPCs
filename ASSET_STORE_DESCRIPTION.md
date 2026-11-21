@@ -22,14 +22,17 @@ Local AI Driven NPCs System adds NPCs that listen, think and answer with a voice
 **Features**
 - Drag the AISystem prefab into a scene, then add the NPC prefab or the NPCAgent component to any character.
 - No Inspector wiring between components.
-- Personality presets as ScriptableObjects: name, system prompt and voice. Two sample presets are included.
+- Personality presets as ScriptableObjects: name, system prompt and voice. 12 sample presets are included.
 - A different voice and a separate chat history for each NPC.
-- Chat panel with text input, voice input, microphone selection and mute.
+- Chat panel with text input, voice input, microphone selection and mute, or push-to-talk with subtitles.
+- NPC actions: the LLM triggers UnityEvents (follow, open a gate, give a quest) from the conversation.
 - Voice activity detection: the NPC hears the player when the player stops talking.
 - Voice Browser window with 9 English voices, all public domain or CC0.
 - System Health window shows GPU, VRAM and CPU, and turns GPU offload on or off.
 - Use any GGUF model. The default is Qwen3.5-0.8B (Apache 2.0), about 500 MB.
 - Demo scene with a third-person player and an NPC.
+- DemoQuest: a short village quest. Talk to the elder, convince the gate guard, fight skeletons with your companion and bring back a stolen stone. 15 villagers, 9 voices, 3D speech, music and sound effects. Every line is written live by the local LLM.
+- Quest actions fire from the player's words, so an NPC's reply always matches what happens in the game (for example a guard opening a gate).
 
 **Setup**
 1. Import the package.
@@ -41,6 +44,7 @@ LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT, modified), Piper TTS (MIT, modi
 
 **Downloads**
 - Model files come from Hugging Face during setup, after the user agrees: the Whisper tiny model, the phonemizer, 2 Piper voices and the Qwen3.5-0.8B model, about 770 MB in total.
+- DemoQuest uses bigger models, offered only when that scene is in the project: Qwen3.5-4B (2.7 GB), Whisper small.en (490 MB) and 6 more voices (380 MB).
 - LLMUnity downloads the LlamaLib native libraries from GitHub the first time it runs.
 - Builds include the downloaded model files from `StreamingAssets`, so players download nothing.
 
@@ -54,10 +58,11 @@ PACKAGE CONTENTS
 - Full C# source code
 - Services: AISystemManager, VoiceInputService, VoiceOutputService, NPCAgent, ChatUIController
 - Prefabs: AISystem, NPC, LLM, Player
-- Personality presets as ScriptableObjects (2 samples included)
+- Personality presets as ScriptableObjects (12 samples included)
 - Chat panel with streaming text, voice input, microphone selection and mute
 - Editor windows: AI System Setup (model downloads), Voice Browser (extra voices), System Health (GPU offload)
 - Demo scene with a third-person player and an NPC
+- DemoQuest scene: village quest with 15 characters, combat, music and sound effects (CC0 art and audio)
 - Documentation: README.md and SETUP_GUIDE_EN.md
 
 
@@ -77,7 +82,7 @@ HARDWARE REQUIREMENTS
 
 - RAM: 8 GB minimum, 16 GB recommended
 - CPU: 4 cores minimum. Runs on the CPU only.
-- GPU: optional. NVIDIA or AMD with 4 GB VRAM or more for faster replies.
+- GPU: optional. NVIDIA or AMD with 4 GB VRAM or more for faster replies. DemoQuest with its 4B model: 6 GB VRAM recommended.
 - Storage: about 1 GB for the models
 
 
@@ -89,6 +94,7 @@ The setup window downloads these files to Assets/StreamingAssets after the user 
 - Qwen3.5-0.8B Q4_K_M (language model): 500 MB
 LLMUnity downloads the LlamaLib native libraries from GitHub on first use.
 Builds include these files, so players download nothing.
+DemoQuest offers optional larger files: Qwen3.5-4B (2.7 GB), Whisper small.en (490 MB), 6 voices (380 MB).
 Any other GGUF model can be selected in the LLM component.
 
 
@@ -111,12 +117,12 @@ This package runs open-source AI models locally inside Unity. No cloud service i
 
 * Language model: llama.cpp (MIT) through LLMUnity (Apache 2.0). The default model is Qwen3.5-0.8B (Apache 2.0). Users can load other GGUF models, which have their own licenses.
 * Speech to text: whisper.cpp through Whisper.unity (MIT), with OpenAI Whisper weights (MIT).
-* Text to speech: Piper TTS (MIT). The listed voices are public domain or CC0.
+* Text to speech: Piper TTS (MIT). The listed voices are public domain or CC0, except two DemoQuest voices (en_GB-cori, en_GB-alba) under CC BY 4.0, credited in ThirdPartyNotices.md.
 
 
 No models are included in the package. The setup window downloads them from Hugging Face after the user agrees. Model sources and licenses are in ThirdPartyNotices.md.
 
 AI IN THE CREATION OF THE PACKAGE
 
-AI coding assistants helped write and edit C# code, editor windows, documentation and license notices, and helped find bugs. The author chose the design and features, reviewed the changes, and tested the package in Unity. No AI-generated art, audio or 3D models are included. No proprietary data was used.
+AI coding assistants helped write and edit C# code, editor windows, documentation and license notices, and helped find bugs. The author chose the design and features, reviewed the changes, and tested the package in Unity. No AI-generated art, audio or 3D models are included. Demo art and audio are CC0 assets by Quaternius, Kay Lousberg, Kenney and OpenGameArt authors. No proprietary data was used.
 ```
