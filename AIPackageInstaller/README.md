@@ -52,6 +52,15 @@ If the window ever needs to be reopened: **Tools → AI Packages → AI System S
 3. Walk toward the NPC using **WASD**.
 4. Press **`E`** to start a voice or text conversation.
 
+### DemoQuest: a short village quest
+
+`Assets/AI Driven NPCs System/Scenes/DemoQuest.unity` (UPM: under `Assets/Samples/.../Scenes/`) is a small quest in the village of Elmford. Skeletons stole the Blue Stone: talk to Elder Emil, find out where it went, convince the gate guard Ville, fight the skeletons at the ruins with your companion Aada, and bring the stone back. Every NPC line is written live by the local LLM.
+
+- **Hold `E`** near an NPC and speak (push to talk). Look at the NPC you want to talk to.
+- Talk to Aada to make her follow, stay, fight or go somewhere.
+- The demo uses bigger models for steadier dialogue and better speech recognition: Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 extra voices (380 MB). The setup window offers them when the scene is in the project, and a dialog asks when you import the samples.
+- Recommended: a GPU with 6 GB of VRAM or more. The LLM, Whisper and rendering share the GPU.
+
 For detailed instructions on adding NPCs to your own scenes, creating custom personality presets, or using different language models, please see [`SETUP_GUIDE_EN.md`](SETUP_GUIDE_EN.md).
 
 ---
