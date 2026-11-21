@@ -1698,6 +1698,15 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5353883776135334264, guid: 287596edfb2be9748b5c07191ddbbc0c, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6422142638253380283}
+    - targetCorrespondingSourceObject: {fileID: 5353883776135334264, guid: 287596edfb2be9748b5c07191ddbbc0c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5309112125018883148}
+    - targetCorrespondingSourceObject: {fileID: 5353883776135334264, guid: 287596edfb2be9748b5c07191ddbbc0c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2543123887409847857}
+    - targetCorrespondingSourceObject: {fileID: 5353883776135334264, guid: 287596edfb2be9748b5c07191ddbbc0c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4602506722803391209}
   m_SourcePrefab: {fileID: 100100000, guid: 287596edfb2be9748b5c07191ddbbc0c, type: 3}
 --- !u!4 &5370794957554100773 stripped
 Transform:
@@ -1771,6 +1780,152 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac8bb201dcbdfe043aad0d08449c1e50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.PlayerCombat
+--- !u!82 &5309112125018883148
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7386358886036685313}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 20
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &2543123887409847857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7386358886036685313}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44e2ad47f9d3c304ba3de7620fc9e142, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.FootstepAudio
+  clips:
+  - {fileID: 8300000, guid: 7a09b49ec7ad5234faff9dc44c32d3a6, type: 3}
+  - {fileID: 8300000, guid: 034b62b511589344394d81ca75cd9814, type: 3}
+  - {fileID: 8300000, guid: 8d5ce5efc0f8a48478cef8b3efbced16, type: 3}
+  - {fileID: 8300000, guid: 358dba74ac2bf624cb6299e4eedac228, type: 3}
+  - {fileID: 8300000, guid: 824f75ecc98f44a40ba49c2d623ba2e5, type: 3}
+  - {fileID: 8300000, guid: 4a247ddfdb890b14fa5762a7fd91045f, type: 3}
+  - {fileID: 8300000, guid: 7ca66bdde2199ce48afd947b2bd0aaa8, type: 3}
+  - {fileID: 8300000, guid: 74598b6b69b95e44392816544b7ff3c5, type: 3}
+  - {fileID: 8300000, guid: 9f9af1dab09b5b9459f614c848bbf647, type: 3}
+  - {fileID: 8300000, guid: 5a97fc08825bd2e4cbcfc615f5c9e5eb, type: 3}
+  volume: 0.25
+  strideLength: 0.75
+  maxHeightChangePerStep: 0.3
+--- !u!114 &4602506722803391209
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7386358886036685313}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 63e882c7851bc7145b547c4b9d5174d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.CombatAudio
+  swingClips:
+  - {fileID: 8300000, guid: 17d9728b868b4d641ba4d33c1a543f35, type: 3}
+  - {fileID: 8300000, guid: 13279e8f46b88df4185a165b2ba14f75, type: 3}
+  - {fileID: 8300000, guid: 395e1830ba4fb7d4c9c5a94f832e3af8, type: 3}
+  hitClips:
+  - {fileID: 8300000, guid: 4a5971505e304fd479f33edf2d50d2fd, type: 3}
+  - {fileID: 8300000, guid: bf212ade79ff67c4c972c01e53ccff06, type: 3}
+  - {fileID: 8300000, guid: 3c2317325ef3ca44aa19dff55e0e5cee, type: 3}
+  - {fileID: 8300000, guid: 02585f8de5255e14ab39a29d21c98f2c, type: 3}
+  - {fileID: 8300000, guid: 10da82456e8cea742a58998bb7a5d9db, type: 3}
+  volume: 0.8
 --- !u!1001 &5851632986664365889
 PrefabInstance:
   m_ObjectHideFlags: 0

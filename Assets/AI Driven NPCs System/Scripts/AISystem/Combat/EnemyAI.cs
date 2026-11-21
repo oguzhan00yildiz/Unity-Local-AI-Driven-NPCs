@@ -26,6 +26,9 @@ namespace AISystem
         private Animator _animator;
         private Vector3 _home;
         private Health _target;
+
+        /// <summary>True while this enemy is alive and chasing or attacking someone.</summary>
+        public bool IsFighting => _target != null && !_target.IsDead && !_combat.Health.IsDead;
         private float _nextSearch;
 
         void Awake()

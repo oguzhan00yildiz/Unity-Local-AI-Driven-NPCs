@@ -45,6 +45,9 @@ namespace AISystem
             if (facing == null) facing = transform;
         }
 
+        /// <summary>Fires when a swing starts, e.g. for a sword sound.</summary>
+        public event System.Action OnAttackStarted;
+
         /// <summary>Starts an attack if the cooldown has passed. Returns false when it could not attack.</summary>
         public bool TryAttack()
         {
@@ -52,6 +55,7 @@ namespace AISystem
 
             _nextAttackTime = Time.time + cooldown;
             _animator.SetTrigger(_attackId);
+            OnAttackStarted?.Invoke();
             StartCoroutine(HitAfterDelay());
             return true;
         }

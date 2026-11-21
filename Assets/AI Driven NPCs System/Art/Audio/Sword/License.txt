@@ -1,0 +1,7 @@
+swing.wav, swing2.wav, swing3.wav from "RPG Sound Pack" by artisticdude
+https://opengameart.org/content/rpg-sound-pack
+License: CC0 1.0 (public domain)
+
+sword_clash_1-5.ogg from "20 Sword Sound Effects (Attacks and Clashes)" by StarNinjas
+https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes
+License: CC0 1.0 (public domain)
