@@ -263,7 +263,47 @@ namespace AISystem.Editor
     private static readonly List<ModelEntry> DemoModels = BuildDemoModels();
     private static readonly List<ModelEntry> AllModels  = CoreModels.Concat(DemoModels).ToList();
 
-    private static List<ModelEntry> Models => HasDemoScene ? AllModels : CoreModels;
+    private static List<ModelEntry> Models => DemoWanted ? AllModels : CoreModels;
+
+    // Per-project answer to "download the DemoQuest models?": 0 not asked yet, 1 yes, 2 no
+    private static string DemoChoiceKey => "AISystem.DemoModelsChoice." + Application.dataPath.GetHashCode();
+    private static bool DemoWanted => HasDemoScene && EditorPrefs.GetInt(DemoChoiceKey, 0) == 1;
+    public static bool DemoChoiceMade => EditorPrefs.GetInt(DemoChoiceKey, 0) != 0;
+
+    /// <summary>
+    /// Asks once per project, before any download, whether to also get the DemoQuest models.
+    /// Does nothing when the DemoQuest scene is not in the project.
+    /// </summary>
+    public static void AskDemoChoiceIfNeeded()
+    {
+        _demoCheckTime = -10.0;
+        if (!HasDemoScene || DemoChoiceMade) return;
+        bool yes = EditorUtility.DisplayDialog("DemoQuest demo",
+            "This package includes DemoQuest, a short village quest. It needs bigger models: " +
+            "Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 voices (380 MB).\n\n" +
+            "Download them together with the default models? You can add them later in Tools > AI Packages > Download DemoQuest Models.",
+            "Include DemoQuest", "Skip");
+        EditorPrefs.SetInt(DemoChoiceKey, yes ? 1 : 2);
+    }
+
+    /// <summary>Turns the DemoQuest models on for this project and downloads the missing ones.</summary>
+    public static void ChooseDemoModels()
+    {
+        EditorPrefs.SetInt(DemoChoiceKey, 1);
+        AutoStartDownloads();
+    }
+
+    [MenuItem("Tools/AI Packages/Download DemoQuest Models", false, 2)]
+    private static void DownloadDemoModelsMenu()
+    {
+        _demoCheckTime = -10.0;
+        if (!HasDemoScene)
+        {
+            EditorUtility.DisplayDialog("DemoQuest demo", "The DemoQuest scene is not in this project. Import the samples first.", "OK");
+            return;
+        }
+        ChooseDemoModels();
+    }
 
     private static double _demoCheckTime = -10.0;
     private static bool   _hasDemoScene;
