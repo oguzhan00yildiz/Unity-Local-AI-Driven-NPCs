@@ -4,6 +4,7 @@ This package includes third-party open-source software and native libraries, and
 
 - Included in `ThirdParty/`: LLMUnity, Whisper Unity, Piper TTS, ONNX Runtime and ONNX Runtime Unity. Each folder contains its original license file.
 - Included in `Art/Quaternius/`: demo scene models, textures and animations by Quaternius (CC0). Each pack folder contains its original license file.
+- Included in `Art/KayKit/Skeletons/`: skeleton enemies and the sword by Kay Lousberg (CC0). The folder contains the original license file.
 
 ---
 
@@ -150,7 +151,16 @@ The underlying Microsoft ONNX Runtime binaries are licensed by Microsoft Corpora
 
 ---
 
-## 6. Model Attributions
+## 6. KayKit Character Pack: Skeletons (included, demo scene only)
+
+- **Author**: Kay Lousberg ([kaylousberg.itch.io](https://kaylousberg.itch.io/kaykit-skeletons))
+- **License**: CC0 1.0 Universal. The license file is in `Art/KayKit/Skeletons/`.
+- **Files**: the Free 1.1 version, only what the demo uses: Skeleton_Warrior, Skeleton_Minion, Skeleton_Rogue, Skeleton_Blade and the shared texture.
+- **Changes**: rig set to Humanoid in the import settings, so the Quaternius animations play on the skeletons.
+
+---
+
+## 7. Model Attributions
 
 - **Qwen3.5-0.8B** (default language model, downloaded on request as the `unsloth/Qwen3.5-0.8B-GGUF` quantization, not included): made by the Alibaba Qwen team, licensed under the **Apache License 2.0** ([model card](https://huggingface.co/Qwen/Qwen3.5-0.8B)). Other models from the LLMUnity download list have their own licenses.
 - **Piper Voices** (downloaded on request from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices), not included). Licenses as stated in each voice's MODEL_CARD:
