@@ -49,6 +49,8 @@ namespace AISystem
         public VoiceInputService voiceInput;
         public VoiceOutputService voiceOutput;
         public ModelBootstrapper modelBootstrapper;
+        [Tooltip("Bottom-of-screen subtitles used in Push To Talk mode.")]
+        public SubtitleView subtitles;
 
         [Header("Voice Input")]
         [Tooltip("Open Chat: press the NPC's key to open the chat panel. Push To Talk: hold the key below near an NPC to speak.")]
@@ -89,6 +91,7 @@ namespace AISystem
             if (voiceInput == null)        voiceInput        = GetComponentInChildren<VoiceInputService>(true);
             if (voiceOutput == null)       voiceOutput       = GetComponentInChildren<VoiceOutputService>(true);
             if (modelBootstrapper == null) modelBootstrapper = GetComponentInChildren<ModelBootstrapper>(true);
+            if (subtitles == null)         subtitles         = GetComponentInChildren<SubtitleView>(true);
         }
 
         void Start()
@@ -117,7 +120,6 @@ namespace AISystem
             {
                 _player = GameObject.FindWithTag("Player").transform;
                 voiceInput.autoRestartAfterTranscribe = false;
-                chatUI?.SetTextInputVisible(false);
             }
         }
 
@@ -192,6 +194,7 @@ namespace AISystem
             voiceOutput?.StopSpeaking();
             chatUI?.SetWaiting(false);
             chatUI?.Close();
+            subtitles?.HideAfterDelay();
 
             _currentNPC?.SetChatActive(false);
             _currentNPC           = null;
@@ -230,7 +233,6 @@ namespace AISystem
             {
                 _currentNPC?.SetChatActive(false);
                 _currentNPC = npc;
-                chatUI?.Open(npc.NPCName, npc);
                 npc.SetChatActive(true);
             }
 
@@ -249,6 +251,36 @@ namespace AISystem
             // Back to the idle prompt; HandleUserMessage shows "Thinking" once Whisper returns text.
             // A silent recording returns no text, so the prompt must not wait for it.
             _currentNPC?.SetPromptText(null);
+        }
+
+        // ── Conversation display: chat panel (Open Chat) or subtitles (Push To Talk) ──
+
+        private void ShowPlayerMessage(string message)
+        {
+            if (IsPushToTalk)
+            {
+                subtitles?.ShowPlayerLine(message);
+                return;
+            }
+            chatUI?.AddMessage(chatUI.playerSenderName, message);
+            chatUI?.SetWaiting(true);
+        }
+
+        private void ShowNPCMessage(NPCAgent npc, string text, bool final)
+        {
+            string npcName = npc != null ? npc.NPCName : "AI";
+            if (IsPushToTalk)
+            {
+                subtitles?.ShowNPCLine(npcName, text);
+                return;
+            }
+            if (!final)
+            {
+                chatUI?.UpdateStreamingResponse(npcName, text, npc);
+                return;
+            }
+            chatUI?.FinalizeResponse(npcName, text, npc);
+            chatUI?.SetWaiting(false);
         }
 
         private NPCAgent GetNearestNPCInRange()
@@ -308,9 +340,7 @@ namespace AISystem
             voiceInput?.StopListening();
             _currentNPC?.SetPromptText("Thinking");
 
-            // Display player message and indicate waiting state in Chat UI
-            chatUI?.AddMessage(chatUI.playerSenderName, message);
-            chatUI?.SetWaiting(true);
+            ShowPlayerMessage(message);
 
             string fullResponse = string.Empty;
             int spokenLength     = 0;             // chars of the response already sent to TTS
@@ -321,7 +351,7 @@ namespace AISystem
                 partial =>
                 {
                     fullResponse = partial;
-                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", VoiceOutputService.CleanTextForDisplay(partial), npcForCallback);
+                    ShowNPCMessage(npcForCallback, VoiceOutputService.CleanTextForDisplay(partial), false);
 
                     // Speak each sentence as soon as it is generated; skip if the session was closed
                     if (_currentNPC != null && partial.Length > spokenLength)
@@ -333,8 +363,7 @@ namespace AISystem
                 () =>
                 {
                     _isWaitingForResponse = false;
-                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", VoiceOutputService.CleanTextForDisplay(fullResponse), npcForCallback);
-                    chatUI?.SetWaiting(false);
+                    ShowNPCMessage(npcForCallback, VoiceOutputService.CleanTextForDisplay(fullResponse), true);
 
                     if (npcForCallback != null && !string.IsNullOrWhiteSpace(fullResponse))
                         OnNPCResponse?.Invoke(npcForCallback, fullResponse);
@@ -346,7 +375,10 @@ namespace AISystem
                     if (!string.IsNullOrWhiteSpace(fullResponse))
                         voiceOutput?.EndSpeech();
                     else if (IsPushToTalk)
+                    {
                         npcForCallback?.SetPromptText(null);
+                        subtitles?.HideAfterDelay();
+                    }
                     else
                     {
                         npcForCallback?.SetPromptText("Listening");
@@ -379,7 +411,10 @@ namespace AISystem
             {
                 // Speech also ends when the player interrupts; keep the Listening text then
                 if (voiceInput == null || !voiceInput.IsListening)
+                {
                     _currentNPC?.SetPromptText(null);
+                    subtitles?.HideAfterDelay();
+                }
                 return;
             }
 
