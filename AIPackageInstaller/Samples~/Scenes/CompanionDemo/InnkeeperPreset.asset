@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5c8ab12f6d34479e3a2fb90b9d8e705, type: 3}
   m_Name: InnkeeperPreset
   m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.NPCPersonalityPreset
-  npcName: Innkeeper Rosa
-  systemPrompt: You are Rosa, the cheerful and talkative innkeeper of Oakvale. You
-    love gossip and good ale. Keep your answers short, one to three sentences. Do
-    not use emojis.
+  npcName: Innkeeper Nora
+  systemPrompt: You are Nora, the cheerful innkeeper of Elmford. You talk a lot and
+    you love good ale. Keep your answers short, one to three sentences. Do not use
+    emojis.
   voiceModelName: en_US-ljspeech-medium

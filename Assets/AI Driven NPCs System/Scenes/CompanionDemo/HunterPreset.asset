@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5c8ab12f6d34479e3a2fb90b9d8e705, type: 3}
   m_Name: HunterPreset
   m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.NPCPersonalityPreset
-  npcName: Hunter Tobin
-  systemPrompt: You are Tobin, a quiet hunter who camps on the forest path. You speak
-    calmly and do not trust strangers at first. Keep your answers short, one to three
-    sentences. Do not use emojis.
+  npcName: Hunter Finn
+  systemPrompt: You are Finn, a quiet hunter who camps on the forest path. You speak
+    calmly and use few words. Keep your answers short, one to three sentences. Do
+    not use emojis.
   voiceModelName: en_US-bryce-medium

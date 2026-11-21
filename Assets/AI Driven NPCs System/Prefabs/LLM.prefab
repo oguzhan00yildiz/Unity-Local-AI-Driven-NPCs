@@ -51,7 +51,7 @@ MonoBehaviour:
   _SSLCert: 
   _SSLKey: 
   _numThreads: -1
-  _numGPULayers: 0
+  _numGPULayers: 99
   _parallelPrompts: -1
   _contextSize: 8192
   _batchSize: 512

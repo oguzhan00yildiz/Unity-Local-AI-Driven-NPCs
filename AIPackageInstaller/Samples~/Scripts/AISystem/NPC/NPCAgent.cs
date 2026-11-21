@@ -55,6 +55,7 @@ namespace AISystem
         public LLMAgent Agent   => llmAgent;
         public string   NPCName => npcName;
         public bool     AllowPlayerMovementInChat => allowPlayerMovementInChat;
+        public bool     PlayerInRange => _playerInRange;
 
         //  Lifecycle 
         void Awake()
