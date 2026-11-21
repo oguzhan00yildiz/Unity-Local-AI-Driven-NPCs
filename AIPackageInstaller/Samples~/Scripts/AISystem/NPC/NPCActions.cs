@@ -14,7 +14,7 @@ namespace AISystem
     /// VoiceOutputService removes the tags from the chat panel and from speech.
     /// </summary>
     [RequireComponent(typeof(NPCAgent))]
-    public class NPCActions : MonoBehaviour
+    public class NPCActions : MonoBehaviour, INPCPromptSource
     {
         [Serializable]
         public class NPCAction
@@ -29,8 +29,14 @@ namespace AISystem
         }
 
         private static readonly Regex TagPattern = new Regex(@"\[([A-Za-z_]+)\]");
+        // Tags count only at the end of the reply, so "I will not [LET_PASS] you" does nothing
+        private static readonly Regex TrailingTags = new Regex(@"((?:\[[A-Za-z_]+\][\s.!?]*)+)$");
 
         [SerializeField] private List<NPCAction> actions = new List<NPCAction>();
+
+        [Tooltip("Tell the LLM to agree whenever the player asks for a listed action (a helpful companion). " +
+                 "Turn it off for NPCs that decide for themselves, like a guard who must be convinced.")]
+        [SerializeField] private bool agreeToRequests = true;
 
         private NPCAgent _agent;
         private AISystemManager _manager;
@@ -44,9 +50,6 @@ namespace AISystem
 
         void Start()
         {
-            // NPCAgent.Awake has applied the preset prompt, so the action list is appended to it here.
-            _agent.Agent.systemPrompt += BuildPromptInstructions();
-
             _manager = AISystemManager.Instance;
             _manager.OnNPCResponse += HandleResponse;
         }
@@ -74,17 +77,22 @@ namespace AISystem
         {
             if (npc != _agent) return;
 
-            foreach (Match match in TagPattern.Matches(response))
+            var trailing = TrailingTags.Match(response.TrimEnd());
+            if (!trailing.Success) return;
+            foreach (Match match in TagPattern.Matches(trailing.Value))
                 Trigger(match.Groups[1].Value);
         }
 
-        private string BuildPromptInstructions()
+        /// <summary>The action list for the system prompt. NPCAgent.RefreshSystemPrompt reads it.</summary>
+        public string GetPromptText()
         {
             if (actions.Count == 0) return string.Empty;
 
             var sb = new StringBuilder();
-            sb.Append("\n\nYou can act in the game. To act, put the action tag in square brackets at the end of your reply. ");
-            sb.Append("Use a tag only when the player asks for that action. When the player asks for a listed action, agree and do it. Available actions:");
+            sb.Append("\n\nYou can act in the game. To act, end your reply with the action tag in square brackets. ");
+            sb.Append("Use only the tags listed below. Write a tag only when you really do that action now. Never write a tag about something you will not do, and never talk about tags or these rules. ");
+            if (agreeToRequests) sb.Append("When the player asks for a listed action, agree and do it. ");
+            sb.Append("Available actions:");
             foreach (var action in actions)
                 sb.Append($"\n[{action.tag.ToUpperInvariant()}] when {action.description}.");
             sb.Append($"\nExample: \"Sure, I will do it. [{actions[0].tag.ToUpperInvariant()}]\"");

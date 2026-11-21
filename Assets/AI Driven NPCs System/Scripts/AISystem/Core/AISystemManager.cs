@@ -253,6 +253,44 @@ namespace AISystem
             _currentNPC?.SetPromptText(null);
         }
 
+        /// <summary>
+        /// Lets an NPC react to a game event in its own words, e.g. a companion commenting on a fight.
+        /// The line is spoken and shown in the subtitles; it is not added to the chat history.
+        /// Returns false when a conversation or another speech is running.
+        /// </summary>
+        public bool RequestNPCComment(NPCAgent npc, string situation)
+        {
+            if (_isWaitingForResponse || (voiceOutput != null && voiceOutput.IsSpeaking)
+                || (voiceInput != null && voiceInput.IsListening) || npc.Agent == null)
+                return false;
+
+            _isWaitingForResponse = true;
+            string prompt = "(This is a game event, not the player speaking: " + situation +
+                            " React out loud with one short sentence, in character. Do not use action tags.)";
+            int spokenLength = 0;
+            string full = string.Empty;
+
+            _ = npc.Agent.Chat(prompt,
+                partial =>
+                {
+                    full = partial;
+                    subtitles?.ShowNPCLine(npc.NPCName, VoiceOutputService.CleanTextForDisplay(partial), true);
+                    if (partial.Length > spokenLength)
+                    {
+                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npc.voiceModelName);
+                        spokenLength = partial.Length;
+                    }
+                },
+                () =>
+                {
+                    _isWaitingForResponse = false;
+                    if (string.IsNullOrWhiteSpace(full)) return;
+                    voiceOutput?.EndSpeech();
+                },
+                addToHistory: false);
+            return true;
+        }
+
         // ── Conversation display: chat panel (Open Chat) or subtitles (Push To Talk) ──
 
         private void ShowPlayerMessage(string message)
@@ -396,6 +434,12 @@ namespace AISystem
 
         private void HandleSpeechFinished()
         {
+            // Subtitles fade after any speech, including NPC comments outside a conversation.
+            // Speech also ends when the player interrupts; the subtitles stay while they talk.
+            bool playerTalking = voiceInput != null && voiceInput.IsListening;
+            if (IsPushToTalk && !playerTalking)
+                subtitles?.HideAfterDelay();
+
             if (!IsChatOpen()) return;
 
             // If the player left the NPC's range while the NPC was still talking,
@@ -409,12 +453,8 @@ namespace AISystem
 
             if (IsPushToTalk)
             {
-                // Speech also ends when the player interrupts; keep the Listening text then
-                if (voiceInput == null || !voiceInput.IsListening)
-                {
+                if (!playerTalking)
                     _currentNPC?.SetPromptText(null);
-                    subtitles?.HideAfterDelay();
-                }
                 return;
             }
 

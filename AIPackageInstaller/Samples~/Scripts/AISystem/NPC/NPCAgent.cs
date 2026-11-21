@@ -46,6 +46,7 @@ namespace AISystem
         //  Internal 
         private bool _playerInRange;
         private bool _chatActive;
+        private string _basePrompt;   // personality prompt without the INPCPromptSource parts
 
         /// <summary>Read by AISystemManager.</summary>
         public LLMAgent Agent   => llmAgent;
@@ -89,6 +90,9 @@ namespace AISystem
 
             if (AISystemManager.Instance == null)
                 Debug.LogWarning("[NPCAgent] AISystemManager not found in scene. Add the 'AI System' prefab.");
+
+            // Prompt sources (actions, knowledge) are initialised in their Awake, so compose here
+            RefreshSystemPrompt();
         }
 
         void Update()
@@ -170,10 +174,23 @@ namespace AISystem
             if (llmAgent == null)
                 llmAgent = GetComponent<LLMAgent>();
 
-            if (llmAgent != null)
-            {
-                llmAgent.systemPrompt = preset.systemPrompt;
-            }
+            _basePrompt = preset.systemPrompt;
+            RefreshSystemPrompt();
+        }
+
+        /// <summary>
+        /// Rebuilds the system prompt: the personality prompt plus the text of every INPCPromptSource
+        /// on this NPC (actions, story knowledge, world state). Call it when a source's text changes.
+        /// </summary>
+        public void RefreshSystemPrompt()
+        {
+            if (llmAgent == null) return;
+            _basePrompt ??= llmAgent.systemPrompt;
+
+            var sb = new System.Text.StringBuilder(_basePrompt);
+            foreach (var source in GetComponents<INPCPromptSource>())
+                sb.Append(source.GetPromptText());
+            llmAgent.systemPrompt = sb.ToString();
         }
 
         private void TriggerChat()

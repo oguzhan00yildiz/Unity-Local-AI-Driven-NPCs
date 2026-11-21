@@ -59,9 +59,13 @@ namespace AISystem
             Show();
         }
 
-        /// <summary>Shows or updates the NPC reply. Call it again while the reply streams in.</summary>
-        public void ShowNPCLine(string npcName, string text)
+        /// <summary>
+        /// Shows or updates the NPC reply. Call it again while the reply streams in.
+        /// hidePlayerLine is for lines the NPC says on its own, with no player line before it.
+        /// </summary>
+        public void ShowNPCLine(string npcName, string text, bool hidePlayerLine = false)
         {
+            if (hidePlayerLine) playerRow.SetActive(false);
             npcNameText.text = npcName;
             npcLineText.text = text;
             npcRow.SetActive(!string.IsNullOrEmpty(text));

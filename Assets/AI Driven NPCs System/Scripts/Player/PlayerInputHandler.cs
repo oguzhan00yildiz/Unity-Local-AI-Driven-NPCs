@@ -18,6 +18,9 @@ namespace AISystem
     public bool    Jump   { get; private set; }
     public bool    Sprint { get; private set; }
 
+    /// <summary>Left mouse button pressed (latched until ConsumeAttack). Read by PlayerCombat.</summary>
+    public bool    Attack { get; private set; }
+
     /// <summary>Mouse movement this frame, in pixels. Read by ThirdPersonCamera.</summary>
     public Vector2 Look   { get; private set; }
 
@@ -72,6 +75,8 @@ namespace AISystem
     {
         var mouse = Mouse.current;
         Look = mouse != null ? mouse.delta.ReadValue() : Vector2.zero;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame && _cursorLocked)
+            Attack = true;
 
         var kb = Keyboard.current;
 
@@ -105,6 +110,8 @@ namespace AISystem
 
         if (Input.GetButtonDown("Jump"))
             Jump = true;
+        if (Input.GetMouseButtonDown(0) && _cursorLocked)
+            Attack = true;
     }
 #endif
 
@@ -112,6 +119,9 @@ namespace AISystem
 
     /// <summary>Consume the jump flag — call once per frame after processing it.</summary>
     public void ConsumeJump() => Jump = false;
+
+    /// <summary>Consume the attack flag after processing it.</summary>
+    public void ConsumeAttack() => Attack = false;
 
     private void ApplyCursorState()
     {
