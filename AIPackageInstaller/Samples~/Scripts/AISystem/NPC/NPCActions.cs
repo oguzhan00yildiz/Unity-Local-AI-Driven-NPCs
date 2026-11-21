@@ -84,7 +84,7 @@ namespace AISystem
 
             var sb = new StringBuilder();
             sb.Append("\n\nYou can act in the game. To act, put the action tag in square brackets at the end of your reply. ");
-            sb.Append("Use a tag only when the player asks for that action. Available actions:");
+            sb.Append("Use a tag only when the player asks for that action. When the player asks for a listed action, agree and do it. Available actions:");
             foreach (var action in actions)
                 sb.Append($"\n[{action.tag.ToUpperInvariant()}] when {action.description}.");
             sb.Append($"\nExample: \"Sure, I will do it. [{actions[0].tag.ToUpperInvariant()}]\"");
