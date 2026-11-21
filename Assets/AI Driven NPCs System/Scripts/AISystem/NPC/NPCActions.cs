@@ -124,7 +124,8 @@ namespace AISystem
                 notes ??= new StringBuilder(message);
                 notes.Append(yes
                     ? $"\n(Game note: this convinced you. You {action.description} now. Say so plainly and kindly.)"
-                    : $"\n(Game note: you do not {action.description} yet. Stay in character and do not promise it.)");
+                    : $"\n(Game note: you do not {action.description} yet. Stay in character and do not promise it. Do not invent tasks, fights or items for the traveller.)");
+                Debug.Log($"[NPCActions] {_agent.NPCName}: \"{message}\" -> {action.tag} {(yes ? "fires" : "not yet")}");
             }
             return notes != null ? notes.ToString() : message;
         }
