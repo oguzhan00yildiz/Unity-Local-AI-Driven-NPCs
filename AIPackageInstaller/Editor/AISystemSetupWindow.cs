@@ -255,10 +255,10 @@ namespace AISystem.Editor
         },
     };
 
-    // Bigger models for the CompanionDemo sample: a 4B LLM keeps the quest dialogue consistent,
+    // Bigger models for the DemoQuest sample: a 4B LLM keeps the quest dialogue consistent,
     // Whisper small.en understands speech better, and each villager gets its own voice.
     // Offered only when the demo scene is in the project (Asset Store import, or UPM samples imported).
-    private const string DemoSceneName = "CompanionDemo";
+    private const string DemoSceneName = "DemoQuest";
 
     private static readonly List<ModelEntry> DemoModels = BuildDemoModels();
     private static readonly List<ModelEntry> AllModels  = CoreModels.Concat(DemoModels).ToList();
@@ -297,7 +297,7 @@ namespace AISystem.Editor
         {
             new ModelEntry
             {
-                Group = "Companion demo – LLM (Qwen3.5 4B)",
+                Group = "Demo Quest – LLM (Qwen3.5 4B)",
                 DisplayName = "Qwen3.5-4B-Q4_K_M.gguf",
                 Url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf",
                 DestRelPath = "Qwen3.5-4B-Q4_K_M.gguf",
@@ -305,7 +305,7 @@ namespace AISystem.Editor
             },
             new ModelEntry
             {
-                Group = "Companion demo – Whisper small.en",
+                Group = "Demo Quest – Whisper small.en",
                 DisplayName = "ggml-small.en.bin",
                 Url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin",
                 DestRelPath = "Whisper/ggml-small.en.bin",
@@ -327,7 +327,7 @@ namespace AISystem.Editor
             foreach (string ext in new[] { ".onnx", ".onnx.json" })
                 list.Add(new ModelEntry
                 {
-                    Group = "Companion demo – Piper Voice " + label,
+                    Group = "Demo Quest – Piper Voice " + label,
                     DisplayName = name + ext,
                     Url = $"{voices}{locale}/{speaker}/medium/{name}{ext}",
                     DestRelPath = $"PiperTTS/{speaker}/{name}{ext}",
@@ -1995,7 +1995,7 @@ namespace AISystem.Editor
 
             string currentModel = modelProp.GetValue(component) as string ?? "";
             if (currentModel == modelName) return;
-            // The CompanionDemo LLM uses the bigger demo model; leave it alone
+            // The DemoQuest LLM uses the bigger demo model; leave it alone
             if (DemoModels.Exists(d => d.DisplayName == currentModel)) return;
 
             var setModelMethod = llmType.GetMethod("SetModel",

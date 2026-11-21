@@ -3,7 +3,7 @@ using UnityEditor;
 namespace AISystem.Editor
 {
     /// <summary>
-    /// When the CompanionDemo scene arrives in the project (UPM sample import) and its bigger models
+    /// When the DemoQuest scene arrives in the project (UPM sample import) and its bigger models
     /// are missing, asks once whether to download them in the setup window.
     /// </summary>
     public class DemoModelsImportPrompt : AssetPostprocessor
@@ -14,7 +14,7 @@ namespace AISystem.Editor
         {
             foreach (string path in importedAssets)
             {
-                if (!path.EndsWith("/CompanionDemo.unity")) continue;
+                if (!path.EndsWith("/DemoQuest.unity")) continue;
                 EditorApplication.delayCall += Ask;
                 return;
             }
@@ -26,8 +26,8 @@ namespace AISystem.Editor
             if (!AISystemSetupWindow.DemoModelsMissing()) return;
             SessionState.SetBool(AskedKey, true);
 
-            bool download = EditorUtility.DisplayDialog("Companion demo models",
-                "The Companion demo uses bigger models: Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 extra voices (380 MB).\n\n" +
+            bool download = EditorUtility.DisplayDialog("Demo Quest models",
+                "The Demo Quest uses bigger models: Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 extra voices (380 MB).\n\n" +
                 "Download them now?",
                 "Download", "Later");
             if (download)

@@ -26,8 +26,8 @@ namespace AISystem
         [Tooltip("1 = the voice comes from the speaking NPC in the world. 0 = flat 2D voice for every NPC.")]
         [Range(0f, 1f)]
         [SerializeField] private float spatialBlend = 1f;
-        [Tooltip("Full volume up to this distance from the listener (the camera).")]
-        [SerializeField] private float minDistance = 4f;
+        [Tooltip("Full volume up to this distance from the listener (the camera). The camera is a few metres behind the player, so keep it above 6.")]
+        [SerializeField] private float minDistance = 8f;
         [Tooltip("Silent beyond this distance.")]
         [SerializeField] private float maxDistance = 30f;
         [Tooltip("Height of the voice above the NPC's feet (mouth height).")]

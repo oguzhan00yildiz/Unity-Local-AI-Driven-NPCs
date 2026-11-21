@@ -2477,7 +2477,7 @@ PrefabInstance:
     - target: {fileID: 8958941990974488087, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
       propertyPath: personalityPreset
       value: 
-      objectReference: {fileID: 11400000, guid: e5efdc38dd65ee041888941b0ed21dc2, type: 2}
+      objectReference: {fileID: 11400000, guid: 82b35c5b23a7c9747acc53e7a5e27487, type: 2}
     - target: {fileID: 8958941990974488087, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
       propertyPath: allowPlayerMovementInChat
       value: 1
@@ -2859,7 +2859,11 @@ MonoBehaviour:
   privateFacts: You travel with the player and you trust them. You only know what
     the villagers said if the player tells you. If the player asks you to fight or
     help against enemies, use [FIGHT].
-  stageDialogue: []
+  stageDialogue:
+  - stageId: intro
+    goal: Find out whether the traveller wants you to follow them or stay here, and
+      do what they say.
+    openingLine: Shall I follow you, or should I stay here?
 --- !u!82 &1491584478563326829
 AudioSource:
   m_ObjectHideFlags: 0

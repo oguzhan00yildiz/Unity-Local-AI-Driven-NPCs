@@ -5,13 +5,17 @@ namespace AISystem
     /// <summary>
     /// Plays calm music, and crossfades to fight music while any enemy is fighting.
     /// The fight music starts from the beginning each time a fight starts and stays a few seconds after it ends.
+    /// While an NPC speaks, the music is turned down so the voice stays clear.
     /// </summary>
     public class MusicDirector : MonoBehaviour
     {
         [SerializeField] private AudioClip calmMusic;
         [SerializeField] private AudioClip fightMusic;
-        [Range(0f, 1f)] [SerializeField] private float calmVolume = 0.2f;
-        [Range(0f, 1f)] [SerializeField] private float fightVolume = 0.25f;
+        [Range(0f, 1f)] [SerializeField] private float calmVolume = 0.1f;
+        [Range(0f, 1f)] [SerializeField] private float fightVolume = 0.12f;
+
+        [Tooltip("Music volume multiplier while an NPC speaks.")]
+        [Range(0f, 1f)] [SerializeField] private float duckWhileSpeaking = 0.35f;
 
         [Tooltip("Seconds for one track to fade out and the other to fade in.")]
         [SerializeField] private float fadeSeconds = 2f;
@@ -23,6 +27,7 @@ namespace AISystem
         private AudioSource _fight;
         private EnemyAI[] _enemies;
         private float _fightUntil = -1f;
+        private VoiceOutputService _voice;
 
         void Awake()
         {
@@ -33,6 +38,7 @@ namespace AISystem
         void Start()
         {
             _enemies = FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
+            _voice = AISystemManager.Instance.voiceOutput;
             _calm.volume = calmVolume;
             _calm.Play();
         }
@@ -44,8 +50,9 @@ namespace AISystem
 
             if (fighting && !_fight.isPlaying) _fight.Play();
 
-            _calm.volume  = Mathf.MoveTowards(_calm.volume,  fighting ? 0f : calmVolume,  calmVolume  / fadeSeconds * Time.deltaTime);
-            _fight.volume = Mathf.MoveTowards(_fight.volume, fighting ? fightVolume : 0f, fightVolume / fadeSeconds * Time.deltaTime);
+            float duck = _voice != null && _voice.IsSpeaking ? duckWhileSpeaking : 1f;
+            _calm.volume  = Mathf.MoveTowards(_calm.volume,  fighting ? 0f : calmVolume * duck,  calmVolume  / fadeSeconds * Time.deltaTime);
+            _fight.volume = Mathf.MoveTowards(_fight.volume, fighting ? fightVolume * duck : 0f, fightVolume / fadeSeconds * Time.deltaTime);
 
             if (!fighting && _fight.isPlaying && _fight.volume <= 0f) _fight.Stop();
         }
