@@ -288,7 +288,7 @@ namespace AISystem
                     subtitles?.ShowNPCLine(npc.NPCName, VoiceOutputService.CleanTextForDisplay(partial), true);
                     if (partial.Length > spokenLength)
                     {
-                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npc.voiceModelName);
+                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npc.voiceModelName, npc.transform);
                         spokenLength = partial.Length;
                     }
                 },
@@ -312,7 +312,7 @@ namespace AISystem
 
             _ = AddOpeningToHistory(npc, line);
             ShowNPCMessage(npc, line, true);
-            Speak(line, npc.voiceModelName);
+            Speak(line, npc.voiceModelName, npc.transform);
             return true;
         }
 
@@ -320,7 +320,7 @@ namespace AISystem
         /// Speaks a written line from a speaker without an LLM, e.g. a background villager.
         /// Shown in the subtitles. Returns false while a conversation, a reply or another speech runs.
         /// </summary>
-        public bool SpeakLine(string speakerName, string voiceModelName, string line)
+        public bool SpeakLine(string speakerName, string voiceModelName, string line, Transform speaker)
         {
             if (!CanSpeakNow || (IsChatOpen() && !IsPushToTalk)) return false;
             // Background lines never talk over a story NPC the player stands next to
@@ -328,7 +328,7 @@ namespace AISystem
                 if (!npc.AllowPlayerMovementInChat) return false;
 
             subtitles?.ShowNPCLine(speakerName, line, true);
-            Speak(line, voiceModelName);
+            Speak(line, voiceModelName, speaker);
             return true;
         }
 
@@ -336,9 +336,9 @@ namespace AISystem
             !_isWaitingForResponse && (voiceOutput == null || !voiceOutput.IsSpeaking)
             && !(IsPushToTalk && voiceInput != null && voiceInput.IsListening);
 
-        private void Speak(string line, string voiceModelName)
+        private void Speak(string line, string voiceModelName, Transform speaker)
         {
-            voiceOutput?.AppendSpeech(line, voiceModelName);
+            voiceOutput?.AppendSpeech(line, voiceModelName, speaker);
             voiceOutput?.EndSpeech();
         }
 
@@ -466,7 +466,7 @@ namespace AISystem
                     // Speak each sentence as soon as it is generated; skip if the session was closed
                     if (_currentNPC != null && partial.Length > spokenLength)
                     {
-                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npcForCallback?.voiceModelName);
+                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npcForCallback?.voiceModelName, npcForCallback?.transform);
                         spokenLength = partial.Length;
                     }
                 },

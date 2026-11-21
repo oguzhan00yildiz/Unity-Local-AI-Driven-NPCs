@@ -23,6 +23,8 @@ namespace AISystem
         [Tooltip("Seconds before this villager speaks again.")]
         [SerializeField] private float cooldown = 30f;
 
+        public string VoiceModelName => voiceModelName;
+
         private Transform _player;
         private AISystemManager _manager;
         private float _nextBarkTime;
@@ -39,7 +41,7 @@ namespace AISystem
             if ((_player.position - transform.position).sqrMagnitude > range * range) return;
 
             // Try again in a few seconds when another NPC is talking
-            _nextBarkTime = _manager.SpeakLine(speakerName, voiceModelName, lines[Random.Range(0, lines.Length)])
+            _nextBarkTime = _manager.SpeakLine(speakerName, voiceModelName, lines[Random.Range(0, lines.Length)], transform)
                 ? Time.time + cooldown
                 : Time.time + 3f;
         }

@@ -22,6 +22,17 @@ namespace AISystem
         public bool voiceEnabled = true;
         public bool initOnStart  = true;
 
+        [Header("3D voice")]
+        [Tooltip("1 = the voice comes from the speaking NPC in the world. 0 = flat 2D voice for every NPC.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float spatialBlend = 1f;
+        [Tooltip("Full volume up to this distance from the listener (the camera).")]
+        [SerializeField] private float minDistance = 4f;
+        [Tooltip("Silent beyond this distance.")]
+        [SerializeField] private float maxDistance = 30f;
+        [Tooltip("Height of the voice above the NPC's feet (mouth height).")]
+        [SerializeField] private float mouthHeight = 1.6f;
+
         [Header("Optional status label")]
         public UnityEngine.UI.Text statusLabel;
 
@@ -42,6 +53,7 @@ namespace AISystem
         private readonly Dictionary<PiperTTS.PiperTTS, (PiperTTS.PiperTTS.StatusChangedDelegate status, Action playback)> _handlers =
             new Dictionary<PiperTTS.PiperTTS, (PiperTTS.PiperTTS.StatusChangedDelegate, Action)>();
         private PiperTTS.PiperTTS _activeTts;
+        private Transform _speaker;   // NPC the current voice follows; null = 2D
 
         public bool IsSpeaking => _isSpeaking;
 
@@ -91,23 +103,24 @@ namespace AISystem
         // ── Public API ────────────────────────────────────────────────────────────
 
         /// <summary>Speaks a complete text. Replaces any current speech.</summary>
-        public void Speak(string text, string voiceModelName = null)
+        public void Speak(string text, string voiceModelName = null, Transform speaker = null)
         {
             StopSpeaking();
-            AppendSpeech(text, voiceModelName);
+            AppendSpeech(text, voiceModelName, speaker);
             EndSpeech();
         }
 
         /// <summary>
         /// Adds streamed text (e.g. new LLM tokens). The first call starts a new speech and replaces the current one.
         /// Each full sentence is spoken as soon as it arrives. Call EndSpeech when the text is complete.
+        /// With a speaker, the voice plays in 3D from that NPC's position and follows it.
         /// </summary>
-        public void AppendSpeech(string chunk, string voiceModelName = null)
+        public void AppendSpeech(string chunk, string voiceModelName = null, Transform speaker = null)
         {
             if (!voiceEnabled || string.IsNullOrEmpty(chunk)) return;
 
             if (!_streamOpen)
-                BeginStream(voiceModelName);
+                BeginStream(voiceModelName, speaker);
 
             if (_activeTts.status == ModelStatus.Error)
             {
@@ -145,15 +158,35 @@ namespace AISystem
             SetStatus("Idle");
         }
 
-        private void BeginStream(string voiceModelName)
+        private void BeginStream(string voiceModelName, Transform speaker)
         {
             StopSpeaking();
             _activeTts  = GetVoice(voiceModelName);
             _streamOpen = true;
 
+            _speaker = speaker;
+            var source = _activeTts.GetComponent<AudioSource>();
+            source.spatialBlend = speaker != null ? spatialBlend : 0f;
+            source.rolloffMode  = AudioRolloffMode.Logarithmic;
+            source.minDistance  = minDistance;
+            source.maxDistance  = maxDistance;
+            FollowSpeaker();
+
             // Sentences wait in the queue until the model reports Ready
             if (_activeTts.status == ModelStatus.Init)
                 _activeTts.InitModel();
+        }
+
+        void LateUpdate()
+        {
+            if (_isSpeaking || _streamOpen) FollowSpeaker();
+        }
+
+        /// <summary>Keeps the active voice at the speaking NPC's mouth, so it moves with a walking NPC.</summary>
+        private void FollowSpeaker()
+        {
+            if (_speaker != null)
+                _activeTts.transform.position = _speaker.position + Vector3.up * mouthHeight;
         }
 
         /// <summary>
@@ -272,11 +305,16 @@ namespace AISystem
         private void PreloadSceneVoices()
         {
             foreach (var npc in FindObjectsByType<NPCAgent>(FindObjectsSortMode.None))
-            {
-                var tts = GetVoice(npc.voiceModelName);
-                if (tts.status == ModelStatus.Init)
-                    tts.InitModel();
-            }
+                Preload(npc.voiceModelName);
+            foreach (var bark in FindObjectsByType<AmbientBark>(FindObjectsSortMode.None))
+                Preload(bark.VoiceModelName);
+        }
+
+        private void Preload(string voiceModelName)
+        {
+            var tts = GetVoice(voiceModelName);
+            if (tts.status == ModelStatus.Init)
+                tts.InitModel();
         }
 
         private void Subscribe(PiperTTS.PiperTTS tts)
