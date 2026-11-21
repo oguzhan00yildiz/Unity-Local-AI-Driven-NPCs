@@ -179,7 +179,7 @@ namespace AISystem.Editor
     // ─────────────────────────────────────────────────────────────────────────
     // Model catalogue
     // ─────────────────────────────────────────────────────────────────────────
-    private static readonly List<ModelEntry> Models = new List<ModelEntry>
+    private static readonly List<ModelEntry> CoreModels = new List<ModelEntry>
     {
         new ModelEntry
         {
@@ -254,6 +254,88 @@ namespace AISystem.Editor
             SizeMB = 500
         },
     };
+
+    // Bigger models for the DemoQuest sample: a 4B LLM keeps the quest dialogue consistent,
+    // Whisper small.en understands speech better, and each villager gets its own voice.
+    // Offered only when the demo scene is in the project (Asset Store import, or UPM samples imported).
+    private const string DemoSceneName = "DemoQuest";
+
+    private static readonly List<ModelEntry> DemoModels = BuildDemoModels();
+    private static readonly List<ModelEntry> AllModels  = CoreModels.Concat(DemoModels).ToList();
+
+    private static List<ModelEntry> Models => HasDemoScene ? AllModels : CoreModels;
+
+    private static double _demoCheckTime = -10.0;
+    private static bool   _hasDemoScene;
+
+    private static bool HasDemoScene
+    {
+        get
+        {
+            if (EditorApplication.timeSinceStartup - _demoCheckTime > 2.0)
+            {
+                _hasDemoScene = AssetDatabase.FindAssets(DemoSceneName + " t:Scene").Length > 0;
+                _demoCheckTime = EditorApplication.timeSinceStartup;
+            }
+            return _hasDemoScene;
+        }
+    }
+
+    /// <summary>True when the demo scene is in the project and one of its models is missing.</summary>
+    public static bool DemoModelsMissing()
+    {
+        _demoCheckTime = -10.0;
+        if (!HasDemoScene) return false;
+        foreach (var m in DemoModels) m.Refresh();
+        return DemoModels.Exists(m => !m.IsDownloaded);
+    }
+
+    private static List<ModelEntry> BuildDemoModels()
+    {
+        const string voices = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/";
+        var list = new List<ModelEntry>
+        {
+            new ModelEntry
+            {
+                Group = "Demo Quest – LLM (Qwen3.5 4B)",
+                DisplayName = "Qwen3.5-4B-Q4_K_M.gguf",
+                Url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf",
+                DestRelPath = "Qwen3.5-4B-Q4_K_M.gguf",
+                SizeMB = 2614
+            },
+            new ModelEntry
+            {
+                Group = "Demo Quest – Whisper small.en",
+                DisplayName = "ggml-small.en.bin",
+                Url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin",
+                DestRelPath = "Whisper/ggml-small.en.bin",
+                SizeMB = 465
+            },
+        };
+        // Voices with licenses that allow commercial use (public domain, CC0, CC BY 4.0)
+        foreach (var (locale, speaker, label) in new[]
+        {
+            ("en_US", "john",    "John (US Male, public domain)"),
+            ("en_US", "kristin", "Kristin (US Female, public domain)"),
+            ("en_US", "norman",  "Norman (US Male, public domain)"),
+            ("en_US", "joe",     "Joe (US Male, CC0)"),
+            ("en_GB", "cori",    "Cori (UK Female, CC BY 4.0)"),
+            ("en_GB", "alba",    "Alba (Scottish Female, CC BY 4.0)"),
+        })
+        {
+            string name = $"{locale}-{speaker}-medium";
+            foreach (string ext in new[] { ".onnx", ".onnx.json" })
+                list.Add(new ModelEntry
+                {
+                    Group = "Demo Quest – Piper Voice " + label,
+                    DisplayName = name + ext,
+                    Url = $"{voices}{locale}/{speaker}/medium/{name}{ext}",
+                    DestRelPath = $"PiperTTS/{speaker}/{name}{ext}",
+                    SizeMB = ext == ".onnx" ? 60 : 1
+                });
+        }
+        return list;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Window state
@@ -1659,6 +1741,8 @@ namespace AISystem.Editor
 
             string currentModel = modelProp.GetValue(component) as string ?? "";
             if (currentModel == modelName) return;
+            // The DemoQuest LLM uses the bigger demo model; leave it alone
+            if (DemoModels.Exists(d => d.DisplayName == currentModel)) return;
 
             var setModelMethod = llmType.GetMethod("SetModel",
                 BindingFlags.Public | BindingFlags.Instance);
