@@ -18,6 +18,12 @@ namespace AISystem
     public bool    Jump   { get; private set; }
     public bool    Sprint { get; private set; }
 
+    /// <summary>Left mouse button pressed (latched until ConsumeAttack). Read by PlayerCombat.</summary>
+    public bool    Attack { get; private set; }
+
+    /// <summary>Mouse movement this frame, in pixels. Read by ThirdPersonCamera.</summary>
+    public Vector2 Look   { get; private set; }
+
     [Header("Cursor")]
     [Tooltip("Lock the cursor to the centre of the screen on start.")]
     public bool lockCursorOnStart = true;
@@ -46,6 +52,13 @@ namespace AISystem
         if (hasFocus) ApplyCursorState();
     }
 
+    private void OnDisable()
+    {
+        // Update stops while disabled, so clear values that would otherwise stay stuck
+        Move = Vector2.zero;
+        Look = Vector2.zero;
+    }
+
     private void Update()
     {
 #if ENABLE_INPUT_SYSTEM
@@ -60,6 +73,11 @@ namespace AISystem
 #if ENABLE_INPUT_SYSTEM
     private void PollNewInputSystem()
     {
+        var mouse = Mouse.current;
+        Look = mouse != null ? mouse.delta.ReadValue() : Vector2.zero;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame && _cursorLocked)
+            Attack = true;
+
         var kb = Keyboard.current;
 
         if (kb == null) return;
@@ -86,10 +104,14 @@ namespace AISystem
     private void PollLegacyInputSystem()
     {
         Move   = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        // Legacy axes are scaled down; multiply to roughly match Input System pixel deltas
+        Look   = new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")) * 10f;
         Sprint = Input.GetKey(KeyCode.LeftShift);
 
         if (Input.GetButtonDown("Jump"))
             Jump = true;
+        if (Input.GetMouseButtonDown(0) && _cursorLocked)
+            Attack = true;
     }
 #endif
 
@@ -97,6 +119,9 @@ namespace AISystem
 
     /// <summary>Consume the jump flag — call once per frame after processing it.</summary>
     public void ConsumeJump() => Jump = false;
+
+    /// <summary>Consume the attack flag after processing it.</summary>
+    public void ConsumeAttack() => Attack = false;
 
     private void ApplyCursorState()
     {

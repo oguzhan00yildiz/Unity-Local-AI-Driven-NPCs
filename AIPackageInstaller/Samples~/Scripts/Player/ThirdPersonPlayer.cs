@@ -42,7 +42,7 @@ namespace AISystem
     // ── Ground Detection ──────────────────────────────────────────────────────
 
     [Header("Ground Detection")]
-    public LayerMask groundLayers;
+    public LayerMask groundLayers = ~0;
     public float     groundedOffset = -0.14f;
     public float     groundedRadius = 0.3f;
 
@@ -71,6 +71,7 @@ namespace AISystem
 
     // Grounded state
     private bool _grounded;
+    private readonly Collider[] _groundHits = new Collider[8];
 
     // Jump timers
     private float _jumpCooldownTimer;
@@ -152,8 +153,16 @@ namespace AISystem
             transform.position.y - groundedOffset,
             transform.position.z);
 
-        _grounded = Physics.CheckSphere(probePos, groundedRadius,
+        // Skip the player's own colliders, so groundLayers can include the player's layer
+        int count = Physics.OverlapSphereNonAlloc(probePos, groundedRadius, _groundHits,
             groundLayers, QueryTriggerInteraction.Ignore);
+        _grounded = false;
+        for (int i = 0; i < count; i++)
+        {
+            if (_groundHits[i].transform.IsChildOf(transform)) continue;
+            _grounded = true;
+            break;
+        }
 
         if (_hasAnimator)
             _animator.SetBool(_idGrounded, _grounded);

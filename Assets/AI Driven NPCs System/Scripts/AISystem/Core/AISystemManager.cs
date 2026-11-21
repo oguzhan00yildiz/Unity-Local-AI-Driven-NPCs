@@ -1,9 +1,19 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AISystem
 {
+    /// <summary>How the player talks to NPCs.</summary>
+    public enum VoiceInputMode
+    {
+        /// <summary>Press the NPC's interaction key to open the chat panel. The NPC listens until the chat closes.</summary>
+        OpenChat,
+        /// <summary>Hold the push-to-talk key near an NPC to speak. The panel shows subtitles. The player keeps moving.</summary>
+        PushToTalk
+    }
+
     /// <summary>
     /// Central AI coordinator  added to the scene exactly once.
     /// NPCAgents locate it automatically via AISystemManager.Instance;
@@ -39,11 +49,38 @@ namespace AISystem
         public VoiceInputService voiceInput;
         public VoiceOutputService voiceOutput;
         public ModelBootstrapper modelBootstrapper;
+        [Tooltip("Bottom-of-screen subtitles used in Push To Talk mode.")]
+        public SubtitleView subtitles;
+
+        [Header("Voice Input")]
+        [Tooltip("Open Chat: press the NPC's key to open the chat panel. Push To Talk: hold the key below near an NPC to speak.")]
+        [SerializeField] private VoiceInputMode voiceInputMode = VoiceInputMode.OpenChat;
+        [Tooltip("Key to hold while speaking in Push To Talk mode. The nearest NPC in range hears the player.")]
+        [SerializeField] private KeyCode pushToTalkKey = KeyCode.E;
+
+        public VoiceInputMode InputMode     => voiceInputMode;
+        public KeyCode        PushToTalkKey => pushToTalkKey;
+
+        /// <summary>Fires with the NPC and its full raw reply (action tags included) when the LLM finishes.</summary>
+        public event Action<NPCAgent, string> OnNPCResponse;
+
+        /// <summary>
+        /// Fires when the player starts talking to an NPC: the chat opens (Open Chat),
+        /// or the player walks into the NPC's range (Push To Talk). NPCKnowledge uses it for opening lines.
+        /// </summary>
+        public event Action<NPCAgent> OnConversationStarted;
 
         // ── Active NPC ────────────────────────────────────────────────────────
         private NPCAgent _currentNPC;
         private bool _isWaitingForResponse;
         private bool _playerLeftDuringChat;
+
+        // Push-to-talk: NPCs whose trigger the player is inside
+        private readonly List<NPCAgent> _npcsInRange = new();
+        private Transform _player;
+        private Transform _view;   // main camera, used to prefer the NPC the player looks at
+
+        private bool IsPushToTalk => voiceInputMode == VoiceInputMode.PushToTalk;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
         void Awake()
@@ -61,6 +98,7 @@ namespace AISystem
             if (voiceInput == null)        voiceInput        = GetComponentInChildren<VoiceInputService>(true);
             if (voiceOutput == null)       voiceOutput       = GetComponentInChildren<VoiceOutputService>(true);
             if (modelBootstrapper == null) modelBootstrapper = GetComponentInChildren<ModelBootstrapper>(true);
+            if (subtitles == null)         subtitles         = GetComponentInChildren<SubtitleView>(true);
         }
 
         void Start()
@@ -84,6 +122,23 @@ namespace AISystem
                 chatUI.OnCloseChat     += CloseChat;
                 chatUI.OnToggleMicMute += HandleToggleMicMute;
             }
+
+            if (IsPushToTalk)
+            {
+                _player = GameObject.FindWithTag("Player").transform;
+                _view = Camera.main != null ? Camera.main.transform : null;
+                voiceInput.autoRestartAfterTranscribe = false;
+            }
+        }
+
+        void Update()
+        {
+            if (!IsPushToTalk) return;
+
+            if (KeyInput.WasPressed(pushToTalkKey))
+                BeginPushToTalk();
+            else if (KeyInput.WasReleased(pushToTalkKey))
+                EndPushToTalk();
         }
 
         void OnDestroy()
@@ -131,6 +186,9 @@ namespace AISystem
 
             npc.SetChatActive(true);
             npc.SetPromptText(voiceInput != null && voiceInput.IsMuted ? "Muted" : "Listening");
+            OnConversationStarted?.Invoke(npc);
+
+            if (npc.AllowPlayerMovementInChat) return;
 
             // Unlock cursor for interaction
             Cursor.visible   = true;
@@ -145,6 +203,7 @@ namespace AISystem
             voiceOutput?.StopSpeaking();
             chatUI?.SetWaiting(false);
             chatUI?.Close();
+            subtitles?.HideAfterDelay();
 
             _currentNPC?.SetChatActive(false);
             _currentNPC           = null;
@@ -158,6 +217,191 @@ namespace AISystem
         }
 
         public bool IsChatOpen() => _currentNPC != null;
+
+        /// <summary>Called by NPCAgent when the player enters or leaves its trigger.</summary>
+        public void SetNPCInRange(NPCAgent npc, bool inRange)
+        {
+            if (inRange)
+            {
+                if (_npcsInRange.Contains(npc)) return;
+                _npcsInRange.Add(npc);
+                if (IsPushToTalk) OnConversationStarted?.Invoke(npc);
+            }
+            else
+            {
+                _npcsInRange.Remove(npc);
+            }
+        }
+
+        // ── Push-to-talk ──────────────────────────────────────────────────────
+
+        private void BeginPushToTalk()
+        {
+            if (_isWaitingForResponse || _npcsInRange.Count == 0) return;
+
+            var npc = GetNearestNPCInRange();
+            if (npc != _currentNPC)
+            {
+                _currentNPC?.SetChatActive(false);
+                _currentNPC = npc;
+                npc.SetChatActive(true);
+            }
+
+            // Holding the key while the NPC talks interrupts it
+            voiceOutput?.StopSpeaking();
+            voiceInput?.StartListening();
+            npc.SetPromptText(voiceInput != null && voiceInput.IsMuted ? "Muted" : "Listening");
+        }
+
+        private void EndPushToTalk()
+        {
+            if (voiceInput == null || !voiceInput.IsListening) return;
+
+            // StopRecord hands the recording to Whisper; HandleTranscription sends the text to the NPC
+            voiceInput.StopListening();
+            // Back to the idle prompt; HandleUserMessage shows "Thinking" once Whisper returns text.
+            // A silent recording returns no text, so the prompt must not wait for it.
+            _currentNPC?.SetPromptText(null);
+        }
+
+        /// <summary>
+        /// Lets an NPC react to a game event in its own words, e.g. a companion commenting on a fight.
+        /// The line is spoken and shown in the subtitles; it is not added to the chat history.
+        /// Returns false when a conversation or another speech is running.
+        /// </summary>
+        public bool RequestNPCComment(NPCAgent npc, string situation)
+        {
+            if (_isWaitingForResponse || (voiceOutput != null && voiceOutput.IsSpeaking)
+                || (voiceInput != null && voiceInput.IsListening) || npc.Agent == null)
+                return false;
+
+            _isWaitingForResponse = true;
+            string prompt = "(This is a game event, not the player speaking: " + situation +
+                            " React out loud with one short sentence, in character. Do not use action tags.)";
+            int spokenLength = 0;
+            string full = string.Empty;
+
+            _ = npc.Agent.Chat(prompt,
+                partial =>
+                {
+                    full = partial;
+                    subtitles?.ShowNPCLine(npc.NPCName, VoiceOutputService.CleanTextForDisplay(partial), true);
+                    if (partial.Length > spokenLength)
+                    {
+                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npc.voiceModelName, npc.transform);
+                        spokenLength = partial.Length;
+                    }
+                },
+                () =>
+                {
+                    _isWaitingForResponse = false;
+                    if (string.IsNullOrWhiteSpace(full)) return;
+                    voiceOutput?.EndSpeech();
+                },
+                addToHistory: false);
+            return true;
+        }
+
+        /// <summary>
+        /// Speaks a written line as the NPC and adds it to the NPC's chat history, so the LLM continues from it.
+        /// Returns false when a reply, another speech or the player's push-to-talk recording runs.
+        /// </summary>
+        public bool SpeakNPCLine(NPCAgent npc, string line)
+        {
+            if (!CanSpeakNow) return false;
+
+            _ = AddOpeningToHistory(npc, line);
+            ShowNPCMessage(npc, line, true);
+            Speak(line, npc.voiceModelName, npc.transform);
+            return true;
+        }
+
+        /// <summary>
+        /// Speaks a written line from a speaker without an LLM, e.g. a background villager.
+        /// Shown in the subtitles. Returns false while a conversation, a reply or another speech runs.
+        /// </summary>
+        public bool SpeakLine(string speakerName, string voiceModelName, string line, Transform speaker)
+        {
+            if (!CanSpeakNow || (IsChatOpen() && !IsPushToTalk)) return false;
+            // Background lines never talk over a story NPC the player stands next to
+            foreach (var npc in _npcsInRange)
+                if (!npc.AllowPlayerMovementInChat) return false;
+
+            subtitles?.ShowNPCLine(speakerName, line, true);
+            Speak(line, voiceModelName, speaker);
+            return true;
+        }
+
+        private bool CanSpeakNow =>
+            !_isWaitingForResponse && (voiceOutput == null || !voiceOutput.IsSpeaking)
+            && !(IsPushToTalk && voiceInput != null && voiceInput.IsListening);
+
+        private void Speak(string line, string voiceModelName, Transform speaker)
+        {
+            voiceOutput?.AppendSpeech(line, voiceModelName, speaker);
+            voiceOutput?.EndSpeech();
+        }
+
+        private static async Task AddOpeningToHistory(NPCAgent npc, string line)
+        {
+            // A user turn first, because some chat templates need user and assistant turns to alternate
+            await npc.Agent.AddUserMessage("(The traveller walks up to you.)");
+            await npc.Agent.AddAssistantMessage(line);
+        }
+
+        // ── Conversation display: chat panel (Open Chat) or subtitles (Push To Talk) ──
+
+        private void ShowPlayerMessage(string message)
+        {
+            if (IsPushToTalk)
+            {
+                subtitles?.ShowPlayerLine(message);
+                return;
+            }
+            chatUI?.AddMessage(chatUI.playerSenderName, message);
+            chatUI?.SetWaiting(true);
+        }
+
+        private void ShowNPCMessage(NPCAgent npc, string text, bool final)
+        {
+            string npcName = npc != null ? npc.NPCName : "AI";
+            if (IsPushToTalk)
+            {
+                subtitles?.ShowNPCLine(npcName, text);
+                return;
+            }
+            if (!final)
+            {
+                chatUI?.UpdateStreamingResponse(npcName, text, npc);
+                return;
+            }
+            chatUI?.FinalizeResponse(npcName, text, npc);
+            chatUI?.SetWaiting(false);
+        }
+
+        private NPCAgent GetNearestNPCInRange()
+        {
+            NPCAgent nearest = null;
+            float bestSqr = float.MaxValue;
+            foreach (var npc in _npcsInRange)
+            {
+                var toNpc = npc.transform.position - _player.position;
+                toNpc.y = 0f;
+                float sqr = toNpc.sqrMagnitude;
+                // Ranges overlap (a companion is always near), so an NPC in front of the camera wins over one behind
+                if (_view != null && sqr > 0.01f)
+                {
+                    var forward = _view.forward;
+                    forward.y = 0f;
+                    float facing = Vector3.Dot(forward.normalized, toNpc / Mathf.Sqrt(sqr));
+                    sqr *= 2f - facing;
+                }
+                if (sqr >= bestSqr) continue;
+                bestSqr = sqr;
+                nearest = npc;
+            }
+            return nearest;
+        }
 
         /// <summary>
         /// Called by NPCAgent when the player leaves the trigger range while a chat is active.
@@ -202,33 +446,37 @@ namespace AISystem
             voiceInput?.StopListening();
             _currentNPC?.SetPromptText("Thinking");
 
-            // Display player message and indicate waiting state in Chat UI
-            chatUI?.AddMessage(chatUI.playerSenderName, message);
-            chatUI?.SetWaiting(true);
+            ShowPlayerMessage(message);
 
             string fullResponse = string.Empty;
             int spokenLength     = 0;             // chars of the response already sent to TTS
             var npcForCallback   = _currentNPC;   // capture before await
 
+            // Keyword actions decide here and add their decision to what the LLM reads
+            var npcActions = _currentNPC.GetComponent<NPCActions>();
+            string prompt = npcActions != null ? npcActions.PreparePlayerMessage(message) : message;
+
             await _currentNPC.Agent.Chat(
-                message,
+                prompt,
                 partial =>
                 {
                     fullResponse = partial;
-                    chatUI?.UpdateStreamingResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", VoiceOutputService.CleanTextForDisplay(partial), npcForCallback);
+                    ShowNPCMessage(npcForCallback, VoiceOutputService.CleanTextForDisplay(partial), false);
 
                     // Speak each sentence as soon as it is generated; skip if the session was closed
                     if (_currentNPC != null && partial.Length > spokenLength)
                     {
-                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npcForCallback?.voiceModelName);
+                        voiceOutput?.AppendSpeech(partial.Substring(spokenLength), npcForCallback?.voiceModelName, npcForCallback?.transform);
                         spokenLength = partial.Length;
                     }
                 },
                 () =>
                 {
                     _isWaitingForResponse = false;
-                    chatUI?.FinalizeResponse(npcForCallback != null ? npcForCallback.NPCName : "AI", VoiceOutputService.CleanTextForDisplay(fullResponse), npcForCallback);
-                    chatUI?.SetWaiting(false);
+                    ShowNPCMessage(npcForCallback, VoiceOutputService.CleanTextForDisplay(fullResponse), true);
+
+                    if (npcForCallback != null && !string.IsNullOrWhiteSpace(fullResponse))
+                        OnNPCResponse?.Invoke(npcForCallback, fullResponse);
 
                     // Guard: session may have been closed while LLM was generating
                     // (e.g. player walked out of range during "Thinking" state)
@@ -236,6 +484,11 @@ namespace AISystem
 
                     if (!string.IsNullOrWhiteSpace(fullResponse))
                         voiceOutput?.EndSpeech();
+                    else if (IsPushToTalk)
+                    {
+                        npcForCallback?.SetPromptText(null);
+                        subtitles?.HideAfterDelay();
+                    }
                     else
                     {
                         npcForCallback?.SetPromptText("Listening");
@@ -246,12 +499,19 @@ namespace AISystem
 
         private void HandleSpeechStarted()
         {
-            voiceInput?.PauseListening();
+            if (!IsPushToTalk)
+                voiceInput?.PauseListening();
             _currentNPC?.SetPromptText("Talking");
         }
 
         private void HandleSpeechFinished()
         {
+            // Subtitles fade after any speech, including NPC comments outside a conversation.
+            // Speech also ends when the player interrupts; the subtitles stay while they talk.
+            bool playerTalking = voiceInput != null && voiceInput.IsListening;
+            if (IsPushToTalk && !playerTalking)
+                subtitles?.HideAfterDelay();
+
             if (!IsChatOpen()) return;
 
             // If the player left the NPC's range while the NPC was still talking,
@@ -260,6 +520,13 @@ namespace AISystem
             {
                 _playerLeftDuringChat = false;
                 CloseChat();
+                return;
+            }
+
+            if (IsPushToTalk)
+            {
+                if (!playerTalking)
+                    _currentNPC?.SetPromptText(null);
                 return;
             }
 

@@ -1,7 +1,4 @@
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 using LLMUnity;
 
 namespace AISystem
@@ -33,7 +30,10 @@ namespace AISystem
         [Header("Interaction")]
         public float   interactionRange = 3f;
         public KeyCode interactionKey   = KeyCode.E;
-        
+
+        [Tooltip("Keep player movement and the locked cursor while this NPC's chat is open. Use it for companions that take voice commands on the move.")]
+        [SerializeField] private bool allowPlayerMovementInChat;
+
         [Header("Voice")]
         [Tooltip("Piper voice for this NPC. Download more voices in Tools > AI Packages > Voice Browser.")]
         [VoiceName]
@@ -43,13 +43,19 @@ namespace AISystem
         [Tooltip("TextMesh (3D Text) shown above NPC. Auto-found in children if left null.")]
         public TextMesh promptText;
 
+        [Tooltip("Label above the NPC. {0} = NPC name, {1} = status (Hold E to talk, Listening, Thinking, Talking).")]
+        [SerializeField] private string promptFormat = "{0}\n({1})";
+
         //  Internal 
         private bool _playerInRange;
         private bool _chatActive;
+        private string _basePrompt;   // personality prompt without the INPCPromptSource parts
 
         /// <summary>Read by AISystemManager.</summary>
         public LLMAgent Agent   => llmAgent;
         public string   NPCName => npcName;
+        public bool     AllowPlayerMovementInChat => allowPlayerMovementInChat;
+        public bool     PlayerInRange => _playerInRange;
 
         //  Lifecycle 
         void Awake()
@@ -77,8 +83,7 @@ namespace AISystem
                 promptText = GetComponentInChildren<TextMesh>(true);
 
             // Set default text — always visible
-            if (promptText != null)
-                promptText.text = $"Press {interactionKey} to interact";
+            SetPromptText(null);
         }
 
         void Start()
@@ -88,82 +93,77 @@ namespace AISystem
 
             if (AISystemManager.Instance == null)
                 Debug.LogWarning("[NPCAgent] AISystemManager not found in scene. Add the 'AI System' prefab.");
+
+            // Prompt sources (actions, knowledge) are initialised in their Awake, so compose here
+            RefreshSystemPrompt();
         }
 
         void Update()
         {
             if (!_playerInRange) return;
 
-            // Skip interaction key while chat panel is already open
-            if (AISystemManager.Instance != null && AISystemManager.Instance.IsChatOpen()) return;
+            var manager = AISystemManager.Instance;
+            if (manager != null && (manager.IsChatOpen() || manager.InputMode == VoiceInputMode.PushToTalk)) return;
 
-            if (IsInteractionKeyPressed())
+            if (KeyInput.WasPressed(interactionKey))
                 TriggerChat();
         }
 
-        private bool IsInteractionKeyPressed()
+        /// <summary>Prompt text when nobody talks: "Press E to interact", or "Hold E to talk" in push-to-talk mode.</summary>
+        private string IdlePrompt
         {
-#if ENABLE_INPUT_SYSTEM
-            // Input System package is active
-            var keyboard = Keyboard.current;
-            if (keyboard == null) return false;
-
-            return interactionKey switch
+            get
             {
-                KeyCode.E => keyboard.eKey.wasPressedThisFrame,
-                KeyCode.F => keyboard.fKey.wasPressedThisFrame,
-                KeyCode.Space => keyboard.spaceKey.wasPressedThisFrame,
-                KeyCode.Return => keyboard.enterKey.wasPressedThisFrame,
-                KeyCode.Escape => keyboard.escapeKey.wasPressedThisFrame,
-                _ => false
-            };
-#else
-            // Old Input manager
-            return Input.GetKeyDown(interactionKey);
-#endif
+                var manager = AISystemManager.Instance;
+                return manager != null && manager.InputMode == VoiceInputMode.PushToTalk
+                    ? $"Hold {manager.PushToTalkKey} to talk"
+                    : $"Press {interactionKey} to interact";
+            }
         }
 
-        //  Trigger 
+        //  Trigger
 
         void OnTriggerEnter(Collider other)
         {
             if (!other.CompareTag("Player")) return;
             _playerInRange = true;
-            if (promptText != null)
-                promptText.text = $"Press {interactionKey} to interact";
+            AISystemManager.Instance?.SetNPCInRange(this, true);
+            SetPromptText(null);
         }
 
         void OnTriggerExit(Collider other)
         {
             if (!other.CompareTag("Player")) return;
             _playerInRange = false;
+            AISystemManager.Instance?.SetNPCInRange(this, false);
 
             if (_chatActive)
             {
                 // Player left while interacting — stop listening but let NPC finish speaking
                 AISystemManager.Instance?.HandlePlayerLeftRange();
             }
-            else if (promptText != null)
+            else
             {
-                promptText.text = $"Press {interactionKey} to interact";
+                SetPromptText(null);
             }
         }
 
-        /// <summary>Called by AISystemManager to show Listening / Thinking / Talking.</summary>
+        /// <summary>
+        /// Shows the NPC name and a status (Listening / Thinking / Talking) above the NPC.
+        /// Null or empty shows the idle hint ("Hold E to talk").
+        /// </summary>
         public void SetPromptText(string state)
         {
             if (promptText == null) return;
-            promptText.text = string.IsNullOrEmpty(state)
-                ? $"Press {interactionKey} to interact"
-                : state;
+            promptText.text = string.Format(promptFormat, npcName, string.IsNullOrEmpty(state) ? IdlePrompt : state);
         }
 
         /// <summary>Called by AISystemManager on open/close.</summary>
         public void SetChatActive(bool active)
         {
             _chatActive = active;
-            if (!active && promptText != null)
-                promptText.text = $"Press {interactionKey} to interact";
+            if (!active)
+                SetPromptText(null);
         }
 
         /// <summary>Applies personality template settings to this NPC and its LLMAgent.</summary>
@@ -177,10 +177,23 @@ namespace AISystem
             if (llmAgent == null)
                 llmAgent = GetComponent<LLMAgent>();
 
-            if (llmAgent != null)
-            {
-                llmAgent.systemPrompt = preset.systemPrompt;
-            }
+            _basePrompt = preset.systemPrompt;
+            RefreshSystemPrompt();
+        }
+
+        /// <summary>
+        /// Rebuilds the system prompt: the personality prompt plus the text of every INPCPromptSource
+        /// on this NPC (actions, story knowledge, world state). Call it when a source's text changes.
+        /// </summary>
+        public void RefreshSystemPrompt()
+        {
+            if (llmAgent == null) return;
+            _basePrompt ??= llmAgent.systemPrompt;
+
+            var sb = new System.Text.StringBuilder(_basePrompt);
+            foreach (var source in GetComponents<INPCPromptSource>())
+                sb.Append(source.GetPromptText());
+            llmAgent.systemPrompt = sb.ToString();
         }
 
         private void TriggerChat()

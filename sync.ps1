@@ -62,6 +62,10 @@ if (Test-Path "$srcBase\Scenes") {
 if (Test-Path "$srcBase\Resources") {
     Sync-DirectoryContents -src "$srcBase\Resources" -dst 'AIPackageInstaller\Samples~\Resources'
 }
+# Demo art (Quaternius CC0 models, Animator Controllers, materials) used by the demo scenes and prefabs
+if (Test-Path "$srcBase\Art") {
+    Sync-DirectoryContents -src "$srcBase\Art" -dst 'AIPackageInstaller\Samples~\Art'
+}
 if (Test-Path 'Assets\AI Driven NPCs System\README.md') {
     Copy-Item -Path 'Assets\AI Driven NPCs System\README.md' -Destination 'AIPackageInstaller\README.md' -Force
 }
@@ -96,6 +100,10 @@ if (Test-Path $aiTestAssets) {
         Sync-DirectoryContents -src "$srcBase\Resources" -dst "$aiTestAssets\Resources"
         Write-Host "Synced to AITest Assets Resources: $aiTestAssets\Resources\"
     }
+    if (Test-Path "$srcBase\Art") {
+        Sync-DirectoryContents -src "$srcBase\Art" -dst "$aiTestAssets\Art"
+        Write-Host "Synced to AITest Assets Art: $aiTestAssets\Art\"
+    }
     Copy-Item -Path 'Assets\AI Driven NPCs System\*.md*' -Destination "$aiTestAssets\" -Force -ErrorAction SilentlyContinue
     Write-Host "Synced docs to AITest Assets: $aiTestAssets\"
 }
@@ -117,6 +125,9 @@ $aiTestImported = Get-Item 'c:\Projects\AITest\Assets\Samples\AI Driven NPCs Sys
 if ($aiTestImported) {
     Sync-DirectoryContents -src 'AIPackageInstaller\Samples~\Scripts' -dst "$($aiTestImported.FullName)\Scripts"
     Sync-DirectoryContents -src 'AIPackageInstaller\Samples~\Prefabs' -dst "$($aiTestImported.FullName)\Prefabs"
+    if (Test-Path 'AIPackageInstaller\Samples~\Art') {
+        Sync-DirectoryContents -src 'AIPackageInstaller\Samples~\Art' -dst "$($aiTestImported.FullName)\Art"
+    }
     Write-Host "Synced to AITest imported samples: $($aiTestImported.FullName)"
 }
 

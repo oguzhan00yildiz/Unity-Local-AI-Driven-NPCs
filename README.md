@@ -3,7 +3,7 @@
 [![Unity Version](https://img.shields.io/badge/Unity-6-blue.svg?logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg?logo=windows)](https://unity.com/)
-[![Package Version](https://img.shields.io/badge/Package-v2.4.2-orange.svg)](AIPackageInstaller/package.json)
+[![Package Version](https://img.shields.io/badge/Package-v2.5.0-orange.svg)](AIPackageInstaller/package.json)
 
 A free Unity package for NPCs that listen, think and talk. Three models run on the player's computer:
 
@@ -34,7 +34,7 @@ Remove other copies of LLMUnity, Piper, Whisper or ONNX Runtime first. Two copie
    https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
    ```
 2. The installer adds the npm registry for ONNX Runtime and installs LLMUnity, Piper and Whisper from Git.
-3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.4.2/Scenes/AIOScene.unity`.
+3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.5.0/Scenes/AIOScene.unity`.
 
 Keep Unity focused during setup. Unity can pause downloads in the background.
 

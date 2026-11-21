@@ -209,7 +209,7 @@ MonoBehaviour:
   fallTimeout: 0.15
   groundLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   groundedOffset: -0.14
   groundedRadius: 0.28
   visualBody: {fileID: 2286763570030269889}
