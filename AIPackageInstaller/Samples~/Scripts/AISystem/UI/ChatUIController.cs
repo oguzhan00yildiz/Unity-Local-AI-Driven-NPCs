@@ -209,7 +209,7 @@ namespace AISystem
             }
             _isOpen = true;
 
-            if (playerInputField != null)
+            if (playerInputField != null && playerInputField.gameObject.activeSelf)
             {
                 playerInputField.text = string.Empty;
                 playerInputField.interactable = true;
@@ -219,6 +219,14 @@ namespace AISystem
 
             RefreshDisplay();
             // Note: Cursor lock and player movement are managed by AISystemManager.
+        }
+
+        /// <summary>Shows or hides the text field, send button and mic button. Hidden, the panel shows subtitles only.</summary>
+        public void SetTextInputVisible(bool visible)
+        {
+            if (playerInputField != null) playerInputField.gameObject.SetActive(visible);
+            if (sendButton       != null) sendButton.gameObject.SetActive(visible);
+            if (micToggleButton  != null) micToggleButton.gameObject.SetActive(visible);
         }
 
         public void Close()

@@ -1,7 +1,4 @@
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 using LLMUnity;
 
 namespace AISystem
@@ -33,7 +30,10 @@ namespace AISystem
         [Header("Interaction")]
         public float   interactionRange = 3f;
         public KeyCode interactionKey   = KeyCode.E;
-        
+
+        [Tooltip("Keep player movement and the locked cursor while this NPC's chat is open. Use it for companions that take voice commands on the move.")]
+        [SerializeField] private bool allowPlayerMovementInChat;
+
         [Header("Voice")]
         [Tooltip("Piper voice for this NPC. Download more voices in Tools > AI Packages > Voice Browser.")]
         [VoiceName]
@@ -50,6 +50,7 @@ namespace AISystem
         /// <summary>Read by AISystemManager.</summary>
         public LLMAgent Agent   => llmAgent;
         public string   NPCName => npcName;
+        public bool     AllowPlayerMovementInChat => allowPlayerMovementInChat;
 
         //  Lifecycle 
         void Awake()
@@ -78,7 +79,7 @@ namespace AISystem
 
             // Set default text — always visible
             if (promptText != null)
-                promptText.text = $"Press {interactionKey} to interact";
+                promptText.text = IdlePrompt;
         }
 
         void Start()
@@ -94,49 +95,41 @@ namespace AISystem
         {
             if (!_playerInRange) return;
 
-            // Skip interaction key while chat panel is already open
-            if (AISystemManager.Instance != null && AISystemManager.Instance.IsChatOpen()) return;
+            var manager = AISystemManager.Instance;
+            if (manager != null && (manager.IsChatOpen() || manager.InputMode == VoiceInputMode.PushToTalk)) return;
 
-            if (IsInteractionKeyPressed())
+            if (KeyInput.WasPressed(interactionKey))
                 TriggerChat();
         }
 
-        private bool IsInteractionKeyPressed()
+        /// <summary>Prompt text when nobody talks: "Press E to interact", or "Hold E to talk" in push-to-talk mode.</summary>
+        private string IdlePrompt
         {
-#if ENABLE_INPUT_SYSTEM
-            // Input System package is active
-            var keyboard = Keyboard.current;
-            if (keyboard == null) return false;
-
-            return interactionKey switch
+            get
             {
-                KeyCode.E => keyboard.eKey.wasPressedThisFrame,
-                KeyCode.F => keyboard.fKey.wasPressedThisFrame,
-                KeyCode.Space => keyboard.spaceKey.wasPressedThisFrame,
-                KeyCode.Return => keyboard.enterKey.wasPressedThisFrame,
-                KeyCode.Escape => keyboard.escapeKey.wasPressedThisFrame,
-                _ => false
-            };
-#else
-            // Old Input manager
-            return Input.GetKeyDown(interactionKey);
-#endif
+                var manager = AISystemManager.Instance;
+                return manager != null && manager.InputMode == VoiceInputMode.PushToTalk
+                    ? $"Hold {manager.PushToTalkKey} to talk"
+                    : $"Press {interactionKey} to interact";
+            }
         }
 
-        //  Trigger 
+        //  Trigger
 
         void OnTriggerEnter(Collider other)
         {
             if (!other.CompareTag("Player")) return;
             _playerInRange = true;
+            AISystemManager.Instance?.SetNPCInRange(this, true);
             if (promptText != null)
-                promptText.text = $"Press {interactionKey} to interact";
+                promptText.text = IdlePrompt;
         }
 
         void OnTriggerExit(Collider other)
         {
             if (!other.CompareTag("Player")) return;
             _playerInRange = false;
+            AISystemManager.Instance?.SetNPCInRange(this, false);
 
             if (_chatActive)
             {
@@ -145,7 +138,7 @@ namespace AISystem
             }
             else if (promptText != null)
             {
-                promptText.text = $"Press {interactionKey} to interact";
+                promptText.text = IdlePrompt;
             }
         }
 
@@ -154,7 +147,7 @@ namespace AISystem
         {
             if (promptText == null) return;
             promptText.text = string.IsNullOrEmpty(state)
-                ? $"Press {interactionKey} to interact"
+                ? IdlePrompt
                 : state;
         }
 
@@ -163,7 +156,7 @@ namespace AISystem
         {
             _chatActive = active;
             if (!active && promptText != null)
-                promptText.text = $"Press {interactionKey} to interact";
+                promptText.text = IdlePrompt;
         }
 
         /// <summary>Applies personality template settings to this NPC and its LLMAgent.</summary>

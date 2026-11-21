@@ -318,6 +318,10 @@ namespace AISystem
             // Remove list bullets and other leftover asterisks
             result = result.Replace("*", "");
 
+            // Remove action tags like [FOLLOW] (read by NPCActions), and an unclosed tag at the end while streaming
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\[[A-Za-z_]+\]", "");
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\[[A-Za-z_]*$", "");
+
             // Remove markdown symbols (#, _, ~, `, [, ])
             result = System.Text.RegularExpressions.Regex.Replace(result, @"[#_`~\[\]]", "");
 
