@@ -43,6 +43,9 @@ namespace AISystem
         [Tooltip("TextMesh (3D Text) shown above NPC. Auto-found in children if left null.")]
         public TextMesh promptText;
 
+        [Tooltip("Label above the NPC. {0} = NPC name, {1} = status (Hold E to talk, Listening, Thinking, Talking).")]
+        [SerializeField] private string promptFormat = "{0}\n({1})";
+
         //  Internal 
         private bool _playerInRange;
         private bool _chatActive;
@@ -79,8 +82,7 @@ namespace AISystem
                 promptText = GetComponentInChildren<TextMesh>(true);
 
             // Set default text — always visible
-            if (promptText != null)
-                promptText.text = IdlePrompt;
+            SetPromptText(null);
         }
 
         void Start()
@@ -125,8 +127,7 @@ namespace AISystem
             if (!other.CompareTag("Player")) return;
             _playerInRange = true;
             AISystemManager.Instance?.SetNPCInRange(this, true);
-            if (promptText != null)
-                promptText.text = IdlePrompt;
+            SetPromptText(null);
         }
 
         void OnTriggerExit(Collider other)
@@ -140,27 +141,28 @@ namespace AISystem
                 // Player left while interacting — stop listening but let NPC finish speaking
                 AISystemManager.Instance?.HandlePlayerLeftRange();
             }
-            else if (promptText != null)
+            else
             {
-                promptText.text = IdlePrompt;
+                SetPromptText(null);
             }
         }
 
-        /// <summary>Called by AISystemManager to show Listening / Thinking / Talking.</summary>
+        /// <summary>
+        /// Shows the NPC name and a status (Listening / Thinking / Talking) above the NPC.
+        /// Null or empty shows the idle hint ("Hold E to talk").
+        /// </summary>
         public void SetPromptText(string state)
         {
             if (promptText == null) return;
-            promptText.text = string.IsNullOrEmpty(state)
-                ? IdlePrompt
-                : state;
+            promptText.text = string.Format(promptFormat, npcName, string.IsNullOrEmpty(state) ? IdlePrompt : state);
         }
 
         /// <summary>Called by AISystemManager on open/close.</summary>
         public void SetChatActive(bool active)
         {
             _chatActive = active;
-            if (!active && promptText != null)
-                promptText.text = IdlePrompt;
+            if (!active)
+                SetPromptText(null);
         }
 
         /// <summary>Applies personality template settings to this NPC and its LLMAgent.</summary>
