@@ -1,0 +1,366 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2007882210456625703
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1760980876129024324}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.00000004371139
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_Name
+      value: Model
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 73d78097bad0bb640925d07e590a6228, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+--- !u!4 &2042337651946325452 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 64ed55558443331499bbbb985a0de52b, type: 3}
+  m_PrefabInstance: {fileID: 2007882210456625703}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &8052392363169199138
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 5222687157493372225, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_Name
+      value: Companion
+      objectReference: {fileID: 0}
+    - target: {fileID: 5982562898965672562, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_Size.x
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 5982562898965672562, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_Size.y
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5982562898965672562, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_Size.z
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 5982562898965672562, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_Center.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6817306936822910814, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.145
+      objectReference: {fileID: 0}
+    - target: {fileID: 6817306936822910814, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.145
+      objectReference: {fileID: 0}
+    - target: {fileID: 6817306936822910814, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.145
+      objectReference: {fileID: 0}
+    - target: {fileID: 6817306936822910814, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 2.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 407.4523
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 943.061
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8958941990974488087, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: personalityPreset
+      value: 
+      objectReference: {fileID: 11400000, guid: e5efdc38dd65ee041888941b0ed21dc2, type: 2}
+    - target: {fileID: 8958941990974488087, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      propertyPath: allowPlayerMovementInChat
+      value: 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2042337651946325452}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4301564446946361584}
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 567923154252969592}
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2756043947581005033}
+  m_SourcePrefab: {fileID: 100100000, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+--- !u!4 &1760980876129024324 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8633289392165326182, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+  m_PrefabInstance: {fileID: 8052392363169199138}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &4494428956843834618 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+  m_PrefabInstance: {fileID: 8052392363169199138}
+  m_PrefabAsset: {fileID: 0}
+--- !u!195 &4301564446946361584
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4494428956843834618}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.35
+  m_Speed: 3.5
+  m_Acceleration: 12
+  avoidancePriority: 50
+  m_AngularSpeed: 720
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 1.9
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &567923154252969592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4494428956843834618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eaefe39bd5754847a0fac4f4e2d81bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.CompanionController
+  followTarget: {fileID: 0}
+  followDistance: 2.5
+  walkSpeed: 2
+  sprintSpeed: 5.5
+  repathDistance: 0.5
+--- !u!114 &2756043947581005033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4494428956843834618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7c9a42bea958504793db93d44588ee2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.NPCActions
+  actions:
+  - tag: FOLLOW
+    description: the player asks you to follow them or come along
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Follow
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - tag: STOP
+    description: the player asks you to stop, wait or stay here
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Stop
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - tag: SPRINT
+    description: the player asks you to run or hurry
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Sprint
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - tag: WALK
+    description: the player asks you to walk or slow down
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Walk
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - tag: JUMP
+    description: the player asks you to jump
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Jump
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - tag: WAVE
+    description: the player asks you to wave or say hello
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Wave
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - tag: DANCE
+    description: the player asks you to dance
+    onTriggered:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 567923154252969592}
+          m_TargetAssemblyTypeName: AISystem.CompanionController, AIDrivenNPCs.Runtime
+          m_MethodName: Dance
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: 
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2

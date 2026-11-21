@@ -3,6 +3,7 @@
 This package includes third-party open-source software and native libraries, and downloads machine learning models on request. Each component is subject to its own license terms as outlined below.
 
 - Included in `ThirdParty/`: LLMUnity, Whisper Unity, Piper TTS, ONNX Runtime and ONNX Runtime Unity. Each folder contains its original license file.
+- Included in `Art/Quaternius/`: demo scene models, textures and animations by Quaternius (CC0). Each pack folder contains its original license file.
 
 ---
 
@@ -136,7 +137,20 @@ The underlying Microsoft ONNX Runtime binaries are licensed by Microsoft Corpora
 
 ---
 
-## 5. Model Attributions
+## 5. Quaternius 3D Art (included, demo scene only)
+
+- **Author**: Quaternius ([quaternius.com](https://quaternius.com))
+- **License**: CC0 1.0 Universal (public domain dedication). The license files are in `Art/Quaternius/<pack>/`.
+- **Packs** (Standard versions, only the files the demo scene uses):
+  - [Universal Animation Library](https://quaternius.itch.io/universal-animation-library): character animations
+  - [Modular Character Outfits - Fantasy](https://quaternius.itch.io/modular-character-outfits-fantasy): Ranger player and companion models
+  - [Medieval Village MegaKit](https://quaternius.itch.io/medieval-village-megakit): houses, props and ruins
+  - [Stylized Nature MegaKit](https://quaternius.itch.io/stylized-nature-megakit): trees, rocks and plants
+- **Changes**: rig set to Humanoid and clip loop settings in the import settings. Nature materials extracted from the FBX files with alpha clipping turned on.
+
+---
+
+## 6. Model Attributions
 
 - **Qwen3.5-0.8B** (default language model, downloaded on request as the `unsloth/Qwen3.5-0.8B-GGUF` quantization, not included): made by the Alibaba Qwen team, licensed under the **Apache License 2.0** ([model card](https://huggingface.co/Qwen/Qwen3.5-0.8B)). Other models from the LLMUnity download list have their own licenses.
 - **Piper Voices** (downloaded on request from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices), not included). Licenses as stated in each voice's MODEL_CARD:

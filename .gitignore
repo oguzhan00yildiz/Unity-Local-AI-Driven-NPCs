@@ -85,3 +85,7 @@ crashlytics-build.properties
 # Temporary packaging and staging folders
 .staging~/
 **/.staging~/
+
+# Demo art staging (Quaternius CC0 source packs, not shipped)
+/Assets/DemoArtSource/
+/Assets/DemoArtSource.meta
