@@ -76,7 +76,7 @@ TECHNICAL SPECIFICATIONS
 - Language: English (speech recognition and voices)
 - Unity version: Unity 6 (6000.0) or newer, tested on 6000.3
 - Platform: Windows 10/11, 64-bit
-- Required packages: Input System, uGUI, Newtonsoft Json, Collections
+- Required packages: Input System, uGUI, Newtonsoft Json, Collections, AI Navigation (installed on import)
 - Render pipeline: the demo scene and prefabs use URP. The scripts work in Built-in and HDRP with your own scene and characters.
 
 
