@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.5.1] - 2026-11-23
+
+### Changed
+- Setup asks about the DemoQuest models before any download starts.
+- Setup complete: an Open DemoQuest button shows when DemoQuest and its models are installed.
+
+### Fixed
+- The Asset Store package lists its Package Manager dependencies, so a new project compiles after import.
+
 ## [2.5.0] - 2026-11-21
 
 ### Added
