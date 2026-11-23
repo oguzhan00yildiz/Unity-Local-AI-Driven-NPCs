@@ -1,0 +1,13 @@
+# Pronunciations for names and words the voices say wrong.
+# One word per line: word: pronunciation
+# The pronunciation is plain English words that sound right ("ee duh"),
+# or eSpeak IPA phonemes (ˈiːdə) for exact control.
+# Case does not matter. Lines starting with # are ignored.
+
+# DemoQuest names
+aada: ˈɑːdɑː
+iida: ˈiːdɑː
+ville: vˈɪlɛ
+emil: ˈɛmiːl
+giacomo: dʒˈɑːkəmoʊ
+elmford: ˈɛlmfɚd

@@ -263,7 +263,47 @@ namespace AISystem.Editor
     private static readonly List<ModelEntry> DemoModels = BuildDemoModels();
     private static readonly List<ModelEntry> AllModels  = CoreModels.Concat(DemoModels).ToList();
 
-    private static List<ModelEntry> Models => HasDemoScene ? AllModels : CoreModels;
+    private static List<ModelEntry> Models => DemoWanted ? AllModels : CoreModels;
+
+    // Per-project answer to "download the DemoQuest models?": 0 not asked yet, 1 yes, 2 no
+    private static string DemoChoiceKey => "AISystem.DemoModelsChoice." + Application.dataPath.GetHashCode();
+    private static bool DemoWanted => HasDemoScene && EditorPrefs.GetInt(DemoChoiceKey, 0) == 1;
+    public static bool DemoChoiceMade => EditorPrefs.GetInt(DemoChoiceKey, 0) != 0;
+
+    /// <summary>
+    /// Asks once per project, before any download, whether to also get the DemoQuest models.
+    /// Does nothing when the DemoQuest scene is not in the project.
+    /// </summary>
+    public static void AskDemoChoiceIfNeeded()
+    {
+        _demoCheckTime = -10.0;
+        if (!HasDemoScene || DemoChoiceMade) return;
+        bool yes = EditorUtility.DisplayDialog("DemoQuest demo",
+            "This package includes DemoQuest, a short village quest. It needs bigger models: " +
+            "Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 voices (380 MB).\n\n" +
+            "Download them together with the default models? You can add them later in Tools > AI Packages > Download DemoQuest Models.",
+            "Include DemoQuest", "Skip");
+        EditorPrefs.SetInt(DemoChoiceKey, yes ? 1 : 2);
+    }
+
+    /// <summary>Turns the DemoQuest models on for this project and downloads the missing ones.</summary>
+    public static void ChooseDemoModels()
+    {
+        EditorPrefs.SetInt(DemoChoiceKey, 1);
+        AutoStartDownloads();
+    }
+
+    [MenuItem("Tools/AI Packages/Download DemoQuest Models", false, 2)]
+    private static void DownloadDemoModelsMenu()
+    {
+        _demoCheckTime = -10.0;
+        if (!HasDemoScene)
+        {
+            EditorUtility.DisplayDialog("DemoQuest demo", "The DemoQuest scene is not in this project. Import the samples first.", "OK");
+            return;
+        }
+        ChooseDemoModels();
+    }
 
     private static double _demoCheckTime = -10.0;
     private static bool   _hasDemoScene;
@@ -279,6 +319,23 @@ namespace AISystem.Editor
             }
             return _hasDemoScene;
         }
+    }
+
+    private static double _demoPathCheckTime = -10.0;
+    private static string _demoScenePath;
+
+    /// <summary>Path of the DemoQuest scene when the user chose its models, otherwise null.</summary>
+    private static string FindDemoQuestScenePath()
+    {
+        if (!DemoWanted) return null;
+        if (EditorApplication.timeSinceStartup - _demoPathCheckTime > 2.0)
+        {
+            _demoPathCheckTime = EditorApplication.timeSinceStartup;
+            _demoScenePath = AssetDatabase.FindAssets(DemoSceneName + " t:Scene")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .FirstOrDefault(p => System.IO.Path.GetFileNameWithoutExtension(p) == DemoSceneName);
+        }
+        return _demoScenePath;
     }
 
     /// <summary>True when the demo scene is in the project and one of its models is missing.</summary>
@@ -602,6 +659,12 @@ namespace AISystem.Editor
         return CheckPackageInManifest("com.yildizoguzhan.ai-driven-npcs");
     }
 
+    private static void OpenScene(string scenePath)
+    {
+        if (UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+    }
+
     /// <summary>
     /// Opens the sample demo scene immediately.
     /// </summary>
@@ -610,10 +673,7 @@ namespace AISystem.Editor
         string scenePath = FindSampleScenePath();
         if (!string.IsNullOrEmpty(scenePath))
         {
-            if (UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-            {
-                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
-            }
+            OpenScene(scenePath);
         }
         else
         {
@@ -664,12 +724,21 @@ namespace AISystem.Editor
 
                 string scenePath = FindSampleScenePath();
                 bool hasSampleScene = !string.IsNullOrEmpty(scenePath);
+                string questPath = FindDemoQuestScenePath();
+                bool hasQuest = !string.IsNullOrEmpty(questPath);
                 bool isUpm = IsInstalledViaUPM();
 
                 string message;
                 string primaryBtn;
 
-                if (hasSampleScene)
+                if (hasQuest)
+                {
+                    message = "All required packages and models are downloaded and ready!\n\n" +
+                              "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
+                              "Would you like to open DemoQuest to test it right away?";
+                    primaryBtn = "Open DemoQuest";
+                }
+                else if (hasSampleScene)
                 {
                     message = "All required packages and models are downloaded and ready!\n\n" +
                               "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
@@ -691,7 +760,7 @@ namespace AISystem.Editor
                     primaryBtn = "Got It";
                 }
 
-                bool showCancel = hasSampleScene || isUpm;
+                bool showCancel = hasQuest || hasSampleScene || isUpm;
                 bool choosePrimary = AISystemDialogWindow.ShowDialog(
                     title: "AI Driven NPCs — Setup Complete! 🎉",
                     heading: "Setup Complete! Everything is Ready",
@@ -705,7 +774,9 @@ namespace AISystem.Editor
 
                 if (choosePrimary)
                 {
-                    if (hasSampleScene)
+                    if (hasQuest)
+                        OpenScene(questPath);
+                    else if (hasSampleScene)
                         OpenSampleScene();
                     else if (isUpm)
                         OpenPackageManager();
@@ -896,6 +967,7 @@ namespace AISystem.Editor
         public bool AllModelsDownloaded;
         public bool HasSampleScene;
         public string SampleScenePath;
+        public string DemoQuestScenePath;
         public bool IsUpm;
 
         // Header / overall
@@ -1042,6 +1114,7 @@ namespace AISystem.Editor
         {
             state.SampleScenePath = FindSampleScenePath();
             state.HasSampleScene = !string.IsNullOrEmpty(state.SampleScenePath);
+            state.DemoQuestScenePath = FindDemoQuestScenePath();
             state.IsUpm = IsInstalledViaUPM();
         }
 
@@ -1099,9 +1172,17 @@ namespace AISystem.Editor
 
             using (new EditorGUILayout.HorizontalScope())
             {
+                GUIStyle playBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
+                if (!string.IsNullOrEmpty(state.DemoQuestScenePath))
+                {
+                    if (GUILayout.Button("▶ Open DemoQuest", playBtnStyle, GUILayout.Height(26)))
+                    {
+                        OpenScene(state.DemoQuestScenePath);
+                        GUIUtility.ExitGUI();
+                    }
+                }
                 if (hasSampleScene)
                 {
-                    GUIStyle playBtnStyle = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
                     if (GUILayout.Button("▶ Open Demo Scene (AIOScene)", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();

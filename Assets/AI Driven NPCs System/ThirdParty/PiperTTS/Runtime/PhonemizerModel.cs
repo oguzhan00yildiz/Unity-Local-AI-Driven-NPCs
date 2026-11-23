@@ -140,6 +140,17 @@ namespace PiperTTS
         Tokenizer _tokenizer;
         Dictionary<string, Dictionary<string, string>> _dict;
 
+        // The dictionary is large (275k words), so all voices share one copy per file
+        static readonly Dictionary<string, Dictionary<string, Dictionary<string, string>>> SharedDicts =
+            new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+
+        /// <summary>
+        /// Lines of "word: pronunciation" set before InitModel. Lines starting with # are comments.
+        /// The pronunciation is eSpeak IPA (ˈiːdə), or plain English words that sound right ("ee duh").
+        /// </summary>
+        [NonSerialized] public string lexiconText;
+        Dictionary<string, string> _lexicon = new Dictionary<string, string>();
+
         public void InitModel()
         {
             if (string.IsNullOrEmpty(modelPath) || string.IsNullOrEmpty(configPath))
@@ -183,17 +194,26 @@ namespace PiperTTS
                     throw new System.Exception("unable to load model");
                 }
 
-                if (File.Exists(dictPath))
+                lock (SharedDicts)
                 {
-                    string dictJson = File.ReadAllText(dictPath);
-                    _dict = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(dictJson);
-                    Debug.Log($"[OpenPhonemizer] Loaded dictionary from {dictPath}");
+                    if (!SharedDicts.TryGetValue(dictPath ?? string.Empty, out _dict))
+                    {
+                        if (File.Exists(dictPath))
+                        {
+                            string dictJson = File.ReadAllText(dictPath);
+                            _dict = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(dictJson);
+                            Debug.Log($"[OpenPhonemizer] Loaded dictionary from {dictPath}");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[OpenPhonemizer] Dictionary file not found at {dictPath}. Proceeding without dictionary.");
+                            _dict = new Dictionary<string, Dictionary<string, string>>();
+                        }
+                        SharedDicts[dictPath ?? string.Empty] = _dict;
+                    }
                 }
-                else
-                {
-                    Debug.LogWarning($"[OpenPhonemizer] Dictionary file not found at {dictPath}. Proceeding without dictionary.");
-                    _dict = new Dictionary<string, Dictionary<string, string>>();
-                }
+
+                LoadLexicon();
 
                 PhonemizeInternal("warmup", "en_us", cts);
 
@@ -278,86 +298,170 @@ namespace PiperTTS
                 langDict = _dict[lang];
             }
 
+            // Tokens: words, spaces and punctuation, in order
+            var tokens = new List<string>();
+            var isWord = new List<bool>();
             foreach (var part in parts)
             {
                 if (string.IsNullOrEmpty(part)) continue;
                 if (punctSet.Contains(part))
                 {
-                    resultParts.Add(part);
+                    tokens.Add(part); isWord.Add(false);
                     continue;
                 }
 
                 // "well-known" is read as two words; quotes are not spoken
-                if (part == "-") { resultParts.Add(" "); continue; }
+                if (part == "-") { tokens.Add(" "); isWord.Add(false); continue; }
                 if (part == "\"") continue;
 
                 // Quoted words ('Halt') keep only inner apostrophes (guard's)
                 string word = part.Trim('\'');
                 if (word.Length == 0) continue;
+                tokens.Add(word); isWord.Add(true);
+            }
 
-                // Dictionary Lookup
-                bool found = false;
-                if (langDict != null)
+            // Words are read with their neighbours known ("close the gate" / "close to home")
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (!isWord[i]) { resultParts.Add(tokens[i]); continue; }
+                int prev = NeighbourWord(tokens, isWord, i, -1);
+                int next = NeighbourWord(tokens, isWord, i, 1);
+                resultParts.Add(PhonemizeWord(tokens[i], langDict, lang, cts, true,
+                    prev >= 0 ? tokens[prev].ToLowerInvariant() : null,
+                    next >= 0 ? tokens[next].ToLowerInvariant() : null));
+            }
+
+            // "the" and "to" change with the next sound: "thee apple", "tuh the gate"
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (!isWord[i]) continue;
+                int next = NeighbourWord(tokens, isWord, i, 1);
+                if (next < 0) continue;
+                string weak = EnglishPronunciation.WeakForm(tokens[i].ToLowerInvariant(), resultParts[next]);
+                if (weak != null) resultParts[i] = weak;
+            }
+
+            // A sentence without an end mark is spoken with a cut-off tone
+            string result = string.Join("", resultParts).TrimEnd();
+            if (result.Length > 0 && ".?!".IndexOf(result[result.Length - 1]) < 0)
+                result += ".";
+            return result;
+        }
+
+        /// <summary>Index of the word next to token i in direction dir, or -1 when punctuation comes first.</summary>
+        static int NeighbourWord(List<string> tokens, List<bool> isWord, int i, int dir)
+        {
+            for (int j = i + dir; j >= 0 && j < tokens.Count; j += dir)
+            {
+                if (isWord[j]) return j;
+                if (tokens[j] != " ") return -1;
+            }
+            return -1;
+        }
+
+        /// <summary>Lexicon, then context rules, dictionary and English rules, then the neural model.</summary>
+        string PhonemizeWord(string word, Dictionary<string, string> langDict, string lang, CancellationToken cts, bool useLexicon,
+            string prevWord = null, string nextWord = null)
+        {
+            if (useLexicon && _lexicon.TryGetValue(word.ToLowerInvariant(), out string custom))
+                return custom;
+
+            string homograph = EnglishPronunciation.InContext(word.ToLowerInvariant(), prevWord, nextWord);
+            if (homograph != null)
+                return homograph;
+
+            string ruled = EnglishPronunciation.Pronounce(word,
+                w => langDict != null && langDict.TryGetValue(w, out string p) ? p : null);
+            if (ruled != null)
+                return ruled;
+
+            return GuessWord(word, lang);
+        }
+
+        /// <summary>Reads lexiconText. Plain-letter pronunciations are phonemized like normal text.</summary>
+        void LoadLexicon()
+        {
+            _lexicon = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(lexiconText)) return;
+
+            _dict.TryGetValue("en_us", out var langDict);
+            foreach (string raw in lexiconText.Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith("#")) continue;
+                int colon = line.IndexOf(':');
+                if (colon <= 0) continue;
+
+                string word = line.Substring(0, colon).Trim().ToLowerInvariant();
+                string value = line.Substring(colon + 1).Trim();
+                if (value.Length == 0) continue;
+
+                if (Regex.IsMatch(value, @"^[A-Za-z' \-]+$"))
                 {
-                    if (langDict.TryGetValue(word, out string ph)) { resultParts.Add(ph); found = true; }
-                    else if (langDict.TryGetValue(word.ToLowerInvariant(), out ph)) { resultParts.Add(ph); found = true; }
+                    // One word: only the first part keeps full stress ("ah duh" is ˈɑːdʌ)
+                    var parts = value.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select((p, i) =>
+                        {
+                            string ph = PhonemizeWord(p, langDict, "en_us", CancellationToken.None, false);
+                            return i == 0 ? ph : ph.Replace("ˈ", "");
+                        });
+                    value = string.Join("", parts);
                 }
+                _lexicon[word] = value;
+            }
+        }
 
-                if (found) continue;
+        string GuessWord(string word, string lang)
+        {
+            // Model Inference
+            try
+            {
+                long[] inputTokens = _tokenizer.Tokenize(word, lang);
 
-                // Model Inference
-                try
+                var inputTensor = new DenseTensor<long>(inputTokens, new[] { 1, inputTokens.Length });
+                var inputs = new List<NamedOnnxValue>
                 {
-                    long[] inputTokens = _tokenizer.Tokenize(word, lang);
+                    NamedOnnxValue.CreateFromTensor("text", inputTensor)
+                };
 
-                    var inputTensor = new DenseTensor<long>(inputTokens, new[] { 1, inputTokens.Length });
-                    var inputs = new List<NamedOnnxValue>
+                using var results = _session.Run(inputs);
+                var logits = results.First().AsTensor<float>();
+
+                // Argmax & Dedup
+                var decodedTokens = new List<long>();
+                int sequenceLength = logits.Dimensions[1];
+                int vocabSize = logits.Dimensions[2];
+
+                long lastToken = -1;
+
+                for (int t = 0; t < sequenceLength; t++)
+                {
+                    float maxVal = float.MinValue;
+                    int maxIdx = 0;
+                    for (int v = 0; v < vocabSize; v++)
                     {
-                        NamedOnnxValue.CreateFromTensor("text", inputTensor)
-                    };
-
-                    using var results = _session.Run(inputs);
-                    var logits = results.First().AsTensor<float>();
-
-                    // Argmax & Dedup
-                    var decodedTokens = new List<long>();
-                    int sequenceLength = logits.Dimensions[1];
-                    int vocabSize = logits.Dimensions[2];
-
-                    long lastToken = -1;
-
-                    for (int t = 0; t < sequenceLength; t++)
-                    {
-                        float maxVal = float.MinValue;
-                        int maxIdx = 0;
-                        for (int v = 0; v < vocabSize; v++)
+                        float val = logits[0, t, v];
+                        if (val > maxVal)
                         {
-                            float val = logits[0, t, v];
-                            if (val > maxVal)
-                            {
-                                maxVal = val;
-                                maxIdx = v;
-                            }
-                        }
-
-                        if (t == 0 || maxIdx != lastToken)
-                        {
-                            decodedTokens.Add(maxIdx);
-                            lastToken = maxIdx;
+                            maxVal = val;
+                            maxIdx = v;
                         }
                     }
 
-                    string phonemes = _tokenizer.Decode(decodedTokens.ToArray());
-                    resultParts.Add(phonemes);
+                    if (t == 0 || maxIdx != lastToken)
+                    {
+                        decodedTokens.Add(maxIdx);
+                        lastToken = maxIdx;
+                    }
                 }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[OpenPhonemizer] Inference error for word '{word}': {e.Message}");
-                    resultParts.Add(word); // Fallback to original text? or empty?
-                }
-            }
 
-            return string.Join("", resultParts);
+                return _tokenizer.Decode(decodedTokens.ToArray());
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[OpenPhonemizer] Inference error for word '{word}': {e.Message}");
+                return string.Empty;
+            }
         }
 
         void PostResponse(string response)

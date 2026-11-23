@@ -121,6 +121,8 @@ namespace AISystem.Editor
         string donePrefKey = $"AIPackageInstaller.Done.{Application.dataPath.GetHashCode()}";
         EditorPrefs.DeleteKey(donePrefKey);
 
+        // Before any download: does the user want the DemoQuest models too?
+        AISystemSetupWindow.AskDemoChoiceIfNeeded();
         InitUI();
         AISystemSetupWindow.ShowWindow();
 

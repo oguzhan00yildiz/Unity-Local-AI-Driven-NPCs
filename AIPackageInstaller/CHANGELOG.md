@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.6.0] - 2026-11-24
+
+### Added
+- TalkAnimator: NPCs play a talking gesture loop on an upper-body layer and nod with the voice while they speak. DemoQuest NPCs and villagers use it.
+- VoiceOutputService.CurrentSpeaker and CurrentLoudness.
+- Pronunciation file (Prefabs/PronunciationLexicon.txt) for names and words a voice says wrong. Asset Store version.
+- PiperTTS Noise Scale, Noise W and Target Loudness settings. Asset Store version.
+
+### Changed
+- Clearer Piper speech in the Asset Store version: each voice gets the phonemes of the eSpeak dialect it was trained on, contractions are spoken contracted, and homographs are read from context. Word errors measured with Whisper fell from 12-25% to 1-5% across the 10 voices.
+- All voices play at the same loudness.
+
+### Fixed
+- DemoQuest logged 4 NullReferenceExceptions at start (NPCAgent composed its prompt before NPCKnowledge was ready).
+
+## [2.5.1] - 2026-11-23
+
+### Changed
+- Setup asks about the DemoQuest models before any download starts.
+- Setup complete: an Open DemoQuest button shows when DemoQuest and its models are installed.
+
+### Fixed
+- The Asset Store package lists its Package Manager dependencies, so a new project compiles after import.
+
 ## [2.5.0] - 2026-11-21
 
 ### Added

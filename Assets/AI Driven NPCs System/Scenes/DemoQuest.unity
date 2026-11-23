@@ -2090,6 +2090,7 @@ GameObject:
   - component: {fileID: 39256587}
   - component: {fileID: 39256586}
   - component: {fileID: 39256585}
+  - component: {fileID: 39256591}
   m_Layer: 0
   m_Name: Clara
   m_TagString: Untagged
@@ -2332,6 +2333,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &39256591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 39256583}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &40251465
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6348,6 +6366,7 @@ GameObject:
   - component: {fileID: 142119138}
   - component: {fileID: 142119137}
   - component: {fileID: 142119136}
+  - component: {fileID: 142119142}
   m_Layer: 0
   m_Name: Ida
   m_TagString: Untagged
@@ -6590,6 +6609,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &142119142
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 142119134}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &143058742
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6692,6 +6728,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 143058745}
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 143058751}
   m_SourcePrefab: {fileID: 100100000, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
 --- !u!4 &143058743 stripped
 Transform:
@@ -6733,6 +6772,23 @@ MonoBehaviour:
   - stageId: complete
     goal: Celebrate with the traveller and offer them a free ale.
     openingLine: The first ale tonight is free for you!
+--- !u!114 &143058751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 143058744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &143867639
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8967,7 +9023,7 @@ MonoBehaviour:
     m_FontStyle: 1
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -12600,6 +12656,7 @@ GameObject:
   - component: {fileID: 282954734}
   - component: {fileID: 282954733}
   - component: {fileID: 282954732}
+  - component: {fileID: 282954738}
   m_Layer: 0
   m_Name: Paul
   m_TagString: Untagged
@@ -12842,6 +12899,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &282954738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 282954730}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &283090060
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13344,6 +13418,7 @@ GameObject:
   - component: {fileID: 301931187}
   - component: {fileID: 301931186}
   - component: {fileID: 301931185}
+  - component: {fileID: 301931191}
   m_Layer: 0
   m_Name: Tom
   m_TagString: Untagged
@@ -13586,6 +13661,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &301931191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 301931183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &303260107
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13994,6 +14086,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 317949347}
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 317949354}
   m_SourcePrefab: {fileID: 100100000, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
 --- !u!1 &317949345 stripped
 GameObject:
@@ -14129,6 +14224,23 @@ MonoBehaviour:
   - stageId: complete
     goal: Thank the traveller and tell them Elmford will not forget them.
     openingLine: Elmford owes you everything, friend.
+--- !u!114 &317949354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 317949345}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &318821396
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16914,14 +17026,17 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4494428956843834618, guid: ff13d64859f62594080c39fcc525bd56, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2013683900}
   m_SourcePrefab: {fileID: 100100000, guid: ff13d64859f62594080c39fcc525bd56, type: 3}
 --- !u!114 &384803020 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1786548975590390957, guid: ff13d64859f62594080c39fcc525bd56, type: 3}
   m_PrefabInstance: {fileID: 384803019}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 2013683883}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 472853c2c99ef9f48a9ef642d833cf05, type: 3}
@@ -16932,7 +17047,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 567923154252969592, guid: ff13d64859f62594080c39fcc525bd56, type: 3}
   m_PrefabInstance: {fileID: 384803019}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 2013683883}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9eaefe39bd5754847a0fac4f4e2d81bc, type: 3}
@@ -17767,6 +17882,7 @@ GameObject:
   - component: {fileID: 411473471}
   - component: {fileID: 411473470}
   - component: {fileID: 411473469}
+  - component: {fileID: 411473475}
   m_Layer: 0
   m_Name: Ben
   m_TagString: Untagged
@@ -18009,6 +18125,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &411473475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 411473467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1 &411545018
 GameObject:
   m_ObjectHideFlags: 0
@@ -26156,6 +26289,7 @@ GameObject:
   - component: {fileID: 624204105}
   - component: {fileID: 624204104}
   - component: {fileID: 624204103}
+  - component: {fileID: 624204109}
   m_Layer: 0
   m_Name: Rita
   m_TagString: Untagged
@@ -26398,6 +26532,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &624204109
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 624204101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &624334202
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -41037,6 +41188,7 @@ GameObject:
   - component: {fileID: 1054384899}
   - component: {fileID: 1054384898}
   - component: {fileID: 1054384897}
+  - component: {fileID: 1054384903}
   m_Layer: 0
   m_Name: Mark
   m_TagString: Untagged
@@ -41279,6 +41431,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &1054384903
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1054384895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &1058725199
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -45915,6 +46084,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2841321588686027896, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2841321588686027896, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2942229887171786089, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -45991,6 +46168,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6335158637907606692, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7189489266927451714, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -46058,6 +46239,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8460575605333922118, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8460575605333922118, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8460575605333922118, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9027223612015168635, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
@@ -48498,6 +48687,7 @@ GameObject:
   - component: {fileID: 1244519932}
   - component: {fileID: 1244519931}
   - component: {fileID: 1244519930}
+  - component: {fileID: 1244519936}
   m_Layer: 0
   m_Name: Lena
   m_TagString: Untagged
@@ -48740,6 +48930,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &1244519936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1244519928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &1244794179
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -49415,6 +49622,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1255468689}
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1255468695}
   m_SourcePrefab: {fileID: 100100000, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
 --- !u!4 &1255468686 stripped
 Transform:
@@ -49517,6 +49727,23 @@ MonoBehaviour:
             m_BoolArgument: 0
           m_CallState: 2
   agreeToRequests: 0
+--- !u!114 &1255468695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1255468687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &1257932208
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -52004,6 +52231,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1306284054}
+    - targetCorrespondingSourceObject: {fileID: 5899912746386016472, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1306284060}
   m_SourcePrefab: {fileID: 100100000, guid: e443f56bbd51669468a4bf020f050c9e, type: 3}
 --- !u!4 &1306284052 stripped
 Transform:
@@ -52040,6 +52270,23 @@ MonoBehaviour:
   - stageId: complete
     goal: Tell the traveller the forest is quiet again.
     openingLine: The forest is quiet again. Good work.
+--- !u!114 &1306284060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1306284053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &1306564437
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -53646,6 +53893,7 @@ GameObject:
   - component: {fileID: 1343149264}
   - component: {fileID: 1343149263}
   - component: {fileID: 1343149262}
+  - component: {fileID: 1343149268}
   m_Layer: 0
   m_Name: Greta
   m_TagString: Untagged
@@ -53888,6 +54136,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &1343149268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1343149260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &1344585461
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -63008,6 +63273,7 @@ GameObject:
   - component: {fileID: 1645811014}
   - component: {fileID: 1645811013}
   - component: {fileID: 1645811012}
+  - component: {fileID: 1645811018}
   m_Layer: 0
   m_Name: Sam
   m_TagString: Untagged
@@ -63250,6 +63516,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &1645811018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1645811010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1 &1649486548
 GameObject:
   m_ObjectHideFlags: 0
@@ -78046,6 +78329,28 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 5c0963bafad72574cba3e8aa081d4dfb, type: 3}
   m_PrefabInstance: {fileID: 2012813535}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2013683883 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4494428956843834618, guid: ff13d64859f62594080c39fcc525bd56, type: 3}
+  m_PrefabInstance: {fileID: 384803019}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2013683900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2013683883}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9841b17791a1764a8b2b3c01f8afe79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AIDrivenNPCs.Runtime::AISystem.TalkAnimator
+  talkLayerName: Talk
+  fadeTime: 0.3
+  nodAngle: 7
+  loudnessForFullNod: 0.12
+  headResponse: 14
 --- !u!1001 &2013868631
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -80547,7 +80852,7 @@ MonoBehaviour:
     m_FontStyle: 1
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1

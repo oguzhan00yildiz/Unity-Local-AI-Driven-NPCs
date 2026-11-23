@@ -57,6 +57,15 @@ namespace AISystem
 
         public bool IsSpeaking => _isSpeaking;
 
+        /// <summary>The NPC whose voice is speaking now, or null for none or a 2D voice.</summary>
+        public Transform CurrentSpeaker => _isSpeaking ? _speaker : null;
+
+        /// <summary>Loudness (RMS) of the voice playing this frame. 0 when silent. Compare it with recent values; the level depends on the voice and volume.</summary>
+        public float CurrentLoudness { get; private set; }
+
+        private AudioSource _activeSource;
+        private readonly float[] _loudnessSamples = new float[256];
+
         // ── Lifecycle ─────────────────────────────────────────────────────────────
 
         void Awake()
@@ -72,6 +81,7 @@ namespace AISystem
             piperTts.phonemizerDictPath   = ToStreamingAssetsPath(piperTts.phonemizerDictPath);
 
             _activeTts = piperTts;
+            _activeSource = piperTts.GetComponent<AudioSource>();
             _voices[Path.GetFileNameWithoutExtension(piperTts.piperModelPath)] = piperTts;
             Subscribe(piperTts);
         }
@@ -166,6 +176,7 @@ namespace AISystem
 
             _speaker = speaker;
             var source = _activeTts.GetComponent<AudioSource>();
+            _activeSource = source;
             source.spatialBlend = speaker != null ? spatialBlend : 0f;
             source.rolloffMode  = AudioRolloffMode.Logarithmic;
             source.minDistance  = minDistance;
@@ -180,6 +191,15 @@ namespace AISystem
         void LateUpdate()
         {
             if (_isSpeaking || _streamOpen) FollowSpeaker();
+            CurrentLoudness = _isSpeaking && _activeSource.isPlaying ? MeasureLoudness() : 0f;
+        }
+
+        private float MeasureLoudness()
+        {
+            _activeSource.GetOutputData(_loudnessSamples, 0);
+            float sum = 0f;
+            foreach (float s in _loudnessSamples) sum += s * s;
+            return Mathf.Sqrt(sum / _loudnessSamples.Length);
         }
 
         /// <summary>Keeps the active voice at the speaking NPC's mouth, so it moves with a walking NPC.</summary>
@@ -327,12 +347,13 @@ namespace AISystem
         }
 
         /// <summary>
-        /// Cleans Markdown, asterisks/actions (*smiles*), contractions (I'm -> I am), and unusual symbols for TTS.
+        /// Cleans Markdown, asterisks/actions (*smiles*) and unusual symbols for TTS.
+        /// Contractions stay as written; the phonemizer speaks them contracted.
         /// </summary>
         public static string CleanTextForSpeech(string text)
         {
-            // Expand contractions (I'm -> I am, don't -> do not)
-            return NormalizeContractions(CleanTextForDisplay(text));
+            // Curly apostrophes to ASCII, so "don’t" matches the pronunciation rules
+            return CleanTextForDisplay(text).Replace('’', '\'').Replace('‘', '\'');
         }
 
         /// <summary>
@@ -367,82 +388,6 @@ namespace AISystem
             result = System.Text.RegularExpressions.Regex.Replace(result, @"\s+", " ").Trim();
 
             return result;
-        }
-
-        /// <summary>
-        /// Expands common English contractions to their full forms for smoother phonemization/TTS.
-        /// </summary>
-        public static string NormalizeContractions(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
-
-            // Normalize curly apostrophes / accents to standard ASCII apostrophe
-            text = text.Replace('’', '\'').Replace('‘', '\'').Replace('`', '\'');
-
-            var contractionMap = new Dictionary<string, string>
-            {
-                { @"\bi'm\b", "I am" },
-                { @"\bi've\b", "I have" },
-                { @"\bi'll\b", "I will" },
-                { @"\bi'd\b", "I would" },
-                { @"\byou're\b", "you are" },
-                { @"\byou've\b", "you have" },
-                { @"\byou'll\b", "you will" },
-                { @"\byou'd\b", "you would" },
-                { @"\bhe's\b", "he is" },
-                { @"\bhe'll\b", "he will" },
-                { @"\bhe'd\b", "he would" },
-                { @"\bshe's\b", "she is" },
-                { @"\bshe'll\b", "she will" },
-                { @"\bshe'd\b", "she would" },
-                { @"\bit's\b", "it is" },
-                { @"\bit'll\b", "it will" },
-                { @"\bwe're\b", "we are" },
-                { @"\bwe've\b", "we have" },
-                { @"\bwe'll\b", "we will" },
-                { @"\bwe'd\b", "we would" },
-                { @"\bthey're\b", "they are" },
-                { @"\bthey've\b", "they have" },
-                { @"\bthey'll\b", "they will" },
-                { @"\bthey'd\b", "they would" },
-                { @"\bthat's\b", "that is" },
-                { @"\bwhat's\b", "what is" },
-                { @"\bwho's\b", "who is" },
-                { @"\bwhere's\b", "where is" },
-                { @"\bhow's\b", "how is" },
-                { @"\bthere's\b", "there is" },
-                { @"\blet's\b", "let us" },
-                { @"\bcan't\b", "cannot" },
-                { @"\bwon't\b", "will not" },
-                { @"\bdon't\b", "do not" },
-                { @"\bdoesn't\b", "does not" },
-                { @"\bdidn't\b", "did not" },
-                { @"\bisn't\b", "is not" },
-                { @"\baren't\b", "are not" },
-                { @"\bwasn't\b", "was not" },
-                { @"\bweren't\b", "were not" },
-                { @"\bhaven't\b", "have not" },
-                { @"\bhasn't\b", "has not" },
-                { @"\bhadn't\b", "had not" },
-                { @"\bwouldn't\b", "would not" },
-                { @"\bshouldn't\b", "should not" },
-                { @"\bcouldn't\b", "could not" }
-            };
-
-            foreach (var pair in contractionMap)
-            {
-                text = System.Text.RegularExpressions.Regex.Replace(text, pair.Key, match =>
-                {
-                    string replacement = pair.Value;
-                    if (char.IsUpper(match.Value[0]))
-                    {
-                        return char.ToUpper(replacement[0]) + replacement.Substring(1);
-                    }
-                    return replacement;
-                }, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            }
-
-            return text;
         }
 
         // ── Internal ──────────────────────────────────────────────────────────────
