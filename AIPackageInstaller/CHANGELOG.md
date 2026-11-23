@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.6.2] - 2026-11-24
+
+### Changed
+- DemoQuest is the main demo. AIOScene is renamed BasicExample.
+- Asset Store version: Android and iOS plugins removed from ThirdParty (Windows only).
+- 15 audio clips lowered so they no longer clip.
+
+### Fixed
+- Companion and DemoPlayer prefab roots at the origin.
+
 ## [2.6.1] - 2026-11-24
 
 ### Changed

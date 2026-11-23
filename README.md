@@ -3,7 +3,7 @@
 [![Unity Version](https://img.shields.io/badge/Unity-6-blue.svg?logo=unity)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg?logo=windows)](https://unity.com/)
-[![Package Version](https://img.shields.io/badge/Package-v2.6.1-orange.svg)](AIPackageInstaller/package.json)
+[![Package Version](https://img.shields.io/badge/Package-v2.6.2-orange.svg)](AIPackageInstaller/package.json)
 
 A free Unity package for NPCs that listen, think and talk. Three models run on the player's computer:
 
@@ -22,7 +22,7 @@ LLMUnity, Whisper, Piper and ONNX Runtime come bundled in `ThirdParty/`.
 1. Import the package from the [Unity Asset Store](https://assetstore.unity.com/packages/slug/405036). Confirm the Unity packages when asked.
 2. Click **Import**.
 3. Click **Download** in the **AI System Setup** window. A dialog asks whether to include the DemoQuest models. You can cancel the download.
-4. When the downloads finish, click **Open DemoQuest** or **Open Demo Scene** (`AIOScene.unity`).
+4. When the downloads finish, click **Open DemoQuest**.
 5. Press **Play**, walk to an NPC and press **E**.
 
 Remove other copies of LLMUnity, Piper, Whisper or ONNX Runtime first. Two copies cause duplicate assembly errors.
@@ -34,7 +34,7 @@ Remove other copies of LLMUnity, Piper, Whisper or ONNX Runtime first. Two copie
    https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
    ```
 2. The installer adds the npm registry for ONNX Runtime and installs LLMUnity, Piper and Whisper from Git.
-3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.6.1/Scenes/AIOScene.unity` or `DemoQuest.unity`.
+3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.6.2/Scenes/DemoQuest.unity`.
 
 Keep Unity focused during setup. Unity can pause downloads in the background.
 
@@ -71,6 +71,8 @@ If you skip them, add them later with **Tools → AI Packages → Download DemoQ
 - A GPU with 6 GB of VRAM is recommended.
 
 Scripts used: `StoryLore`, `QuestManager`, `NPCKnowledge`, `WorldState`, `NPCActions` and the combat scripts.
+
+`Scenes/BasicExample.unity` has one NPC with the minimal setup.
 
 ## How it works
 
