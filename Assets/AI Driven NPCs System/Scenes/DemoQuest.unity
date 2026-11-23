@@ -8967,7 +8967,7 @@ MonoBehaviour:
     m_FontStyle: 1
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -45915,6 +45915,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2841321588686027896, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2841321588686027896, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2942229887171786089, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -45991,6 +45999,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6335158637907606692, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7189489266927451714, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -46058,6 +46070,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8460575605333922118, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
       propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8460575605333922118, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8460575605333922118, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9027223612015168635, guid: 2652cc251e968fc44bb6a79e4e9a50f0, type: 3}
@@ -80547,7 +80567,7 @@ MonoBehaviour:
     m_FontStyle: 1
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
