@@ -21,8 +21,8 @@ LLMUnity, Whisper, Piper and ONNX Runtime come bundled in `ThirdParty/`.
 
 1. Import the package from the [Unity Asset Store](https://assetstore.unity.com/packages/slug/405036). Confirm the Unity packages when asked.
 2. Click **Import**.
-3. Click **Download** in the **AI System Setup** window. You can cancel the download.
-4. Open `Assets/AI Driven NPCs System/Scenes/AIOScene.unity`.
+3. Click **Download** in the **AI System Setup** window. A dialog asks whether to include the DemoQuest models. You can cancel the download.
+4. When the downloads finish, click **Open DemoQuest** or **Open Demo Scene** (`AIOScene.unity`).
 5. Press **Play**, walk to an NPC and press **E**.
 
 Remove other copies of LLMUnity, Piper, Whisper or ONNX Runtime first. Two copies cause duplicate assembly errors.
@@ -34,7 +34,7 @@ Remove other copies of LLMUnity, Piper, Whisper or ONNX Runtime first. Two copie
    https://github.com/oguzhan00yildiz/Unity-Local-AI-Driven-NPCs.git?path=AIPackageInstaller
    ```
 2. The installer adds the npm registry for ONNX Runtime and installs LLMUnity, Piper and Whisper from Git.
-3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.6.0/Scenes/AIOScene.unity`.
+3. Import the **AI Driven NPCs System** sample, then open `Assets/Samples/AI Driven NPCs System/2.6.0/Scenes/AIOScene.unity` or `DemoQuest.unity`.
 
 Keep Unity focused during setup. Unity can pause downloads in the background.
 
@@ -50,6 +50,27 @@ The setup downloads 9 files to `Assets/StreamingAssets/`:
 | LLM | `Qwen3.5-0.8B-Q4_K_M.gguf` | 508 MB |
 
 The default LLM is small and runs on the CPU. Small models drop out of their role more often. For a real game, use a bigger model: select the `LLM` object in the `AISystem` prefab and pick a model in the **Model** dropdown.
+
+DemoQuest uses bigger models. The setup asks before it downloads them:
+
+| Files | Size |
+| :--- | :--- |
+| `Qwen3.5-4B-Q4_K_M.gguf` | 2.7 GB |
+| `Whisper/ggml-small.en.bin` | 490 MB |
+| 6 voices: john, kristin, norman, joe, cori, alba | 380 MB |
+
+If you skip them, add them later with **Tools → AI Packages → Download DemoQuest Models**.
+
+## DemoQuest
+
+`Scenes/DemoQuest.unity` is a short quest in the village of Elmford. Skeletons stole the Blue Stone. Talk to Elder Emil, find out where the stone went, convince the gate guard Ville, fight the skeletons at the ruins with your companion Aada, and bring the stone back. The LLM writes every NPC line live.
+
+- Hold **E** near an NPC and speak. Look at the NPC you want to talk to.
+- Ask Aada to follow, stay, fight or go somewhere.
+- 15 characters, 9 voices, music and sound effects.
+- A GPU with 6 GB of VRAM is recommended.
+
+Scripts used: `StoryLore`, `QuestManager`, `NPCKnowledge`, `WorldState`, `NPCActions` and the combat scripts.
 
 ## How it works
 
@@ -80,6 +101,8 @@ graph TD
 | [`NPCAgent`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCAgent.cs) | Interaction area, prompt cue and personality preset of one NPC. |
 | [`VoiceInputService`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceInputService.cs) | Microphone, silence detection and Whisper. |
 | [`VoiceOutputService`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/Services/VoiceOutputService.cs) | Splits text at `.` `!` `?` and plays it through Piper. |
+| [`NPCActions`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/NPCActions.cs) | Runs UnityEvents when the LLM writes a tag such as `[FOLLOW]`, or when the player's words match a keyword. |
+| [`TalkAnimator`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/NPC/TalkAnimator.cs) | Plays a talking gesture layer and nods the head while the NPC's voice plays. |
 | [`ChatUIController`](Assets/AI%20Driven%20NPCs%20System/Scripts/AISystem/UI/ChatUIController.cs) | Chat history, text input, microphone choice and mute. |
 
 ## NPC personalities
@@ -92,7 +115,18 @@ graph TD
    ```
 3. Drag the preset into the **Personality Preset** field of `NPCAgent`. It sets the prompt and the voice.
 
-The package ships two presets: Grumpy Guard (voice bryce) and Helpful Guide (voice ljspeech). Give each NPC a name in the prompt. Without one, small models answer with their own model name.
+The package ships 12 presets for common roles, such as Grumpy Guard (voice bryce) and Helpful Guide (voice ljspeech). Give each NPC a name in the prompt. Without one, small models answer with their own model name.
+
+## Voices and pronunciation
+
+- If a voice says a name wrong, add a line to `Prefabs/PronunciationLexicon.txt`, for example `aada: ah duh`.
+- `PiperTTS` settings: **Noise Scale** and **Noise W** (lower is clearer), **Target Loudness** (same volume for all voices).
+
+Asset Store version only. The Git URL version uses Piper from Git without these settings.
+
+## Talking animation
+
+Add `TalkAnimator` to an NPC with a Humanoid Animator. The head nods while the NPC speaks. For gestures, add an Animator layer named **Talk** with `UpperBodyMask` and a talking clip, as in the DemoQuest animators.
 
 ## C# API
 
@@ -134,7 +168,8 @@ The package does not filter model answers. Put your rules in the preset's system
 
 ## Roadmap
 
-- NPC actions: the LLM turns the player's words into game commands, for example "give drink".
+- The speech fixes in the Git URL version.
+- Mouth movement for heads with a jaw bone or mouth blend shapes.
 
 ## License
 
@@ -144,6 +179,7 @@ MIT. Bundled tools keep their own licences, listed in [ThirdPartyNotices.md](Ass
 [piper-no-espeak-unity](https://github.com/lookbe/piper-no-espeak-unity) (MIT) with [Piper](https://github.com/rhasspy/piper) voices,
 [ONNX Runtime Unity](https://github.com/asus4/onnxruntime-unity) (MIT),
 [Qwen3.5-0.8B GGUF](https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF) (Apache 2.0).
+DemoQuest art, animation and audio are CC0. The cori and alba voices are CC BY 4.0.
 
 ## Contact
 
