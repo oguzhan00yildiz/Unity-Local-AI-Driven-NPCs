@@ -58,7 +58,8 @@ If the window ever needs to be reopened: **Tools → AI Packages → AI System S
 
 - **Hold `E`** near an NPC and speak (push to talk). Look at the NPC you want to talk to.
 - Talk to Aada to make her follow, stay, fight or go somewhere.
-- The demo uses bigger models for steadier dialogue and better speech recognition: Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 extra voices (380 MB). The setup window offers them when the scene is in the project, and a dialog asks when you import the samples.
+- The demo uses bigger models: Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 extra voices (380 MB). The setup asks before it downloads them. To add them later, use **Tools → AI Packages → Download DemoQuest Models**.
+- When the downloads finish, click **Open DemoQuest** in the setup window.
 - Recommended: a GPU with 6 GB of VRAM or more. The LLM, Whisper and rendering share the GPU.
 
 For detailed instructions on adding NPCs to your own scenes, creating custom personality presets, or using different language models, please see [`SETUP_GUIDE_EN.md`](SETUP_GUIDE_EN.md).
