@@ -16,6 +16,10 @@ namespace PiperTTS
         public string modelPath = string.Empty;
         public string configPath = string.Empty;
 
+        // Set before InitModel. Below 0 uses the voice config's value.
+        [NonSerialized] public float noiseScale = -1f;
+        [NonSerialized] public float noiseW = -1f;
+
         // Define a delegate (or use Action<T>)
         public delegate void StatusChangedDelegate(ModelStatus status);
         public event StatusChangedDelegate OnStatusChanged;
@@ -97,9 +101,9 @@ namespace PiperTTS
 
                 _inferenceParams = new float[3]
                 {
-                    _piperConfig.inference.noise_scale,
+                    noiseScale >= 0f ? noiseScale : _piperConfig.inference.noise_scale,
                     _piperConfig.inference.length_scale,
-                    _piperConfig.inference.noise_w
+                    noiseW >= 0f ? noiseW : _piperConfig.inference.noise_w
                 };
 
                 _session = new InferenceSession(modelPath);
@@ -186,6 +190,22 @@ namespace PiperTTS
         {
             // The OpenPhonemizer returns phonemes. We need to split them into individual characters for the tokenizer
             // e.g. "h@loU" -> ["h", "@", "l", "o", "U"]
+            // The neural phonemizer can output symbols the voices were not trained on. Use the nearest eSpeak symbols.
+            prompt = prompt.Replace("ɝ", "ɜː").Replace("̍", "").Replace("̥", "").Replace("͡", "");
+            // The voices blur a glottal stop before a syllabic n ("rotten"); a plain t is clearer
+            prompt = prompt.Replace("ʔn̩", "tən");
+            if (IsBritishVoice)
+                prompt = ToBritish(prompt);
+            // Marks "ɑː" words that stay long in British English (father, calm). Unused for American voices.
+            prompt = prompt.Replace(EnglishPronunciation.PalmMark, "");
+
+            string espeakVoice = _piperConfig.espeak?.voice;
+            // eSpeak "en" writes the vowel in "cat" as "a"; en-gb-x-rp keeps "æ"
+            if (espeakVoice == "en")
+                prompt = prompt.Replace("æ", "a");
+            // en-gb-x-rp writes "my" as mʌɪ, "now" as nɑʊ and "care" as kɛː
+            if (espeakVoice == "en-gb-x-rp")
+                prompt = prompt.Replace("aɪ", "ʌɪ").Replace("aʊ", "ɑʊ").Replace("eə", "ɛː");
             string[] phonemeArray = prompt.ToCharArray().Select(c => c.ToString()).ToArray();
 
             // Use internal tokenizer logic
@@ -245,6 +265,56 @@ namespace PiperTTS
             }
 
             return audioData;
+        }
+
+        bool IsBritishVoice => _piperConfig?.espeak?.voice != null && (_piperConfig.espeak.voice.StartsWith("en-gb") || _piperConfig.espeak.voice == "en");
+
+        static readonly (string us, string gb)[] BritishVowels =
+        {
+            // "car" keeps its long ɑ; the placeholder stops the "lot" rule below from changing it
+            ("aɪɚ", "aɪə"), ("aʊɚ", "aʊə"), ("ɜːɹ", "ɜː"), ("ɑːɹ", PalmVowel), ("ɔːɹ", "ɔː"), ("oːɹ", "ɔː"),
+            ("ɛɹ", "eə"), ("ɪɹ", "ɪə"), ("ʊɹ", "ʊə"), ("ɚ", "ə"), ("oʊ", "əʊ"), ("ɾ", "t"),
+        };
+
+        /// <summary>
+        /// The dictionary is American. British voices were trained on eSpeak en-gb phonemes:
+        /// no "r" after a vowel, "əʊ" in "go", "ɒ" in "not".
+        /// eSpeak's "en" is British too, so many en_US voices (bryce, john, ljspeech) need this.
+        /// </summary>
+        static string ToBritish(string phonemes)
+        {
+            phonemes = phonemes.Replace(EnglishPronunciation.PalmMark + "ɑː", PalmVowel);
+            foreach (var (us, gb) in BritishVowels)
+                phonemes = phonemes.Replace(us, gb);
+
+            var sb = new System.Text.StringBuilder(phonemes.Length);
+            for (int i = 0; i < phonemes.Length; i++)
+            {
+                char c = phonemes[i];
+                char next = i + 1 < phonemes.Length ? phonemes[i + 1] : ' ';
+
+                // "r" is only spoken before a vowel
+                if (c == 'ɹ' && !IsVowelStart(phonemes, i + 1))
+                    continue;
+
+                // American "ɑː" without a following r is the "lot" vowel ("not", "stop")
+                if (c == 'ɑ' && next == 'ː')
+                {
+                    sb.Append('ɒ');
+                    i++;
+                    continue;
+                }
+                sb.Append(c);
+            }
+            return sb.ToString().Replace(PalmVowel, "ɑː");
+        }
+
+        const string PalmVowel = "";
+
+        static bool IsVowelStart(string s, int i)
+        {
+            while (i < s.Length && (s[i] == 'ˈ' || s[i] == 'ˌ')) i++;
+            return i < s.Length && "aeiouæɐɑɒɔəɛɜɪʊʌᵻ".IndexOf(s[i]) >= 0;
         }
 
         int[] Tokenize(string[] phonemes)

@@ -24,6 +24,9 @@ namespace PiperTTS
         public string phonemizerConfigPath = string.Empty;
         public string phonemizerDictPath = string.Empty;
 
+        [Tooltip("Optional. Lines of \"word: pronunciation\" for names and other words the voice says wrong.")]
+        public TextAsset pronunciationLexicon;
+
 
         [Header("Config")]
         [Range(0.0f, 1.0f)]
@@ -38,6 +41,18 @@ namespace PiperTTS
         [Tooltip("Multiplies the voice's length_scale. Above 1 speaks slower.")]
         [Range(0.5f, 2.0f)]
         public float lengthScale = 1.0f;
+
+        [Tooltip("Voice variation. Lower is clearer, higher sounds more varied. Many voice configs use 0.667, which slurs words.")]
+        [Range(0.0f, 1.0f)]
+        public float noiseScale = 0.5f;
+
+        [Tooltip("Rhythm variation. Lower keeps word timing steady and clear. Many voice configs use 0.8.")]
+        [Range(0.0f, 1.0f)]
+        public float noiseW = 0.333f;
+
+        [Tooltip("Average speech level (RMS) every clip is scaled to, so all voices play equally loud. 0 turns leveling off.")]
+        [Range(0.0f, 0.3f)]
+        public float targetLoudness = 0.1f;
 
         protected PiperModel piper;
         protected PhonemizerModel phonemizer;
@@ -100,11 +115,14 @@ namespace PiperTTS
 
             piper.modelPath = piperModelPath;
             piper.configPath = piperConfigPath;
+            piper.noiseScale = noiseScale;
+            piper.noiseW = noiseW;
             piper.InitModel();
 
             phonemizer.modelPath = phonemizerModelPath;
             phonemizer.configPath = phonemizerConfigPath;
             phonemizer.dictPath = phonemizerDictPath;
+            phonemizer.lexiconText = pronunciationLexicon != null ? pronunciationLexicon.text : null;
             phonemizer.InitModel();
 
             yield return new WaitWhile(() => phonemizer.status != ModelStatus.Ready);
@@ -207,8 +225,8 @@ namespace PiperTTS
 
         string PreProcessText(string text)
         {
-            // 1. Expand contractions (e.g. "I'm" -> "I am", "don't" -> "do not")
-            text = NormalizeContractions(text);
+            // 1. Curly apostrophes to ASCII. Contractions stay contracted; the phonemizer speaks them.
+            text = text.Replace('’', '\'').Replace('‘', '\'').Replace('`', '\'');
 
             // 2. Expand numbers to words
             text = Regex.Replace(text, @"\d+(\.\d+)?", match =>
@@ -268,6 +286,32 @@ namespace PiperTTS
 
             audioSource.Stop();
             _dropNextClip = status == ModelStatus.Generate;
+        }
+
+        /// <summary>
+        /// Scales speech to the target RMS. Silence is left out of the measurement.
+        /// Gain is capped at 4x and the peak at 0.95, so quiet clips do not clip or boost noise.
+        /// </summary>
+        static void LevelLoudness(float[] samples, float target)
+        {
+            const float silence = 0.01f;
+            double sum = 0;
+            int count = 0;
+            float peak = 0f;
+            foreach (float s in samples)
+            {
+                float a = Mathf.Abs(s);
+                if (a > peak) peak = a;
+                if (a < silence) continue;
+                sum += s * s;
+                count++;
+            }
+            if (count == 0) return;
+
+            float rms = (float)Math.Sqrt(sum / count);
+            float gain = Mathf.Min(target / rms, 4f, 0.95f / peak);
+            for (int i = 0; i < samples.Length; i++)
+                samples[i] *= gain;
         }
 
         IEnumerator PlayQueue()
@@ -332,6 +376,9 @@ namespace PiperTTS
                 _dropNextClip = false;
                 return;
             }
+
+            if (targetLoudness > 0f)
+                LevelLoudness(audioChunk, targetLoudness);
 
             AudioClip clip = AudioClip.Create("GeneratedSpeech", audioChunk.Length, 1, sampleRate, false);
             clip.SetData(audioChunk, 0);

@@ -98,6 +98,21 @@ Piper TTS includes high-performance neural voice models. To download more charac
 3. Click **Download** next to any voice. Models are saved directly to `Assets/StreamingAssets/PiperTTS/`.
 4. Assign the voice name in your NPC's personality preset or `NPCAgent.voiceModelName`.
 
+### Fixing Pronunciation
+
+If a voice says a name or word wrong, add it to `Prefabs/PronunciationLexicon.txt` (assigned on the `PiperTTS` component in the `AISystem` prefab). Write one word per line:
+
+```
+iida: ˈiːdɑː
+aada: ah duh
+```
+
+The pronunciation can be plain English words that sound right, or eSpeak IPA phonemes for exact control.
+
+The `PiperTTS` component also has these settings:
+- **Noise Scale** (0.5) and **Noise W** (0.333): lower values give clearer, steadier speech. Higher values give more variation.
+- **Target Loudness** (0.1): every clip is scaled to this level, so all voices play equally loud. Set it to 0 to turn it off.
+
 ---
 
 ## ⚡ GPU Acceleration & Hardware Health
