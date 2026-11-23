@@ -4219,6 +4219,10 @@ PrefabInstance:
       value: Assets/StreamingAssets/PiperTTS/tokenizer.json
       objectReference: {fileID: 0}
     - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
+      propertyPath: pronunciationLexicon
+      value: 
+      objectReference: {fileID: 4900000, guid: 04f61fba5159af54a9598077a50d5b79, type: 3}
+    - target: {fileID: 4089422843974422858, guid: 6e6744144431d07419102b6aaeb65802, type: 3}
       propertyPath: questionExclamationDelay
       value: 0.3
       objectReference: {fileID: 0}

@@ -24,6 +24,9 @@ namespace PiperTTS
         public string phonemizerConfigPath = string.Empty;
         public string phonemizerDictPath = string.Empty;
 
+        [Tooltip("Optional. Lines of \"word: pronunciation\" for names and other words the voice says wrong.")]
+        public TextAsset pronunciationLexicon;
+
 
         [Header("Config")]
         [Range(0.0f, 1.0f)]
@@ -38,6 +41,14 @@ namespace PiperTTS
         [Tooltip("Multiplies the voice's length_scale. Above 1 speaks slower.")]
         [Range(0.5f, 2.0f)]
         public float lengthScale = 1.0f;
+
+        [Tooltip("Voice variation. Lower is clearer, higher sounds more varied. Many voice configs use 0.667, which slurs words.")]
+        [Range(0.0f, 1.0f)]
+        public float noiseScale = 0.5f;
+
+        [Tooltip("Rhythm variation. Lower keeps word timing steady and clear. Many voice configs use 0.8.")]
+        [Range(0.0f, 1.0f)]
+        public float noiseW = 0.333f;
 
         protected PiperModel piper;
         protected PhonemizerModel phonemizer;
@@ -100,11 +111,14 @@ namespace PiperTTS
 
             piper.modelPath = piperModelPath;
             piper.configPath = piperConfigPath;
+            piper.noiseScale = noiseScale;
+            piper.noiseW = noiseW;
             piper.InitModel();
 
             phonemizer.modelPath = phonemizerModelPath;
             phonemizer.configPath = phonemizerConfigPath;
             phonemizer.dictPath = phonemizerDictPath;
+            phonemizer.lexiconText = pronunciationLexicon != null ? pronunciationLexicon.text : null;
             phonemizer.InitModel();
 
             yield return new WaitWhile(() => phonemizer.status != ModelStatus.Ready);
@@ -207,8 +221,8 @@ namespace PiperTTS
 
         string PreProcessText(string text)
         {
-            // 1. Expand contractions (e.g. "I'm" -> "I am", "don't" -> "do not")
-            text = NormalizeContractions(text);
+            // 1. Curly apostrophes to ASCII. Contractions stay contracted; the phonemizer speaks them.
+            text = text.Replace('’', '\'').Replace('‘', '\'').Replace('`', '\'');
 
             // 2. Expand numbers to words
             text = Regex.Replace(text, @"\d+(\.\d+)?", match =>

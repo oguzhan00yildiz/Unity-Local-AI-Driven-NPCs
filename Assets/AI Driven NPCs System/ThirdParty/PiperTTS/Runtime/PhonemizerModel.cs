@@ -140,6 +140,17 @@ namespace PiperTTS
         Tokenizer _tokenizer;
         Dictionary<string, Dictionary<string, string>> _dict;
 
+        // The dictionary is large (275k words), so all voices share one copy per file
+        static readonly Dictionary<string, Dictionary<string, Dictionary<string, string>>> SharedDicts =
+            new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+
+        /// <summary>
+        /// Lines of "word: pronunciation" set before InitModel. Lines starting with # are comments.
+        /// The pronunciation is eSpeak IPA (ˈiːdə), or plain English words that sound right ("ee duh").
+        /// </summary>
+        [NonSerialized] public string lexiconText;
+        Dictionary<string, string> _lexicon = new Dictionary<string, string>();
+
         public void InitModel()
         {
             if (string.IsNullOrEmpty(modelPath) || string.IsNullOrEmpty(configPath))
@@ -183,17 +194,26 @@ namespace PiperTTS
                     throw new System.Exception("unable to load model");
                 }
 
-                if (File.Exists(dictPath))
+                lock (SharedDicts)
                 {
-                    string dictJson = File.ReadAllText(dictPath);
-                    _dict = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(dictJson);
-                    Debug.Log($"[OpenPhonemizer] Loaded dictionary from {dictPath}");
+                    if (!SharedDicts.TryGetValue(dictPath ?? string.Empty, out _dict))
+                    {
+                        if (File.Exists(dictPath))
+                        {
+                            string dictJson = File.ReadAllText(dictPath);
+                            _dict = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(dictJson);
+                            Debug.Log($"[OpenPhonemizer] Loaded dictionary from {dictPath}");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[OpenPhonemizer] Dictionary file not found at {dictPath}. Proceeding without dictionary.");
+                            _dict = new Dictionary<string, Dictionary<string, string>>();
+                        }
+                        SharedDicts[dictPath ?? string.Empty] = _dict;
+                    }
                 }
-                else
-                {
-                    Debug.LogWarning($"[OpenPhonemizer] Dictionary file not found at {dictPath}. Proceeding without dictionary.");
-                    _dict = new Dictionary<string, Dictionary<string, string>>();
-                }
+
+                LoadLexicon();
 
                 PhonemizeInternal("warmup", "en_us", cts);
 
@@ -295,69 +315,109 @@ namespace PiperTTS
                 string word = part.Trim('\'');
                 if (word.Length == 0) continue;
 
-                // Dictionary Lookup
-                bool found = false;
-                if (langDict != null)
+                resultParts.Add(PhonemizeWord(word, langDict, lang, cts, true));
+            }
+
+            // A sentence without an end mark is spoken with a cut-off tone
+            string result = string.Join("", resultParts).TrimEnd();
+            if (result.Length > 0 && ".?!".IndexOf(result[result.Length - 1]) < 0)
+                result += ".";
+            return result;
+        }
+
+        /// <summary>Lexicon, then dictionary and English rules, then the neural model.</summary>
+        string PhonemizeWord(string word, Dictionary<string, string> langDict, string lang, CancellationToken cts, bool useLexicon)
+        {
+            if (useLexicon && _lexicon.TryGetValue(word.ToLowerInvariant(), out string custom))
+                return custom;
+
+            string ruled = EnglishPronunciation.Pronounce(word,
+                w => langDict != null && langDict.TryGetValue(w, out string p) ? p : null);
+            if (ruled != null)
+                return ruled;
+
+            return GuessWord(word, lang);
+        }
+
+        /// <summary>Reads lexiconText. Plain-letter pronunciations are phonemized like normal text.</summary>
+        void LoadLexicon()
+        {
+            _lexicon = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(lexiconText)) return;
+
+            _dict.TryGetValue("en_us", out var langDict);
+            foreach (string raw in lexiconText.Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith("#")) continue;
+                int colon = line.IndexOf(':');
+                if (colon <= 0) continue;
+
+                string word = line.Substring(0, colon).Trim().ToLowerInvariant();
+                string value = line.Substring(colon + 1).Trim();
+                if (value.Length == 0) continue;
+
+                if (Regex.IsMatch(value, @"^[A-Za-z' \-]+$"))
                 {
-                    if (langDict.TryGetValue(word, out string ph)) { resultParts.Add(ph); found = true; }
-                    else if (langDict.TryGetValue(word.ToLowerInvariant(), out ph)) { resultParts.Add(ph); found = true; }
+                    var parts = value.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => PhonemizeWord(p, langDict, "en_us", CancellationToken.None, false));
+                    value = string.Join("", parts);
                 }
+                _lexicon[word] = value;
+            }
+        }
 
-                if (found) continue;
+        string GuessWord(string word, string lang)
+        {
+            // Model Inference
+            try
+            {
+                long[] inputTokens = _tokenizer.Tokenize(word, lang);
 
-                // Model Inference
-                try
+                var inputTensor = new DenseTensor<long>(inputTokens, new[] { 1, inputTokens.Length });
+                var inputs = new List<NamedOnnxValue>
                 {
-                    long[] inputTokens = _tokenizer.Tokenize(word, lang);
+                    NamedOnnxValue.CreateFromTensor("text", inputTensor)
+                };
 
-                    var inputTensor = new DenseTensor<long>(inputTokens, new[] { 1, inputTokens.Length });
-                    var inputs = new List<NamedOnnxValue>
+                using var results = _session.Run(inputs);
+                var logits = results.First().AsTensor<float>();
+
+                // Argmax & Dedup
+                var decodedTokens = new List<long>();
+                int sequenceLength = logits.Dimensions[1];
+                int vocabSize = logits.Dimensions[2];
+
+                long lastToken = -1;
+
+                for (int t = 0; t < sequenceLength; t++)
+                {
+                    float maxVal = float.MinValue;
+                    int maxIdx = 0;
+                    for (int v = 0; v < vocabSize; v++)
                     {
-                        NamedOnnxValue.CreateFromTensor("text", inputTensor)
-                    };
-
-                    using var results = _session.Run(inputs);
-                    var logits = results.First().AsTensor<float>();
-
-                    // Argmax & Dedup
-                    var decodedTokens = new List<long>();
-                    int sequenceLength = logits.Dimensions[1];
-                    int vocabSize = logits.Dimensions[2];
-
-                    long lastToken = -1;
-
-                    for (int t = 0; t < sequenceLength; t++)
-                    {
-                        float maxVal = float.MinValue;
-                        int maxIdx = 0;
-                        for (int v = 0; v < vocabSize; v++)
+                        float val = logits[0, t, v];
+                        if (val > maxVal)
                         {
-                            float val = logits[0, t, v];
-                            if (val > maxVal)
-                            {
-                                maxVal = val;
-                                maxIdx = v;
-                            }
-                        }
-
-                        if (t == 0 || maxIdx != lastToken)
-                        {
-                            decodedTokens.Add(maxIdx);
-                            lastToken = maxIdx;
+                            maxVal = val;
+                            maxIdx = v;
                         }
                     }
 
-                    string phonemes = _tokenizer.Decode(decodedTokens.ToArray());
-                    resultParts.Add(phonemes);
+                    if (t == 0 || maxIdx != lastToken)
+                    {
+                        decodedTokens.Add(maxIdx);
+                        lastToken = maxIdx;
+                    }
                 }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[OpenPhonemizer] Inference error for word '{word}': {e.Message}");
-                    resultParts.Add(word); // Fallback to original text? or empty?
-                }
-            }
 
-            return string.Join("", resultParts);
+                return _tokenizer.Decode(decodedTokens.ToArray());
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[OpenPhonemizer] Inference error for word '{word}': {e.Message}");
+                return string.Empty;
+            }
         }
 
         void PostResponse(string response)
