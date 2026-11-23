@@ -57,6 +57,15 @@ namespace AISystem
 
         public bool IsSpeaking => _isSpeaking;
 
+        /// <summary>The NPC whose voice is speaking now, or null for none or a 2D voice.</summary>
+        public Transform CurrentSpeaker => _isSpeaking ? _speaker : null;
+
+        /// <summary>Loudness (RMS) of the voice playing this frame. 0 when silent. Compare it with recent values; the level depends on the voice and volume.</summary>
+        public float CurrentLoudness { get; private set; }
+
+        private AudioSource _activeSource;
+        private readonly float[] _loudnessSamples = new float[256];
+
         // ── Lifecycle ─────────────────────────────────────────────────────────────
 
         void Awake()
@@ -72,6 +81,7 @@ namespace AISystem
             piperTts.phonemizerDictPath   = ToStreamingAssetsPath(piperTts.phonemizerDictPath);
 
             _activeTts = piperTts;
+            _activeSource = piperTts.GetComponent<AudioSource>();
             _voices[Path.GetFileNameWithoutExtension(piperTts.piperModelPath)] = piperTts;
             Subscribe(piperTts);
         }
@@ -166,6 +176,7 @@ namespace AISystem
 
             _speaker = speaker;
             var source = _activeTts.GetComponent<AudioSource>();
+            _activeSource = source;
             source.spatialBlend = speaker != null ? spatialBlend : 0f;
             source.rolloffMode  = AudioRolloffMode.Logarithmic;
             source.minDistance  = minDistance;
@@ -180,6 +191,15 @@ namespace AISystem
         void LateUpdate()
         {
             if (_isSpeaking || _streamOpen) FollowSpeaker();
+            CurrentLoudness = _isSpeaking && _activeSource.isPlaying ? MeasureLoudness() : 0f;
+        }
+
+        private float MeasureLoudness()
+        {
+            _activeSource.GetOutputData(_loudnessSamples, 0);
+            float sum = 0f;
+            foreach (float s in _loudnessSamples) sum += s * s;
+            return Mathf.Sqrt(sum / _loudnessSamples.Length);
         }
 
         /// <summary>Keeps the active voice at the speaking NPC's mouth, so it moves with a walking NPC.</summary>

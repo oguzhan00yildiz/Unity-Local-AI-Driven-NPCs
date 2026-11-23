@@ -66,7 +66,7 @@ namespace AISystem
 
             if (personalityPreset != null)
             {
-                ApplyPreset(personalityPreset);
+                CopyPreset(personalityPreset);
             }
 
             // Sync trigger collider radius to interactionRange
@@ -170,6 +170,16 @@ namespace AISystem
         public void ApplyPreset(NPCPersonalityPreset preset)
         {
             if (preset == null) return;
+            CopyPreset(preset);
+            RefreshSystemPrompt();
+        }
+
+        /// <summary>
+        /// Copies the preset without composing the prompt. Used in Awake: prompt sources
+        /// (NPCKnowledge, NPCActions) are not initialised yet, so Start composes it.
+        /// </summary>
+        private void CopyPreset(NPCPersonalityPreset preset)
+        {
             personalityPreset = preset;
             npcName = preset.npcName;
             voiceModelName = preset.voiceModelName;
@@ -178,7 +188,6 @@ namespace AISystem
                 llmAgent = GetComponent<LLMAgent>();
 
             _basePrompt = preset.systemPrompt;
-            RefreshSystemPrompt();
         }
 
         /// <summary>
