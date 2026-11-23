@@ -192,8 +192,20 @@ namespace PiperTTS
             // e.g. "h@loU" -> ["h", "@", "l", "o", "U"]
             // The neural phonemizer can output symbols the voices were not trained on. Use the nearest eSpeak symbols.
             prompt = prompt.Replace("ɝ", "ɜː").Replace("̍", "").Replace("̥", "").Replace("͡", "");
+            // The voices blur a glottal stop before a syllabic n ("rotten"); a plain t is clearer
+            prompt = prompt.Replace("ʔn̩", "tən");
             if (IsBritishVoice)
                 prompt = ToBritish(prompt);
+            // Marks "ɑː" words that stay long in British English (father, calm). Unused for American voices.
+            prompt = prompt.Replace(EnglishPronunciation.PalmMark, "");
+
+            string espeakVoice = _piperConfig.espeak?.voice;
+            // eSpeak "en" writes the vowel in "cat" as "a"; en-gb-x-rp keeps "æ"
+            if (espeakVoice == "en")
+                prompt = prompt.Replace("æ", "a");
+            // en-gb-x-rp writes "my" as mʌɪ and "care" as kɛː
+            if (espeakVoice == "en-gb-x-rp")
+                prompt = prompt.Replace("aɪ", "ʌɪ").Replace("eə", "ɛː");
             string[] phonemeArray = prompt.ToCharArray().Select(c => c.ToString()).ToArray();
 
             // Use internal tokenizer logic
@@ -255,7 +267,7 @@ namespace PiperTTS
             return audioData;
         }
 
-        bool IsBritishVoice => _piperConfig?.espeak?.voice != null && _piperConfig.espeak.voice.StartsWith("en-gb");
+        bool IsBritishVoice => _piperConfig?.espeak?.voice != null && (_piperConfig.espeak.voice.StartsWith("en-gb") || _piperConfig.espeak.voice == "en");
 
         static readonly (string us, string gb)[] BritishVowels =
         {
@@ -265,11 +277,13 @@ namespace PiperTTS
         };
 
         /// <summary>
-        /// The dictionary is American. British voices were trained on eSpeak en-gb-x-rp phonemes:
+        /// The dictionary is American. British voices were trained on eSpeak en-gb phonemes:
         /// no "r" after a vowel, "əʊ" in "go", "ɒ" in "not".
+        /// eSpeak's "en" is British too, so many en_US voices (bryce, john, ljspeech) need this.
         /// </summary>
         static string ToBritish(string phonemes)
         {
+            phonemes = phonemes.Replace(EnglishPronunciation.PalmMark + "ɑː", PalmVowel);
             foreach (var (us, gb) in BritishVowels)
                 phonemes = phonemes.Replace(us, gb);
 

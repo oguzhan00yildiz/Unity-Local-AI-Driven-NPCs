@@ -298,24 +298,47 @@ namespace PiperTTS
                 langDict = _dict[lang];
             }
 
+            // Tokens: words, spaces and punctuation, in order
+            var tokens = new List<string>();
+            var isWord = new List<bool>();
             foreach (var part in parts)
             {
                 if (string.IsNullOrEmpty(part)) continue;
                 if (punctSet.Contains(part))
                 {
-                    resultParts.Add(part);
+                    tokens.Add(part); isWord.Add(false);
                     continue;
                 }
 
                 // "well-known" is read as two words; quotes are not spoken
-                if (part == "-") { resultParts.Add(" "); continue; }
+                if (part == "-") { tokens.Add(" "); isWord.Add(false); continue; }
                 if (part == "\"") continue;
 
                 // Quoted words ('Halt') keep only inner apostrophes (guard's)
                 string word = part.Trim('\'');
                 if (word.Length == 0) continue;
+                tokens.Add(word); isWord.Add(true);
+            }
 
-                resultParts.Add(PhonemizeWord(word, langDict, lang, cts, true));
+            // Words are read with their neighbours known ("close the gate" / "close to home")
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (!isWord[i]) { resultParts.Add(tokens[i]); continue; }
+                int prev = NeighbourWord(tokens, isWord, i, -1);
+                int next = NeighbourWord(tokens, isWord, i, 1);
+                resultParts.Add(PhonemizeWord(tokens[i], langDict, lang, cts, true,
+                    prev >= 0 ? tokens[prev].ToLowerInvariant() : null,
+                    next >= 0 ? tokens[next].ToLowerInvariant() : null));
+            }
+
+            // "the" and "to" change with the next sound: "thee apple", "tuh the gate"
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (!isWord[i]) continue;
+                int next = NeighbourWord(tokens, isWord, i, 1);
+                if (next < 0) continue;
+                string weak = EnglishPronunciation.WeakForm(tokens[i].ToLowerInvariant(), resultParts[next]);
+                if (weak != null) resultParts[i] = weak;
             }
 
             // A sentence without an end mark is spoken with a cut-off tone
@@ -325,11 +348,27 @@ namespace PiperTTS
             return result;
         }
 
-        /// <summary>Lexicon, then dictionary and English rules, then the neural model.</summary>
-        string PhonemizeWord(string word, Dictionary<string, string> langDict, string lang, CancellationToken cts, bool useLexicon)
+        /// <summary>Index of the word next to token i in direction dir, or -1 when punctuation comes first.</summary>
+        static int NeighbourWord(List<string> tokens, List<bool> isWord, int i, int dir)
+        {
+            for (int j = i + dir; j >= 0 && j < tokens.Count; j += dir)
+            {
+                if (isWord[j]) return j;
+                if (tokens[j] != " ") return -1;
+            }
+            return -1;
+        }
+
+        /// <summary>Lexicon, then context rules, dictionary and English rules, then the neural model.</summary>
+        string PhonemizeWord(string word, Dictionary<string, string> langDict, string lang, CancellationToken cts, bool useLexicon,
+            string prevWord = null, string nextWord = null)
         {
             if (useLexicon && _lexicon.TryGetValue(word.ToLowerInvariant(), out string custom))
                 return custom;
+
+            string homograph = EnglishPronunciation.InContext(word.ToLowerInvariant(), prevWord, nextWord);
+            if (homograph != null)
+                return homograph;
 
             string ruled = EnglishPronunciation.Pronounce(word,
                 w => langDict != null && langDict.TryGetValue(w, out string p) ? p : null);

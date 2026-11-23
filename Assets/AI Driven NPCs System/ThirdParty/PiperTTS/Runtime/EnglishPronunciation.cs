@@ -56,6 +56,64 @@ namespace PiperTTS
         };
 
         /// <summary>
+        /// Put before "ɑː" in words that keep a long "ah" in British English. PiperModel reads it for
+        /// British voices and removes it for American ones.
+        /// </summary>
+        public const string PalmMark = "";
+
+        // American "ɑː" is mostly the short British "ɒ" (not, stop). These words keep the long "ɑː".
+        private static readonly HashSet<string> PalmWords = new HashSet<string>
+        {
+            "father", "fathers", "grandfather", "grandfathers", "rather", "calm", "calmly", "palm", "palms",
+            "half", "halves", "ah", "aha", "spa", "drama", "llama", "lager", "almond", "almonds",
+            "ma", "pa", "papa", "mama", "hurrah", "bravo", "saga", "sonata", "lava", "shah", "balm", "psalm",
+        };
+
+        private static readonly HashSet<string> Possessives = new HashSet<string>
+            { "our", "their", "your", "my", "his", "her", "its", "many", "two", "three", "save", "saved", "risk", "lost", "innocent" };
+        private static readonly HashSet<string> StateVerbs = new HashSet<string>
+            { "too", "so", "very", "is", "are", "was", "were", "be", "get", "got", "stay", "come", "keep", "i'm", "we're", "you're", "it's", "they're", "that's" };
+        private static readonly HashSet<string> VerbStarters = new HashSet<string>
+            { "to", "i", "we", "you", "they", "can", "could", "will", "would", "should", "must", "may", "might", "please",
+              "don't", "let's", "i'll", "we'll", "you'll", "they'll", "won't", "can't" };
+        private static readonly HashSet<string> PerfectStarters = new HashSet<string>
+            { "have", "has", "had", "i've", "you've", "we've", "they've", "already", "just", "was", "were", "been", "never" };
+
+        /// <summary>
+        /// Words spelled the same but spoken differently. Picks the reading from the words around it.
+        /// Returns null for other words.
+        /// </summary>
+        public static string InContext(string lower, string prev, string next)
+        {
+            switch (lower)
+            {
+                case "live":  return prev == "a" ? "lˈaɪv" : "lˈɪv";
+                case "lives": return prev != null && Possessives.Contains(prev) ? "lˈaɪvz" : "lˈɪvz";
+                case "close": return next == "to" || next == "by" || (prev != null && StateVerbs.Contains(prev)) ? "klˈoʊs" : "klˈoʊz";
+                case "use":   return prev != null && VerbStarters.Contains(prev) ? "jˈuːz" : "jˈuːs";
+                case "used":  return next == "to" ? "jˈuːst" : "jˈuːzd";
+                case "read":  return prev != null && PerfectStarters.Contains(prev) ? "ɹˈɛd" : "ɹˈiːd";
+                case "tear":  return next == "down" || next == "apart" || next == "up" || next == "off" || next == "it" ? "tˈɛɹ" : null;
+                default:      return null;
+            }
+        }
+
+        /// <summary>
+        /// Weak forms that depend on the next word's first sound: "the" is "ðɪ" before a vowel,
+        /// "to" is "tʊ" before a vowel and "tə" before a consonant. Returns null for other words.
+        /// </summary>
+        public static string WeakForm(string lower, string nextPhonemes)
+        {
+            if (lower != "the" && lower != "to") return null;
+            int i = 0;
+            while (i < nextPhonemes.Length && (nextPhonemes[i] == 'ˈ' || nextPhonemes[i] == 'ˌ')) i++;
+            if (i >= nextPhonemes.Length) return null;
+            bool vowel = "aeiouæɐɑɒɔəɛɜɪʊʌᵻ".IndexOf(nextPhonemes[i]) >= 0;
+            if (lower == "the") return vowel ? "ðɪ" : "ðə";
+            return vowel ? "tʊ" : "tə";
+        }
+
+        /// <summary>
         /// Returns the phonemes for one word, or null when only the neural model can guess it.
         /// <paramref name="lookup"/> finds a lowercase word in the dictionary.
         /// </summary>
@@ -68,7 +126,10 @@ namespace PiperTTS
 
             string found = lookup(lower);
             if (found != null)
+            {
+                if (PalmWords.Contains(lower)) return found.Replace("ɑː", PalmMark + "ɑː");
                 return FunctionWords.Contains(lower) ? RemoveStress(found) : found;
+            }
 
             // Acronyms such as NPC are read letter by letter
             if (IsAcronym(word))

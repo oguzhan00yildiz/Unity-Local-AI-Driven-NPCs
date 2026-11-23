@@ -50,6 +50,10 @@ namespace PiperTTS
         [Range(0.0f, 1.0f)]
         public float noiseW = 0.333f;
 
+        [Tooltip("Average speech level (RMS) every clip is scaled to, so all voices play equally loud. 0 turns leveling off.")]
+        [Range(0.0f, 0.3f)]
+        public float targetLoudness = 0.1f;
+
         protected PiperModel piper;
         protected PhonemizerModel phonemizer;
         protected AudioSource audioSource;
@@ -284,6 +288,32 @@ namespace PiperTTS
             _dropNextClip = status == ModelStatus.Generate;
         }
 
+        /// <summary>
+        /// Scales speech to the target RMS. Silence is left out of the measurement.
+        /// Gain is capped at 4x and the peak at 0.95, so quiet clips do not clip or boost noise.
+        /// </summary>
+        static void LevelLoudness(float[] samples, float target)
+        {
+            const float silence = 0.01f;
+            double sum = 0;
+            int count = 0;
+            float peak = 0f;
+            foreach (float s in samples)
+            {
+                float a = Mathf.Abs(s);
+                if (a > peak) peak = a;
+                if (a < silence) continue;
+                sum += s * s;
+                count++;
+            }
+            if (count == 0) return;
+
+            float rms = (float)Math.Sqrt(sum / count);
+            float gain = Mathf.Min(target / rms, 4f, 0.95f / peak);
+            for (int i = 0; i < samples.Length; i++)
+                samples[i] *= gain;
+        }
+
         IEnumerator PlayQueue()
         {
             while (_clipQueue.Count > 0)
@@ -346,6 +376,9 @@ namespace PiperTTS
                 _dropNextClip = false;
                 return;
             }
+
+            if (targetLoudness > 0f)
+                LevelLoudness(audioChunk, targetLoudness);
 
             AudioClip clip = AudioClip.Create("GeneratedSpeech", audioChunk.Length, 1, sampleRate, false);
             clip.SetData(audioChunk, 0);
