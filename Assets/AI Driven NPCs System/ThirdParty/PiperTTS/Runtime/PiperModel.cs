@@ -203,9 +203,9 @@ namespace PiperTTS
             // eSpeak "en" writes the vowel in "cat" as "a"; en-gb-x-rp keeps "æ"
             if (espeakVoice == "en")
                 prompt = prompt.Replace("æ", "a");
-            // en-gb-x-rp writes "my" as mʌɪ and "care" as kɛː
+            // en-gb-x-rp writes "my" as mʌɪ, "now" as nɑʊ and "care" as kɛː
             if (espeakVoice == "en-gb-x-rp")
-                prompt = prompt.Replace("aɪ", "ʌɪ").Replace("eə", "ɛː");
+                prompt = prompt.Replace("aɪ", "ʌɪ").Replace("aʊ", "ɑʊ").Replace("eə", "ɛː");
             string[] phonemeArray = prompt.ToCharArray().Select(c => c.ToString()).ToArray();
 
             // Use internal tokenizer logic

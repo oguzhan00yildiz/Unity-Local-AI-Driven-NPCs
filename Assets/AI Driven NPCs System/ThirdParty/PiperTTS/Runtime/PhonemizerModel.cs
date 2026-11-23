@@ -398,8 +398,13 @@ namespace PiperTTS
 
                 if (Regex.IsMatch(value, @"^[A-Za-z' \-]+$"))
                 {
+                    // One word: only the first part keeps full stress ("ah duh" is ˈɑːdʌ)
                     var parts = value.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => PhonemizeWord(p, langDict, "en_us", CancellationToken.None, false));
+                        .Select((p, i) =>
+                        {
+                            string ph = PhonemizeWord(p, langDict, "en_us", CancellationToken.None, false);
+                            return i == 0 ? ph : ph.Replace("ˈ", "");
+                        });
                     value = string.Join("", parts);
                 }
                 _lexicon[word] = value;
