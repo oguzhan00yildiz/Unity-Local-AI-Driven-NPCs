@@ -43,14 +43,7 @@ If the window ever needs to be reopened: **Tools → AI Packages → AI System S
 
 ---
 
-## 🎮 How to Test the Demo Scene
-
-1. In the Project window, navigate to:  
-   `Assets/AI Driven NPCs System/Scenes/AIOScene.unity`  
-   *(Or if imported via UPM: `Assets/Samples/AI Driven NPCs System/<version>/Scenes/AIOScene.unity`)*
-2. Open the scene and press **Play**.
-3. Walk toward the NPC using **WASD**.
-4. Press **`E`** to start a voice or text conversation.
+## 🎮 How to Test the Demo Scenes
 
 ### DemoQuest: a short village quest
 
@@ -61,6 +54,10 @@ If the window ever needs to be reopened: **Tools → AI Packages → AI System S
 - The demo uses bigger models: Qwen3.5 4B (2.7 GB), Whisper small.en (490 MB) and 6 extra voices (380 MB). The setup asks before it downloads them. To add them later, use **Tools → AI Packages → Download DemoQuest Models**.
 - When the downloads finish, click **Open DemoQuest** in the setup window.
 - Recommended: a GPU with 6 GB of VRAM or more. The LLM, Whisper and rendering share the GPU.
+
+### BasicExample: one NPC
+
+`Scenes/BasicExample.unity` shows the minimal setup with the default models. Walk to the NPC with **WASD** and press **`E`** to talk or type.
 
 For detailed instructions on adding NPCs to your own scenes, creating custom personality presets, or using different language models, please see [`SETUP_GUIDE_EN.md`](SETUP_GUIDE_EN.md).
 

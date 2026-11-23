@@ -32,14 +32,14 @@ Local AI Driven NPCs System adds NPCs that listen, think and answer with a voice
 - Talking animation: NPCs gesture and nod while they speak.
 - System Health window shows GPU, VRAM and CPU, and turns GPU offload on or off.
 - Use any GGUF model. The default is Qwen3.5-0.8B (Apache 2.0), about 500 MB.
-- Demo scene with a third-person player and an NPC.
 - DemoQuest: a short village quest. Talk to the elder, convince the gate guard, fight skeletons with your companion and bring back a stolen stone. 15 villagers, 9 voices, 3D speech, music and sound effects. Every line is written live by the local LLM.
+- BasicExample scene: one NPC with the minimal setup.
 - Quest actions fire from the player's words, so an NPC's reply always matches what happens in the game (for example a guard opening a gate).
 
 **Setup**
 1. Import the package.
 2. The setup window asks for permission and downloads the model files (about 770 MB).
-3. Click Open DemoQuest or Open Demo Scene, then press Play.
+3. Click Open DemoQuest, then press Play.
 
 **Included**
 LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT, modified), Piper TTS (MIT, modified) and ONNX Runtime 0.4.4 (MIT) are included in `ThirdParty/`. Do not import a second copy of these packages. See `ThirdPartyNotices.md` for licenses.
@@ -63,8 +63,8 @@ PACKAGE CONTENTS
 - Personality presets as ScriptableObjects (12 samples included)
 - Chat panel with streaming text, voice input, microphone selection and mute
 - Editor windows: AI System Setup (model downloads), Voice Browser (extra voices), System Health (GPU offload)
-- Demo scene with a third-person player and an NPC
 - DemoQuest scene: village quest with 15 characters, combat, music and sound effects (CC0 art and audio)
+- BasicExample scene: one NPC with the minimal setup
 - Documentation: README.md and SETUP_GUIDE_EN.md
 
 
