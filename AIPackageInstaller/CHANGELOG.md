@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.6.1] - 2026-11-24
+
+### Changed
+- Docs: DemoQuest section, talking animation setup, pronunciation file.
+
 ## [2.6.0] - 2026-11-24
 
 ### Added
