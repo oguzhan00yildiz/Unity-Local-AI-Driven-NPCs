@@ -50,6 +50,13 @@ You have two easy ways to set up an NPC:
    - The NPC will think and stream back an intelligent on-device reply while speaking in a natural neural voice via Piper TTS!
 5. Press **`ESC`** or click **Close** to return to regular gameplay.
 
+For a full example with a quest, a companion and combat, open `Scenes/DemoQuest.unity`.
+
+### Step 5 (Optional): Talking Animation
+Needs a **Humanoid** Animator.
+1. Add **`TalkAnimator`** to the object with `NPCAgent` or `AmbientBark`. The head nods while the NPC speaks.
+2. For gestures, add an Animator layer named **`Talk`**: mask `Art/Animations/UpperBodyMask.mask`, weight 0, one state with a talking clip such as `Idle_Talking_Loop` (`UAL1_Standard.fbx`).
+
 ---
 
 ## 🎭 Creating Custom NPC Personalities

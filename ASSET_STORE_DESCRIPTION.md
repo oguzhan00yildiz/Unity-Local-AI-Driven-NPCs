@@ -28,6 +28,8 @@ Local AI Driven NPCs System adds NPCs that listen, think and answer with a voice
 - NPC actions: the LLM triggers UnityEvents (follow, open a gate, give a quest) from the conversation.
 - Voice activity detection: the NPC hears the player when the player stops talking.
 - Voice Browser window with 9 English voices, all public domain or CC0.
+- Clear speech: each voice gets the phonemes it was trained on. A pronunciation file fixes names.
+- Talking animation: NPCs gesture and nod while they speak.
 - System Health window shows GPU, VRAM and CPU, and turns GPU offload on or off.
 - Use any GGUF model. The default is Qwen3.5-0.8B (Apache 2.0), about 500 MB.
 - Demo scene with a third-person player and an NPC.
@@ -37,7 +39,7 @@ Local AI Driven NPCs System adds NPCs that listen, think and answer with a voice
 **Setup**
 1. Import the package.
 2. The setup window asks for permission and downloads the model files (about 770 MB).
-3. Open the demo scene and press Play.
+3. Click Open DemoQuest or Open Demo Scene, then press Play.
 
 **Included**
 LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT, modified), Piper TTS (MIT, modified) and ONNX Runtime 0.4.4 (MIT) are included in `ThirdParty/`. Do not import a second copy of these packages. See `ThirdPartyNotices.md` for licenses.
@@ -56,7 +58,7 @@ LLMUnity 3.0.3 (Apache 2.0), Whisper.unity (MIT, modified), Piper TTS (MIT, modi
 PACKAGE CONTENTS
 
 - Full C# source code
-- Services: AISystemManager, VoiceInputService, VoiceOutputService, NPCAgent, ChatUIController
+- Services: AISystemManager, VoiceInputService, VoiceOutputService, NPCAgent, ChatUIController, TalkAnimator
 - Prefabs: AISystem, NPC, LLM, Player
 - Personality presets as ScriptableObjects (12 samples included)
 - Chat panel with streaming text, voice input, microphone selection and mute
