@@ -516,7 +516,7 @@ namespace AISystem.Editor
     private const string SetupCompleteNotifiedKey = "AISystemSetupWindow.SetupCompleteNotified";
 
     /// <summary>
-    /// Checks if sample demo scene (AIOScene or AIOTest) exists in the project.
+    /// Finds the basic example scene. AIOScene is its name before 2.6.2.
     /// </summary>
     public static string FindSampleScenePath()
     {
@@ -526,18 +526,14 @@ namespace AISystem.Editor
         }
 
         Holder.LastScenePathCheckTime = EditorApplication.timeSinceStartup;
-        string[] guids = AssetDatabase.FindAssets("AIOScene t:Scene");
-        if (guids != null && guids.Length > 0)
+        foreach (string name in new[] { "BasicExample", "AIOScene" })
         {
-            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return Holder.CachedSampleScenePath;
-        }
-
-        guids = AssetDatabase.FindAssets("AIOTest t:Scene");
-        if (guids != null && guids.Length > 0)
-        {
-            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return Holder.CachedSampleScenePath;
+            string[] guids = AssetDatabase.FindAssets(name + " t:Scene");
+            if (guids.Length > 0)
+            {
+                Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                return Holder.CachedSampleScenePath;
+            }
         }
         Holder.CachedSampleScenePath = null;
         return null;
@@ -572,12 +568,12 @@ namespace AISystem.Editor
         {
             if (IsInstalledViaUPM())
             {
-                Debug.LogWarning("[AI System Setup] AIOScene demo scene not found. Opening Package Manager to import samples…");
+                Debug.LogWarning("[AI System Setup] BasicExample scene not found. Opening Package Manager to import samples…");
                 OpenPackageManager();
             }
             else
             {
-                Debug.LogWarning("[AI System Setup] AIOScene demo scene not found in Assets.");
+                Debug.LogWarning("[AI System Setup] BasicExample scene not found in Assets.");
             }
         }
     }
@@ -631,8 +627,8 @@ namespace AISystem.Editor
                 }
                 else if (hasSampleScene)
                 {
-                    message = "Open the demo scene to try it.";
-                    primaryBtn = "Open Demo Scene";
+                    message = "Open the basic example to try it.";
+                    primaryBtn = "Open Basic Example";
                 }
                 else if (isUpm)
                 {
@@ -1058,7 +1054,7 @@ namespace AISystem.Editor
                 }
                 if (hasSampleScene)
                 {
-                    if (GUILayout.Button("Open Demo Scene", playBtnStyle, GUILayout.Height(26)))
+                    if (GUILayout.Button("Open Basic Example", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();
                         GUIUtility.ExitGUI();

@@ -623,7 +623,7 @@ namespace AISystem.Editor
     private const string SetupCompleteNotifiedKey = "AISystemSetupWindow.SetupCompleteNotified";
 
     /// <summary>
-    /// Checks if sample demo scene (AIOScene or AIOTest) exists in the project.
+    /// Finds the basic example scene. AIOScene is its name before 2.6.2.
     /// </summary>
     public static string FindSampleScenePath()
     {
@@ -633,18 +633,14 @@ namespace AISystem.Editor
         }
 
         Holder.LastScenePathCheckTime = EditorApplication.timeSinceStartup;
-        string[] guids = AssetDatabase.FindAssets("AIOScene t:Scene");
-        if (guids != null && guids.Length > 0)
+        foreach (string name in new[] { "BasicExample", "AIOScene" })
         {
-            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return Holder.CachedSampleScenePath;
-        }
-
-        guids = AssetDatabase.FindAssets("AIOTest t:Scene");
-        if (guids != null && guids.Length > 0)
-        {
-            Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return Holder.CachedSampleScenePath;
+            string[] guids = AssetDatabase.FindAssets(name + " t:Scene");
+            if (guids.Length > 0)
+            {
+                Holder.CachedSampleScenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                return Holder.CachedSampleScenePath;
+            }
         }
         Holder.CachedSampleScenePath = null;
         return null;
@@ -679,12 +675,12 @@ namespace AISystem.Editor
         {
             if (IsInstalledViaUPM())
             {
-                Debug.LogWarning("[AI System Setup] AIOScene demo scene not found. Opening Package Manager to import samples…");
+                Debug.LogWarning("[AI System Setup] BasicExample scene not found. Opening Package Manager to import samples…");
                 OpenPackageManager();
             }
             else
             {
-                Debug.LogWarning("[AI System Setup] AIOScene demo scene not found in Assets.");
+                Debug.LogWarning("[AI System Setup] BasicExample scene not found in Assets.");
             }
         }
     }
@@ -742,8 +738,8 @@ namespace AISystem.Editor
                 {
                     message = "All required packages and models are downloaded and ready!\n\n" +
                               "💡 Tip: Before pressing Play, please wait a moment for LLMUnity to finish initializing its server setup in the background.\n\n" +
-                              "Would you like to open the demo scene (AIOScene) to test it right away?";
-                    primaryBtn = "Open Demo Scene";
+                              "Would you like to open the basic example scene to test it right away?";
+                    primaryBtn = "Open Basic Example";
                 }
                 else if (isUpm)
                 {
@@ -1162,7 +1158,7 @@ namespace AISystem.Editor
             EditorGUILayout.Space(2);
 
             string infoText = hasSampleScene
-                ? "All required packages and models are downloaded, and demo scenes are ready! You can open the demo scene (AIOScene) to test right away."
+                ? "All required packages and models are downloaded, and demo scenes are ready! You can open the basic example scene to test right away."
                 : (isUpm
                     ? "All required packages and models are downloaded! Go to Package Manager to import the samples and open the demo scene to test."
                     : "All required packages and models are downloaded! Your local AI NPC system is fully configured and ready to use.");
@@ -1183,7 +1179,7 @@ namespace AISystem.Editor
                 }
                 if (hasSampleScene)
                 {
-                    if (GUILayout.Button("▶ Open Demo Scene (AIOScene)", playBtnStyle, GUILayout.Height(26)))
+                    if (GUILayout.Button("▶ Open Basic Example", playBtnStyle, GUILayout.Height(26)))
                     {
                         OpenSampleScene();
                         GUIUtility.ExitGUI();
